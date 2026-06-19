@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import type { Diagnostic, FileDiff, GeneratedFilePatch } from "./types.js";
-import { formatGoSnippet } from "./format.js";
+import { formatFile, formatGoSnippet } from "./format.js";
 
 export type FileSnapshot = {
   path: string;
@@ -125,6 +125,7 @@ export function atomicWritePatches(
 
       writeAtomic(absolutePath, after, diagnostics);
       if (!hasErrorsForFile(diagnostics, patch.path)) {
+        formatFile(absolutePath, diagnostics);
         writtenPaths.push(patch.path);
       }
       continue;
@@ -151,6 +152,7 @@ export function atomicWritePatches(
 
       writeAtomic(absolutePath, after, diagnostics);
       if (!hasErrorsForFile(diagnostics, patch.path)) {
+        formatFile(absolutePath, diagnostics);
         writtenPaths.push(patch.path);
       }
     }

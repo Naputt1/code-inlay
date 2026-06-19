@@ -13,6 +13,20 @@ function isCompleteSnippet(content: string): boolean {
   return true;
 }
 
+export function formatFile(absolutePath: string, diagnostics: Diagnostic[]): void {
+  if (!absolutePath.endsWith(".go")) return;
+
+  const result = spawnSync("gofmt", ["-w", absolutePath], { encoding: "utf8" });
+
+  if (result.error || result.status !== 0) {
+    diagnostics.push({
+      level: "warning",
+      code: "gofmt-failed",
+      message: `Could not format "${absolutePath}": ${result.error?.message ?? result.stderr?.trim() ?? "unknown error"}`,
+    });
+  }
+}
+
 export function formatGoSnippet(content: string, diagnostics: Diagnostic[], regionId: string): string {
   const trimmed = content.trimEnd();
   if (!trimmed) return "";
