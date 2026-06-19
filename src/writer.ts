@@ -114,29 +114,9 @@ export function atomicWritePatches(
         continue;
       }
 
-      const pkg = derivePackage(patch.path);
-      let skeleton: string;
-      if (fileCreation === "markers-only") {
-        skeleton = [
-          `package ${pkg}`,
-          "",
-          ...patch.regions.flatMap((r) => [
-            `// @gen:start ${r.id}`,
-            `// @gen:end ${r.id}`,
-          ]),
-          "",
-        ].join("\n");
-      } else {
-        skeleton = [
-          `package ${pkg}`,
-          "",
-          ...patch.regions.flatMap((r) => [
-            `// @gen:start ${r.id}`,
-            `// @gen:end ${r.id}`,
-          ]),
-          "",
-        ].join("\n");
-      }
+      const isGo = patch.path.endsWith(".go");
+      const pkg = isGo ? derivePackage(patch.path) : undefined;
+      const skeleton = buildSkeleton(patch.regions, pkg);
       mkdirSync(dirname(absolutePath), { recursive: true });
       const before = "";
       const after = injectContent(skeleton, patch.regions, diagnostics, patch.path);
@@ -210,6 +190,20 @@ function writeAtomic(absolutePath: string, content: string, diagnostics: Diagnos
 
 function hasErrorsForFile(diagnostics: Diagnostic[], file: string): boolean {
   return diagnostics.some((d) => d.file === file && d.level === "error");
+}
+
+function buildSkeleton(regions: GeneratedFilePatch["regions"], pkg?: string): string {
+  const lines: string[] = [];
+  if (pkg) {
+    lines.push(`package ${pkg}`);
+    lines.push("");
+  }
+  for (const r of regions) {
+    lines.push(`// @gen:start ${r.id}`);
+    lines.push(`// @gen:end ${r.id}`);
+  }
+  lines.push("");
+  return lines.join("\n");
 }
 
 function derivePackage(filePath: string): string {

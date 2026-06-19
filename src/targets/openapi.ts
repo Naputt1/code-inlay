@@ -88,8 +88,8 @@ export const openapiTarget: CodeTarget = {
       id: "openapi.spec",
       stableHash: `openapi:spec:${spec.info.version}`,
       owner: "openapi",
-      language: "yaml",
-      content: `# Auto-generated OpenAPI spec\n${content}`,
+      language: "json",
+      content,
     };
 
     const outputDir =

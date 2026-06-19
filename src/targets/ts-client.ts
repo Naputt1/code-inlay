@@ -20,16 +20,16 @@ export const tsClientTarget: CodeTarget = {
       (options.targetOptions?.["ts-client"]?.outputDir as string) ?? "clients";
 
     const typesRegions: GeneratedRegion[] = [];
-    const apiRegions: GeneratedRegion[] = [];
     const imports = new Set<string>();
+    const methodBodies: string[] = [];
 
     for (const module of ast.modules) {
       for (const route of module.routes) {
         const typeRegions = generateTypesForRoute(route, module.name);
         typesRegions.push(...typeRegions);
 
-        const handlerRegion = generateClientFunction(route, module.name);
-        apiRegions.push(handlerRegion);
+        const method = generateClientMethod(route, module.name);
+        methodBodies.push(method);
 
         if (route.input) imports.add(routeTypeName(route, "Request"));
         if (route.response) imports.add(routeTypeName(route, "Response"));
@@ -41,68 +41,55 @@ export const tsClientTarget: CodeTarget = {
       regions: typesRegions,
     });
 
-    const apiContent: string[] = [];
-    apiContent.push(`import type {`);
+    const classBody: string[] = [];
+    classBody.push(`import type {`);
     for (const imp of [...imports].sort()) {
-      apiContent.push(`  ${imp},`);
+      classBody.push(`  ${imp},`);
     }
-    apiContent.push(`} from "./types.js";`);
-    apiContent.push(``);
-    apiContent.push(`export class ApiClient {`);
-    apiContent.push(
-      `  constructor(private baseUrl: string, private headers?: Record<string, string>) {}`,
-    );
-    apiContent.push(``);
-    apiContent.push(
-      `  private async request<T>(path: string, options?: RequestInit): Promise<T> {`,
-    );
-    apiContent.push(
-      `    const res = await fetch(\`\${this.baseUrl}\${path}\`, {`,
-    );
-    apiContent.push(`      ...options,`);
-    apiContent.push(
-      `      headers: { "Content-Type": "application/json", ...this.headers, ...options?.headers },`,
-    );
-    apiContent.push(`    });`);
-    apiContent.push(`    if (!res.ok) {`);
-    apiContent.push(`      const body = await res.text();`);
-    apiContent.push(`      throw new ApiError(res.status, body);`);
-    apiContent.push(`    }`);
-    apiContent.push(`    return res.json() as Promise<T>;`);
-    apiContent.push(`  }`);
-    apiContent.push(`}`);
+    classBody.push(`} from "./types.js";`);
+    classBody.push(``);
+    classBody.push(`export class ApiClient {`);
+    classBody.push(`  constructor(private baseUrl: string, private headers?: Record<string, string>) {}`);
+    classBody.push(``);
+    classBody.push(`  private async request<T>(path: string, options?: RequestInit): Promise<T> {`);
+    classBody.push(`    const res = await fetch(\`\${this.baseUrl}\${path}\`, {`);
+    classBody.push(`      ...options,`);
+    classBody.push(`      headers: { "Content-Type": "application/json", ...this.headers, ...options?.headers },`);
+    classBody.push(`    });`);
+    classBody.push(`    if (!res.ok) {`);
+    classBody.push(`      const body = await res.text();`);
+    classBody.push(`      throw new ApiError(res.status, body);`);
+    classBody.push(`    }`);
+    classBody.push(`    return res.json() as Promise<T>;`);
+    classBody.push(`  }`);
+    classBody.push(``);
+    for (const m of methodBodies) {
+      for (const line of m.split("\n")) {
+        classBody.push(`  ${line}`);
+      }
+      classBody.push(``);
+    }
+    classBody.push(`}`);
+    classBody.push(``);
+    classBody.push(`export class ApiError extends Error {`);
+    classBody.push(`  constructor(public status: number, body: string) {`);
+    classBody.push(`    super(\`API error \${status}: \${body}\`);`);
+    classBody.push(`  }`);
+    classBody.push(`}`);
+
+    const hash = contentHash(classBody.join("\n"));
 
     patches.push({
       path: `${clientDir}/api.ts`,
       regions: [
         {
-          id: "client.api.class",
-          stableHash: `ts-client:api-class:${contentHash(apiContent.join("\n"))}`,
+          id: "client.api",
+          stableHash: `ts-client:api:${hash}`,
           owner: "ts-client",
           language: "typescript",
-          content: apiContent.join("\n"),
+          content: classBody.join("\n"),
         },
-        ...apiRegions,
       ],
-    });
-
-    const errorRegion: GeneratedRegion = {
-      id: "client.api.error-class",
-      stableHash: "ts-client:api-error-class",
-      owner: "ts-client",
-      language: "typescript",
-      content: [
-        `export class ApiError extends Error {`,
-        `  constructor(public status: number, body: string) {`,
-        `    super(\`API error \${status}: \${body}\`);`,
-        `  }`,
-        `}`,
-      ].join("\n"),
-    };
-
-    patches.push({
-      path: `${clientDir}/api.ts`,
-      regions: [errorRegion],
     });
 
     return patches;
@@ -218,60 +205,76 @@ function generateTypesForRoute(
   return regions;
 }
 
-function generateClientFunction(
+function collectQueryFields(route: RouteAst, pathParams: string[]): string[] {
+  if (!route.input) return [];
+  const def = (route.input as unknown as Record<string, unknown>)._def as Record<string, unknown> | undefined;
+  const shapeFn = def?.shape as (() => Record<string, unknown>) | undefined;
+  if (!shapeFn) return [];
+  return Object.keys(shapeFn()).filter((k) => !pathParams.includes(k));
+}
+
+function extractPathParams(path: string): string[] {
+  const params: string[] = [];
+  const re = /:([a-zA-Z_][a-zA-Z0-9_]*)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(path)) !== null) {
+    params.push(m[1]);
+  }
+  return params;
+}
+
+function generateClientMethod(
   route: RouteAst,
   moduleName: string,
-): GeneratedRegion {
+): string {
   const fnName = pascalCase(route.id);
-  const reqType = route.input ? routeTypeName(route, "Request") : "undefined";
   const resType = route.response ? routeTypeName(route, "Response") : "void";
   const hasBody =
     route.method === "POST" ||
     route.method === "PUT" ||
     route.method === "PATCH";
 
+  const pathParams = extractPathParams(route.fullPath);
   const pathTemplate = route.fullPath.replace(
     /:([a-zA-Z_][a-zA-Z0-9_]*)/g,
     "${params.$1}",
   );
-  const paramsAnnotation =
-    route.method === "GET" || route.method === "DELETE"
-      ? `params${route.input ? `: ${reqType}` : "?"}: Record<string, string>`
-      : `params${route.input ? `: ${reqType}` : "?"}: ${reqType}`;
 
   const body: string[] = [];
-  body.push(`async ${fnName}(`);
-  body.push(`  ${paramsAnnotation},`);
-  body.push(`  options?: RequestInit,`);
-  body.push(`): Promise<${resType}> {`);
-  if (hasBody) {
-    body.push(`  return this.request<${resType}>(\`${pathTemplate}\`, {`);
-    body.push(`    method: "${route.method}",`);
-    body.push(`    body: JSON.stringify(params),`);
-    body.push(`    ...options,`);
-    body.push(`  });`);
-  } else if (route.method === "GET") {
-    body.push(
-      `  const searchParams = params ? new URLSearchParams(params as Record<string, string>).toString() : "";`,
-    );
-    body.push(
-      `  const url = searchParams ? \`${pathTemplate}?\${searchParams}\` : \`${pathTemplate}\`;`,
-    );
-    body.push(
-      `  return this.request<${resType}>(url, { method: "${route.method}", ...options });`,
-    );
+
+  if (route.input) {
+    const reqType = routeTypeName(route, "Request");
+    body.push(`async ${fnName}(params: ${reqType}, options?: RequestInit): Promise<${resType}> {`);
+    if (hasBody) {
+      body.push(`  return this.request<${resType}>(\`${pathTemplate}\`, {`);
+      body.push(`    method: "${route.method}",`);
+      body.push(`    body: JSON.stringify(params),`);
+      body.push(`    ...options,`);
+      body.push(`  });`);
+    } else {
+      const queryFields = collectQueryFields(route, pathParams);
+      if (queryFields.length > 0) {
+        body.push(`  const query = Object.entries(params)`);
+        body.push(`    .filter(([k]) => ${JSON.stringify(queryFields)}.includes(k))`);
+        body.push(`    .map(([k, v]) => \`\${encodeURIComponent(k)}=\${encodeURIComponent(String(v))}\`)`);
+        body.push(`    .join("&");`);
+        body.push(`  const url = query ? \`${pathTemplate}?\${query}\` : \`${pathTemplate}\`;`);
+      } else {
+        body.push(`  const url = \`${pathTemplate}\`;`);
+      }
+      body.push(`  return this.request<${resType}>(url, { method: "${route.method}", ...options });`);
+    }
+  } else if (pathParams.length > 0) {
+    body.push(`async ${fnName}(params: { ${pathParams.map(p => `${p}: string`).join("; ")} }, options?: RequestInit): Promise<${resType}> {`);
+    body.push(`  const url = \`${pathTemplate}\`;`);
+    body.push(`  return this.request<${resType}>(url, { method: "${route.method}", ...options });`);
   } else {
-    body.push(
-      `  return this.request<${resType}>(\`${pathTemplate}\`, { method: "${route.method}", ...options });`,
-    );
+    body.push(`async ${fnName}(options?: RequestInit): Promise<${resType}> {`);
+    body.push(`  const url = \`${pathTemplate}\`;`);
+    body.push(`  return this.request<${resType}>(url, { method: "${route.method}", ...options });`);
   }
+
   body.push(`}`);
 
-  return {
-    id: `client.api.${moduleName}.${route.id}`,
-    stableHash: `ts-client:api:${moduleName}:${route.id}`,
-    owner: "ts-client",
-    language: "typescript",
-    content: body.join("\n"),
-  };
+  return body.join("\n");
 }

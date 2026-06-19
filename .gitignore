@@ -3,3 +3,4 @@ node_modules
 dist
 test-project/
 *.go
+sample-project/
