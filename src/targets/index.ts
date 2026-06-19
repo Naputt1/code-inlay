@@ -1,0 +1,11 @@
+import type { CodeTarget } from "../types.js";
+import { tsClientTarget } from "./ts-client.js";
+import { openapiTarget } from "./openapi.js";
+
+export const builtinTargets: Record<string, CodeTarget> = {
+  "ts-client": tsClientTarget,
+  openapi: openapiTarget,
+};
+
+export { tsClientTarget } from "./ts-client.js";
+export { openapiTarget } from "./openapi.js";

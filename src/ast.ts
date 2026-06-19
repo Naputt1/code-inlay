@@ -14,15 +14,22 @@ import type {
 import { joinPath } from "./naming.js";
 import { stableHash } from "./hash.js";
 
-export function buildAst(app: AppDefinition, diagnostics: Diagnostic[]): AppAst {
+export function buildAst(
+  app: AppDefinition,
+  diagnostics: Diagnostic[],
+): AppAst {
   const router = app.router ?? {
     kind: "RouterDefinition" as const,
     adapter: "gin" as const,
     prefix: "",
     middleware: [],
   };
-  const appArchitecture = normalizeArchitectureSelection(app.architectures ?? app.architecture ?? "clean");
-  const appAdapters = normalizeAdapterSelection(app.adapters ?? [router.adapter]);
+  const appArchitecture = normalizeArchitectureSelection(
+    app.architectures ?? app.architecture ?? "clean",
+  );
+  const appAdapters = normalizeAdapterSelection(
+    app.adapters ?? [router.adapter],
+  );
 
   const ast: AppAst = {
     kind: "App",
@@ -40,14 +47,22 @@ export function buildAst(app: AppDefinition, diagnostics: Diagnostic[]): AppAst 
       pluginData: {},
       adapter: router.adapter,
       prefix: router.prefix,
-      middleware: router.middleware.map((middleware) => toMiddlewareAst(middleware, "router")),
+      middleware: router.middleware.map((middleware) =>
+        toMiddlewareAst(middleware, "router"),
+      ),
     },
     modules: app.modules.map((module): ModuleAst => {
       const moduleArchitecture = module.architecture
-        ? resolveArchitectureSelection(appArchitecture, normalizeArchitectureSelection(module.architecture))
+        ? resolveArchitectureSelection(
+            appArchitecture,
+            normalizeArchitectureSelection(module.architecture),
+          )
         : undefined;
       const moduleAdapters = module.adapters
-        ? resolveAdapterSelection(appAdapters, normalizeAdapterSelection(module.adapters))
+        ? resolveAdapterSelection(
+            appAdapters,
+            normalizeAdapterSelection(module.adapters),
+          )
         : undefined;
 
       return {
@@ -59,16 +74,25 @@ export function buildAst(app: AppDefinition, diagnostics: Diagnostic[]): AppAst 
         name: module.name,
         architecture: moduleArchitecture,
         adapters: moduleAdapters,
-        middleware: module.middleware.map((middleware) => toMiddlewareAst(middleware, `module:${module.name}`)),
+        middleware: module.middleware.map((middleware) =>
+          toMiddlewareAst(middleware, `module:${module.name}`),
+        ),
         routes: module.routes.map((route): RouteAst => {
           const routeArchitecture = route.architecture
-            ? resolveArchitectureSelection(moduleArchitecture ?? appArchitecture, normalizeArchitectureSelection(route.architecture))
+            ? resolveArchitectureSelection(
+                moduleArchitecture ?? appArchitecture,
+                normalizeArchitectureSelection(route.architecture),
+              )
             : undefined;
           const routeAdapters = normalizeRouteAdapter(route);
           const resolvedAdapterSelection = routeAdapters
-            ? resolveAdapterSelection(moduleAdapters ?? appAdapters, routeAdapters)
-            : moduleAdapters ?? appAdapters;
-          const resolvedArchitectureSelection = routeArchitecture ?? moduleArchitecture ?? appArchitecture;
+            ? resolveAdapterSelection(
+                moduleAdapters ?? appAdapters,
+                routeAdapters,
+              )
+            : (moduleAdapters ?? appAdapters);
+          const resolvedArchitectureSelection =
+            routeArchitecture ?? moduleArchitecture ?? appArchitecture;
 
           return {
             kind: "Route",
@@ -87,24 +111,36 @@ export function buildAst(app: AppDefinition, diagnostics: Diagnostic[]): AppAst 
             resolvedAdapters: selectionToTargets(resolvedAdapterSelection),
             input: route.input,
             response: route.response,
-            middleware: route.middleware.map((middleware) => toMiddlewareAst(middleware, `module:${module.name}:route:${route.id}`)),
+            middleware: route.middleware.map((middleware) =>
+              toMiddlewareAst(
+                middleware,
+                `module:${module.name}:route:${route.id}`,
+              ),
+            ),
             metadata: route.metadata,
           };
         }),
       };
     }),
     plugins: app.plugins,
+    targets: app.targets ?? [],
     options: app.options,
   };
 
   validateAst(ast, diagnostics);
-  return app.transformers.reduce((next, transformer) => transformer.transform(next), ast);
+  return app.transformers.reduce(
+    (next, transformer) => transformer.transform(next),
+    ast,
+  );
 }
 
-function toMiddlewareAst(input: {
-  name: string;
-  handler?: string;
-}, owner: string): MiddlewareAst {
+function toMiddlewareAst(
+  input: {
+    name: string;
+    handler?: string;
+  },
+  owner: string,
+): MiddlewareAst {
   return {
     kind: "Middleware",
     id: input.name,
@@ -144,14 +180,18 @@ export function resolveArchitectureSelection(
   parent: ArchitectureSelection,
   child: ArchitectureSelection,
 ): ArchitectureSelection {
-  return child.mode === "append" ? { mode: "replace", refs: [...parent.refs, ...child.refs] } : child;
+  return child.mode === "append"
+    ? { mode: "replace", refs: [...parent.refs, ...child.refs] }
+    : child;
 }
 
 export function resolveAdapterSelection(
   parent: AdapterSelection,
   child: AdapterSelection,
 ): AdapterSelection {
-  return child.mode === "append" ? { mode: "replace", refs: [...parent.refs, ...child.refs] } : child;
+  return child.mode === "append"
+    ? { mode: "replace", refs: [...parent.refs, ...child.refs] }
+    : child;
 }
 
 function normalizeRouteAdapter(route: {
@@ -178,12 +218,24 @@ function selectionToTargets(selection: AdapterSelection): AdapterTarget[] {
   });
 }
 
-function isArchitectureSelection(input: unknown): input is ArchitectureSelection {
-  return typeof input === "object" && input !== null && "mode" in input && "refs" in input;
+function isArchitectureSelection(
+  input: unknown,
+): input is ArchitectureSelection {
+  return (
+    typeof input === "object" &&
+    input !== null &&
+    "mode" in input &&
+    "refs" in input
+  );
 }
 
 function isAdapterSelection(input: unknown): input is AdapterSelection {
-  return typeof input === "object" && input !== null && "mode" in input && "refs" in input;
+  return (
+    typeof input === "object" &&
+    input !== null &&
+    "mode" in input &&
+    "refs" in input
+  );
 }
 
 function nodeStableId(input: string): string {

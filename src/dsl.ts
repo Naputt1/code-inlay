@@ -6,14 +6,19 @@ import type {
   ArchitectureSelection,
   AstTransformer,
   BackendCompilerPlugin,
+  CodeTarget,
   CompileSettings,
   HttpMethod,
+  MetadataConfig,
   MiddlewareDefinition,
   ModuleDefinition,
+  PluginPackage,
   RouteDefinition,
   RouterAdapter,
   RouterDefinition,
+  RuntimeConfig,
   SchemaLike,
+  TestingConfig,
   AdapterSelection,
 } from "./types.js";
 
@@ -46,7 +51,10 @@ type DefineRouteBase = {
   metadata?: Record<string, unknown>;
 };
 
-export function defineRoute<TInput extends SchemaLike, TResponse extends SchemaLike>(
+export function defineRoute<
+  TInput extends SchemaLike,
+  TResponse extends SchemaLike,
+>(
   input: DefineRouteBase & { input: TInput; response: TResponse },
 ): RouteDefinition<TInput, TResponse>;
 
@@ -65,7 +73,9 @@ export function defineRoute(
 export function defineRoute<
   TInput extends SchemaLike | undefined = undefined,
   TResponse extends SchemaLike | undefined = undefined,
->(input: DefineRouteInput<TInput, TResponse>): RouteDefinition<TInput, TResponse> {
+>(
+  input: DefineRouteInput<TInput, TResponse>,
+): RouteDefinition<TInput, TResponse> {
   return {
     kind: "RouteDefinition",
     id: input.id,
@@ -131,6 +141,10 @@ export function defineApp(input: {
   modules: ModuleDefinition[];
   transformers?: AstTransformer[];
   plugins?: BackendCompilerPlugin[];
+  targets?: CodeTarget[];
+  runtime?: RuntimeConfig;
+  testing?: TestingConfig;
+  metadata?: MetadataConfig;
   options?: Partial<CompileSettings>;
 }): AppDefinition {
   return {
@@ -142,13 +156,29 @@ export function defineApp(input: {
     modules: input.modules,
     transformers: input.transformers ?? [],
     plugins: input.plugins ?? [],
+    targets: input.targets ?? [],
     options: {
       fileCreation: input.options?.fileCreation ?? "skeleton",
+      targets: input.options?.targets ?? ["go-server"],
+      targetOptions: input.options?.targetOptions,
+      runtime: input.runtime ?? { enabled: false },
+      testing: input.testing ?? {
+        mocks: false,
+        scaffolds: false,
+        contracts: false,
+      },
+      metadata: input.metadata ?? {
+        enabled: false,
+        routeRegistry: false,
+        schemaReflection: false,
+      },
     },
   };
 }
 
-export function defineArchitecture(plugin: ArchitecturePlugin): ArchitecturePlugin {
+export function defineArchitecture(
+  plugin: ArchitecturePlugin,
+): ArchitecturePlugin {
   return plugin;
 }
 
@@ -158,4 +188,28 @@ export function defineAdapter(adapter: RouterAdapter): RouterAdapter {
 
 export function defineTransformer(transformer: AstTransformer): AstTransformer {
   return transformer;
+}
+
+export function defineTarget(target: CodeTarget): CodeTarget {
+  return target;
+}
+
+export function defineRuntime(config: RuntimeConfig): RuntimeConfig {
+  return config;
+}
+
+export function defineTesting(config: TestingConfig): TestingConfig {
+  return config;
+}
+
+export function defineMetadata(config: MetadataConfig): MetadataConfig {
+  return config;
+}
+
+export function definePlugin(
+  plugin: BackendCompilerPlugin & {
+    compatibility?: PluginPackage["compatibility"];
+  },
+): BackendCompilerPlugin {
+  return plugin;
 }

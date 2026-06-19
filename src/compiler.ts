@@ -7,7 +7,6 @@ import type {
   CompileResult,
   Diagnostic,
   GeneratedFilePatch,
-  AppAst,
 } from "./types.js";
 import { buildAst } from "./ast.js";
 import { applyArchitecture } from "./architecture.js";
@@ -15,7 +14,12 @@ import { generateCode } from "./codegen.js";
 import { applyPatches, detectDrift } from "./region.js";
 import { formatGoSnippet } from "./format.js";
 import { checkGoEnvironment } from "./env.js";
-import { createPluginRegistry, runTransformerStage, runValidators } from "./plugins.js";
+import {
+  createPluginRegistry,
+  runTransformerStage,
+  runTargets,
+  runValidators,
+} from "./plugins.js";
 import {
   buildDependencyGraph,
   readCache,
@@ -28,7 +32,8 @@ import { atomicWritePatches, validateBeforeWrite } from "./writer.js";
 export async function compile(options: CompileOptions): Promise<CompileResult> {
   const cwd = options.cwd ?? process.cwd();
   const diagnostics: Diagnostic[] = [];
-  const app = options.app ?? (await loadConfig(options.configFile, cwd, diagnostics));
+  const app =
+    options.app ?? (await loadConfig(options.configFile, cwd, diagnostics));
 
   if (!app) {
     return emptyResult(diagnostics);
@@ -49,7 +54,8 @@ export async function compile(options: CompileOptions): Promise<CompileResult> {
 
   let moduleInfo: ReturnType<typeof checkGoEnvironment>;
   if (options.configFile !== undefined) {
-    const adapterName = typeof ast.router.adapter === "string" ? ast.router.adapter : undefined;
+    const adapterName =
+      typeof ast.router.adapter === "string" ? ast.router.adapter : undefined;
     moduleInfo = checkGoEnvironment(cwd, diagnostics, adapterName);
   }
 
@@ -57,14 +63,36 @@ export async function compile(options: CompileOptions): Promise<CompileResult> {
   ast = await runTransformerStage("codegen", ast, registry, diagnostics);
   ast = await runTransformerStage("postTransform", ast, registry, diagnostics);
 
+  const targetPatches = await runTargets(
+    ast,
+    architecture,
+    registry,
+    diagnostics,
+    cwd,
+    app.options,
+  );
+
   generation = {
-    files: generation.files.map((file) => ({
-      ...file,
-      regions: file.regions.map((region) => ({
-        ...region,
-        content: region.language === "go" ? formatGoSnippet(region.content, diagnostics, region.id) : region.content,
+    files: [...generation.files, ...targetPatches]
+      .reduce((acc, file) => {
+        const existing = acc.find((f) => f.path === file.path);
+        if (existing) {
+          existing.regions.push(...file.regions);
+        } else {
+          acc.push({ ...file, regions: [...file.regions] });
+        }
+        return acc;
+      }, [] as GeneratedFilePatch[])
+      .map((file) => ({
+        ...file,
+        regions: file.regions.map((region) => ({
+          ...region,
+          content:
+            region.language === "go"
+              ? formatGoSnippet(region.content, diagnostics, region.id)
+              : region.content,
+        })),
       })),
-    })),
   };
 
   await runValidators(ast, registry, diagnostics);
@@ -91,7 +119,8 @@ export async function compile(options: CompileOptions): Promise<CompileResult> {
             { [region.stableHash]: cache.regions[region.stableHash] },
             diagnostics,
             file.path,
-            options.forceRegions ?? (options.forceRegion ? [options.forceRegion] : undefined),
+            options.forceRegions ??
+              (options.forceRegion ? [options.forceRegion] : undefined),
           );
         }
       }
@@ -137,11 +166,22 @@ export async function compile(options: CompileOptions): Promise<CompileResult> {
   if (!hasErrors(diagnostics)) {
     const dependencyGraph = buildDependencyGraph(ast, architecture, generation);
     const pluginManifestHash = registry.manifestHash;
-    const regions: Record<string, { id: string; stableHash: string; contentHash: string; file: string; owner?: string }> = {};
+    const regions: Record<
+      string,
+      {
+        id: string;
+        stableHash: string;
+        contentHash: string;
+        file: string;
+        owner?: string;
+      }
+    > = {};
     const files: Record<string, { regions: string[] }> = {};
 
     for (const file of generation.files) {
-      files[file.path] = { regions: file.regions.map((r) => r.stableHash ?? r.id) };
+      files[file.path] = {
+        regions: file.regions.map((r) => r.stableHash ?? r.id),
+      };
       for (const region of file.regions) {
         const key = region.stableHash ?? region.id;
         regions[key] = {
@@ -175,7 +215,9 @@ export async function compile(options: CompileOptions): Promise<CompileResult> {
   };
 }
 
-export async function compileIncremental(options: CompileOptions): Promise<CompileResult> {
+export async function compileIncremental(
+  options: CompileOptions,
+): Promise<CompileResult> {
   const cwd = options.cwd ?? process.cwd();
   const diagnostics: Diagnostic[] = [];
 
@@ -183,7 +225,11 @@ export async function compileIncremental(options: CompileOptions): Promise<Compi
 
   if (cache && validateCache(cache, "0.2.0", "2.0", "")) {
     if (options.changedFiles && options.changedFiles.length > 0) {
-      const invalidated = invalidateChanged(cache, cache.dependencyGraph, options.changedFiles);
+      const invalidated = invalidateChanged(
+        cache,
+        cache.dependencyGraph,
+        options.changedFiles,
+      );
       if (invalidated.size === 0 && !options.watch) {
         return {
           generation: { files: [] },
@@ -218,7 +264,9 @@ export async function compileWithWatch(options: CompileOptions): Promise<void> {
     }
   };
 
-  const configPath = options.configFile ? resolve(cwd, options.configFile) : undefined;
+  const configPath = options.configFile
+    ? resolve(cwd, options.configFile)
+    : undefined;
 
   const debouncedRun = () => {
     if (debounceTimer) clearTimeout(debounceTimer);
@@ -258,14 +306,18 @@ async function loadConfig(
       const { register } = await import("tsx/esm/api");
       const unregister = register();
       try {
-        const module = await import(`${pathToFileURL(absolutePath).href}?t=${Date.now()}`);
+        const module = await import(
+          `${pathToFileURL(absolutePath).href}?t=${Date.now()}`
+        );
         return readDefaultApp(module, configFile, diagnostics);
       } finally {
         unregister();
       }
     }
 
-    const module = await import(`${pathToFileURL(absolutePath).href}?t=${Date.now()}`);
+    const module = await import(
+      `${pathToFileURL(absolutePath).href}?t=${Date.now()}`
+    );
     return readDefaultApp(module, configFile, diagnostics);
   } catch (error) {
     diagnostics.push({
@@ -294,7 +346,8 @@ function readDefaultApp(
     diagnostics.push({
       level: "error",
       code: "invalid-config-export",
-      message: "Config file must default export a value returned by defineApp().",
+      message:
+        "Config file must default export a value returned by defineApp().",
       file: configFile,
     });
   }
@@ -315,18 +368,18 @@ function isAppDefinition(value: unknown): value is AppDefinition {
   );
 }
 
-function filterAst<T extends { modules: { name: string; routes: { id: string }[] }[] }>(
-  ast: T,
-  moduleName?: string,
-  routeId?: string,
-): T {
+function filterAst<
+  T extends { modules: { name: string; routes: { id: string }[] }[] },
+>(ast: T, moduleName?: string, routeId?: string): T {
   return {
     ...ast,
     modules: ast.modules
       .filter((module) => !moduleName || module.name === moduleName)
       .map((module) => ({
         ...module,
-        routes: module.routes.filter((route) => !routeId || route.id === routeId),
+        routes: module.routes.filter(
+          (route) => !routeId || route.id === routeId,
+        ),
       })),
   };
 }
@@ -349,6 +402,8 @@ export function printDiagnostics(diagnostics: Diagnostic[]): void {
     const prefix = diagnostic.level === "error" ? "error" : "warning";
     const location = diagnostic.file ? ` ${diagnostic.file}` : "";
     const region = diagnostic.regionId ? ` [${diagnostic.regionId}]` : "";
-    console.error(`${prefix} ${diagnostic.code}${location}${region}: ${diagnostic.message}`);
+    console.error(
+      `${prefix} ${diagnostic.code}${location}${region}: ${diagnostic.message}`,
+    );
   }
 }

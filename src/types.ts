@@ -20,12 +20,21 @@ export type MaybePromise<T> = T | Promise<T>;
 export type SchemaLike = z.ZodTypeAny;
 
 export type AstVersion = typeof AST_VERSION;
+export type PluginType =
+  | "adapter"
+  | "architecture"
+  | "transformer"
+  | "validator"
+  | "codegen"
+  | "target";
+
 export type PipelineStage =
   | "preTransform"
   | "architecture"
   | "adapter"
   | "codegen"
   | "postTransform"
+  | "target"
   | "validate";
 
 export type SourceRef = {
@@ -63,6 +72,12 @@ export type FileCreationMode = "disabled" | "markers-only" | "skeleton";
 
 export type CompileSettings = {
   fileCreation: FileCreationMode;
+  targets?: string[];
+  targetOptions?: Record<string, Record<string, unknown>>;
+  runtime?: RuntimeConfig;
+  testing?: TestingConfig;
+  metadata?: MetadataConfig;
+  sandbox?: SandboxConfig;
 };
 
 export type RouteDefinition<
@@ -123,6 +138,7 @@ export type AppDefinition = {
   modules: ModuleDefinition[];
   transformers: AstTransformer[];
   plugins: BackendCompilerPlugin[];
+  targets?: CodeTarget[];
   options: CompileSettings;
 };
 
@@ -148,6 +164,7 @@ export type AppAst = AstNodeBase<"App"> & {
   router: RouterAst;
   modules: ModuleAst[];
   plugins: BackendCompilerPlugin[];
+  targets: CodeTarget[];
   options: CompileSettings;
 };
 
@@ -250,8 +267,79 @@ export type GeneratedRegion = {
   stableHash?: string;
   owner?: string;
   contentHash?: string;
-  language: "go";
+  language: "go" | "typescript" | "yaml" | "json" | "markdown";
   content: string;
+};
+
+export type TargetContext = {
+  diagnostics: Diagnostic[];
+  ast: AppAst;
+  architecture: ArchitectureAst;
+  registry: {
+    plugins: BackendCompilerPlugin[];
+    architectures: Map<string, ArchitecturePlugin>;
+    adapters: Map<string, AdapterPlugin>;
+    transformers: TransformerPlugin[];
+    validators: ValidatorPlugin[];
+    targets: Map<string, CodeTarget>;
+    manifestHash: string;
+  };
+  cwd: string;
+  options: CompileSettings;
+};
+
+export type CodeTarget = {
+  name: string;
+  version?: string;
+  apiVersion?: "3";
+  stage: "codegen" | "postTransform";
+  generate(ctx: TargetContext): MaybePromise<GeneratedFilePatch[]>;
+};
+
+export type RuntimeConfig = {
+  enabled: boolean;
+  di?: "wire" | "manual" | "google-wire" | "uber-fx";
+  middleware?: string[];
+  tracing?: "otel" | "none";
+  logger?: "zerolog" | "slog" | "logrus" | "none";
+};
+
+export type TestingConfig = {
+  mocks: boolean;
+  scaffolds: boolean;
+  contracts: boolean;
+  framework?: "testify" | "moq" | "gomock";
+};
+
+export type MetadataConfig = {
+  enabled: boolean;
+  routeRegistry: boolean;
+  schemaReflection: boolean;
+};
+
+export type SandboxConfig = {
+  enabled: boolean;
+  timeout?: number;
+  allowedFs?: string[];
+  allowNet?: boolean;
+};
+
+export type PluginCompatibility = {
+  astVersion: string;
+  coreVersion: string;
+  nodeVersion?: string;
+};
+
+export type PluginPackage = {
+  name: string;
+  version: string;
+  type: PluginType;
+  transport?: string;
+  compatibility: PluginCompatibility;
+  capabilities?: string[];
+  dependencies?: Record<string, string>;
+  settings?: Record<string, unknown>;
+  manifestHash: string;
 };
 
 export type ArchitectureContext = {

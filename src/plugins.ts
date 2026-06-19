@@ -2,11 +2,17 @@ import type {
   AdapterPlugin,
   AppAst,
   AppDefinition,
+  ArchitectureAst,
   ArchitecturePlugin,
   AstPatch,
   BackendCompilerPlugin,
+  CodeTarget,
+  CompileSettings,
   Diagnostic,
+  GeneratedFilePatch,
   PipelineStage,
+  PluginPackage,
+  TargetContext,
   TransformerPlugin,
   ValidatorPlugin,
 } from "./types.js";
@@ -20,13 +26,18 @@ export type PluginRegistry = {
   adapters: Map<string, AdapterPlugin>;
   transformers: TransformerPlugin[];
   validators: ValidatorPlugin[];
+  targets: Map<string, CodeTarget>;
+  packages: Map<string, PluginPackage>;
   manifestHash: string;
 };
 
-export function createPluginRegistry(app: AppDefinition, diagnostics: Diagnostic[]): PluginRegistry {
+export function createPluginRegistry(
+  app: AppDefinition,
+  diagnostics: Diagnostic[],
+): PluginRegistry {
   const builtInPlugin: BackendCompilerPlugin = {
     name: "@backend-gen/builtin",
-    version: "0.2.0",
+    version: "0.3.0",
     apiVersion: "2",
     architectures: Object.values(architectureRegistry),
     adapters: Object.values(adapterRegistry),
@@ -38,6 +49,8 @@ export function createPluginRegistry(app: AppDefinition, diagnostics: Diagnostic
   const adapters = new Map<string, AdapterPlugin>();
   const transformers: TransformerPlugin[] = [];
   const validators: ValidatorPlugin[] = [];
+  const targets = new Map<string, CodeTarget>();
+  const packages = new Map<string, PluginPackage>();
 
   for (const plugin of plugins) {
     if (seen.has(plugin.name)) {
@@ -50,7 +63,7 @@ export function createPluginRegistry(app: AppDefinition, diagnostics: Diagnostic
     }
     seen.add(plugin.name);
 
-    if (plugin.apiVersion !== "2") {
+    if (plugin.apiVersion !== "2" && plugin.apiVersion !== "3") {
       diagnostics.push({
         level: "error",
         code: "unsupported-plugin-api",
@@ -69,20 +82,38 @@ export function createPluginRegistry(app: AppDefinition, diagnostics: Diagnostic
     validators.push(...(plugin.validators ?? []));
   }
 
+  for (const target of app.targets ?? []) {
+    if (targets.has(target.name)) {
+      diagnostics.push({
+        level: "warning",
+        code: "duplicate-target",
+        message: `Code target "${target.name}" registered more than once. Using first.`,
+      });
+      continue;
+    }
+    targets.set(target.name, target);
+  }
+
   return {
     plugins,
     architectures,
     adapters,
     transformers,
     validators,
+    targets,
+    packages,
     manifestHash: stableHash(
-      plugins.map((plugin) => ({
-        name: plugin.name,
-        version: plugin.version,
-        apiVersion: plugin.apiVersion,
-        architectures: plugin.architectures?.map((item) => item.name).sort(),
-        adapters: plugin.adapters?.map((item) => item.name).sort(),
-      })),
+      [
+        ...plugins.map((plugin) => ({
+          name: plugin.name,
+          version: plugin.version,
+          apiVersion: plugin.apiVersion,
+          architectures: plugin.architectures?.map((item) => item.name).sort(),
+          adapters: plugin.adapters?.map((item) => item.name).sort(),
+        })),
+        ...(app.targets?.map((t) => ({ name: t.name, version: t.version })) ??
+          []),
+      ],
       16,
     ),
   };
@@ -105,7 +136,9 @@ export async function runTransformerStage(
     .filter((entry) => entry.hook.stage === stage)
     .sort((a, b) => {
       const order = (a.hook.order ?? 0) - (b.hook.order ?? 0);
-      return order !== 0 ? order : a.transformer.name.localeCompare(b.transformer.name);
+      return order !== 0
+        ? order
+        : a.transformer.name.localeCompare(b.transformer.name);
     });
 
   for (const { transformer, hook } of hooks) {
@@ -130,7 +163,9 @@ export async function runValidators(
   registry: PluginRegistry,
   diagnostics: Diagnostic[],
 ): Promise<void> {
-  for (const validator of registry.validators.sort((a, b) => a.name.localeCompare(b.name))) {
+  for (const validator of registry.validators.sort((a, b) =>
+    a.name.localeCompare(b.name),
+  )) {
     const plugin: BackendCompilerPlugin = {
       name: validator.name,
       version: validator.version,
@@ -140,7 +175,71 @@ export async function runValidators(
   }
 }
 
-function applyAstPatches(ast: AppAst, patches: AstPatch[], diagnostics: Diagnostic[]): AppAst {
+export async function runTargets(
+  ast: AppAst,
+  architecture: ArchitectureAst,
+  registry: PluginRegistry,
+  diagnostics: Diagnostic[],
+  cwd: string,
+  options: CompileSettings,
+): Promise<GeneratedFilePatch[]> {
+  const enabledTargets = (options.targets ?? []).filter(
+    (t) => t !== "go-server",
+  );
+  const patches: GeneratedFilePatch[] = [];
+  const seenPaths = new Map<string, GeneratedFilePatch>();
+
+  const mergePatch = (patch: GeneratedFilePatch) => {
+    const existing = seenPaths.get(patch.path);
+    if (existing) {
+      existing.regions.push(...patch.regions);
+    } else {
+      seenPaths.set(patch.path, { ...patch, regions: [...patch.regions] });
+      patches.push(seenPaths.get(patch.path)!);
+    }
+  };
+
+  for (const targetName of enabledTargets) {
+    const target = registry.targets.get(targetName);
+    if (!target) {
+      diagnostics.push({
+        level: "warning",
+        code: "unknown-target",
+        message: `Code target "${targetName}" is not registered. Skipping.`,
+      });
+      continue;
+    }
+
+    try {
+      const ctx: TargetContext = {
+        diagnostics,
+        ast,
+        architecture,
+        registry,
+        cwd,
+        options,
+      };
+      const result = await target.generate(ctx);
+      for (const patch of result) {
+        mergePatch(patch);
+      }
+    } catch (error) {
+      diagnostics.push({
+        level: "error",
+        code: "target-failed",
+        message: `Target "${targetName}" failed: ${error instanceof Error ? error.message : String(error)}`,
+      });
+    }
+  }
+
+  return patches.sort((a, b) => a.path.localeCompare(b.path));
+}
+
+function applyAstPatches(
+  ast: AppAst,
+  patches: AstPatch[],
+  diagnostics: Diagnostic[],
+): AppAst {
   let next = ast;
   for (const patch of patches) {
     if (patch.op === "replaceAst") {
