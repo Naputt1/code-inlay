@@ -12,33 +12,43 @@ import type {
 import { defaultFileForLayer, defaultRegionId, pascalCase } from "./naming.js";
 import { stableHash } from "./hash.js";
 
-const cleanLayers = ["types", "domain", "repository", "usecase", "handler"] as const;
-
-export const cleanArchitecture: ArchitecturePlugin = {
-  name: "clean",
-  transform(ctx, ast) {
-    return {
-      nodes: [],
-      routes: ast.modules.flatMap((module) =>
-        module.routes.map((route) => ({
-          route,
-          layers: cleanLayers.map((layer): GeneratedLayer => ({
-            kind: layer,
-            symbolName: `${pascalCase(route.id)}${pascalCase(route.moduleName)}${pascalCase(layer)}`,
-            file: ctx.fileForLayer(route, layer),
-            regionId: ctx.regionId(route, layer),
+function buildArchitecture(name: string, layerKinds: readonly string[]): ArchitecturePlugin {
+  return {
+    name,
+    transform(ctx, ast) {
+      return {
+        nodes: [],
+        routes: ast.modules.flatMap((module) =>
+          module.routes.map((route) => ({
+            route,
+            layers: layerKinds.map((layer): GeneratedLayer => ({
+              kind: layer,
+              symbolName: `${pascalCase(route.id)}${pascalCase(route.moduleName)}${pascalCase(layer)}`,
+              file: ctx.fileForLayer(route, layer),
+              regionId: ctx.regionId(route, layer),
+            })),
           })),
-        })),
-      ),
-    };
-  },
-};
+        ),
+      };
+    },
+  };
+}
+
+const cleanLayers = ["types", "domain", "repository", "usecase", "handler"] as const;
+const minimalLayers = ["types", "usecase", "handler"] as const;
+const atomicLayers = ["types", "handler", "service", "store"] as const;
+const layeredLayers = ["types", "controller", "service", "repository", "model"] as const;
+
+export const cleanArchitecture = buildArchitecture("clean", cleanLayers);
+export const minimalArchitecture = buildArchitecture("minimal", minimalLayers);
+export const atomicArchitecture = buildArchitecture("atomic", atomicLayers);
+export const layeredArchitecture = buildArchitecture("layered", layeredLayers);
 
 export const architectureRegistry: Record<BuiltInArchitectureName, ArchitecturePlugin> = {
   clean: cleanArchitecture,
-  minimal: stubArchitecture("minimal", ["types", "usecase", "handler"]),
-  atomic: stubArchitecture("atomic", ["types", "handler", "service", "store"]),
-  layered: stubArchitecture("layered", ["types", "controller", "service", "repository", "model"]),
+  minimal: minimalArchitecture,
+  atomic: atomicArchitecture,
+  layered: layeredArchitecture,
 };
 
 export function resolveArchitecture(
@@ -189,30 +199,4 @@ function checkDuplicateRegionIds(
   }
 }
 
-function stubArchitecture(name: BuiltInArchitectureName, layers: string[]): ArchitecturePlugin {
-  return {
-    name,
-    transform(ctx, ast) {
-      ctx.diagnostics.push({
-        level: "warning",
-        code: "architecture-stub",
-        message: `Architecture "${name}" is registered as an MVP stub; generated layer names are provisional.`,
-      });
 
-      return {
-        nodes: [],
-        routes: ast.modules.flatMap((module) =>
-          module.routes.map((route: RouteAst) => ({
-            route,
-            layers: layers.map((layer) => ({
-              kind: layer,
-              symbolName: `${pascalCase(route.id)}${pascalCase(route.moduleName)}${pascalCase(layer)}`,
-              file: ctx.fileForLayer(route, layer),
-              regionId: ctx.regionId(route, layer),
-            })),
-          })),
-        ),
-      };
-    },
-  };
-}

@@ -51,19 +51,88 @@ function isZodArray(schema: SchemaLike): schema is SchemaLike & { element: Schem
 
 export function generateRouteTypes(route: RouteAst, diagnostics: Diagnostic[]): string {
   const structs: GoStruct[] = [];
+  const subStructs = new Map<string, GoStruct>();
+
+  const registerSub = (name: string, schema: SchemaLike) => {
+    if (subStructs.has(name)) return;
+    const unwrapped = unwrap(schema);
+    if (!isZodObject(unwrapped)) return;
+    const shape = unwrapped.shape;
+    const fields = Object.keys(shape)
+      .sort()
+      .map((fieldName) => {
+        const fieldSchema = shape[fieldName] as SchemaLike;
+        const optional = isZodOptional(fieldSchema);
+        const inner = unwrap(fieldSchema);
+        if (isZodObject(inner)) {
+          const childName = `${name}${pascalCase(fieldName)}`;
+          registerSub(childName, inner);
+          return {
+            name: pascalCase(fieldName),
+            type: childName,
+            jsonName: fieldName,
+            optional,
+          };
+        }
+        return {
+          name: pascalCase(fieldName),
+          type: schemaToGoType(fieldSchema, diagnostics),
+          jsonName: fieldName,
+          optional,
+        };
+      });
+    subStructs.set(name, { name, fields });
+  };
+
+  const processSchema = (prefix: string, schema: SchemaLike) => {
+    const unwrapped = unwrap(schema);
+    if (!isZodObject(unwrapped)) return undefined;
+    const shape = unwrapped.shape;
+    const fields = Object.keys(shape)
+      .sort()
+      .map((fieldName) => {
+        const fieldSchema = shape[fieldName] as SchemaLike;
+        const optional = isZodOptional(fieldSchema);
+        const inner = unwrap(fieldSchema);
+        if (isZodObject(inner)) {
+          const childName = `${prefix}${pascalCase(fieldName)}`;
+          registerSub(childName, inner);
+          return {
+            name: pascalCase(fieldName),
+            type: childName,
+            jsonName: fieldName,
+            optional,
+          };
+        }
+        return {
+          name: pascalCase(fieldName),
+          type: schemaToGoType(fieldSchema, diagnostics),
+          jsonName: fieldName,
+          optional,
+        };
+      });
+    return { name: prefix, fields };
+  };
 
   if (route.input) {
-    const input = schemaToStruct(routeTypeName(route, "Request"), route.input, diagnostics);
+    const input = processSchema(routeTypeName(route, "Request"), route.input);
     if (input) structs.push(input);
   }
 
   if (route.response) {
-    const response = schemaToStruct(routeTypeName(route, "Response"), route.response, diagnostics);
+    const response = processSchema(routeTypeName(route, "Response"), route.response);
     if (response) structs.push(response);
   }
 
   if (!route.response) {
-    structs.push({ name: routeTypeName(route, "Response"), fields: [] });
+    const name = routeTypeName(route, "Response");
+    structs.push({ name, fields: [] });
+  }
+
+  for (const sub of subStructs.values()) {
+    if (!structs.find((s) => s.name === sub.name)) {
+      structs.push(sub);
+    }
   }
 
   return structs.map(renderStruct).join("\n\n");
@@ -118,18 +187,20 @@ function schemaToGoType(schema: SchemaLike, diagnostics: Diagnostic[]): string {
   if (isZodString(unwrapped) || isZodEnum(unwrapped)) {
     type = "string";
   } else if (isZodNumber(unwrapped)) {
-    type = "float64";
+    const checks = ((unwrapped as unknown as Record<string, unknown>)._def as Record<string, unknown>)?.checks as Array<{ kind: string }> | undefined;
+    const isInt = checks?.some((c: { kind: string }) => c.kind === "int");
+    type = isInt ? "int64" : "float64";
   } else if (isZodBoolean(unwrapped)) {
     type = "bool";
   } else if (isZodArray(unwrapped)) {
     type = `[]${schemaToGoType(unwrapped.element, diagnostics)}`;
   } else if (isZodObject(unwrapped)) {
-    type = "map[string]any";
     diagnostics.push({
       level: "warning",
-      code: "nested-object-map",
-      message: "Nested object fields are emitted as map[string]any in the MVP.",
+      code: "nested-object-unnamed",
+      message: "Nested object must be processed through generateRouteTypes for proper struct generation.",
     });
+    type = "any";
   } else {
     type = "any";
     diagnostics.push({
