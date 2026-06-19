@@ -49,6 +49,7 @@ describe("compiler", () => {
   it("injects generated regions into existing files only", async () => {
     const cwd = join(tmpdir(), `backend-gen-${Date.now()}`);
     mkdirSync(join(cwd, "internal/user"), { recursive: true });
+    mkdirSync(join(cwd, "internal/http"), { recursive: true });
     writeFileSync(
       join(cwd, "internal/user/types.go"),
       [
@@ -85,6 +86,16 @@ describe("compiler", () => {
         "",
       ].join("\n"),
     );
+    writeFileSync(
+      join(cwd, "internal/http/routes.go"),
+      [
+        "package http",
+        "",
+        "// @gen:start user.create.route",
+        "// @gen:end user.create.route",
+        "",
+      ].join("\n"),
+    );
 
     const app = defineApp({
       architecture: "clean",
@@ -110,6 +121,7 @@ describe("compiler", () => {
 
     expect(result.diagnostics.filter((diagnostic) => diagnostic.level === "error")).toEqual([]);
     expect(result.changedFiles.sort()).toEqual([
+      "internal/http/routes.go",
       "internal/user/handler.go",
       "internal/user/repo.go",
       "internal/user/types.go",

@@ -1,4 +1,4 @@
-import type { AppAst, ArchitectureAst, GeneratedFilePatch, GeneratedRegion } from "./types.js";
+import type { AppAst, ArchitectureAst, GeneratedFilePatch, GeneratedRegion, AdapterPlugin } from "./types.js";
 import { pascalCase, lowerIdent } from "./naming.js";
 import type { GoModuleInfo } from "./env.js";
 
@@ -9,6 +9,7 @@ export function generateServer(
   ast: AppAst,
   architecture: ArchitectureAst,
   moduleInfo: GoModuleInfo,
+  adapter?: AdapterPlugin,
 ): GeneratedFilePatch {
   const imports: string[] = [];
   const handlerInitLines: string[] = [];
@@ -20,7 +21,7 @@ export function generateServer(
       imports.push(importPath);
     }
 
-    if (!imports.includes(`"github.com/gin-gonic/gin"`)) {
+    if (adapter?.name === "gin" && !imports.includes(`"github.com/gin-gonic/gin"`)) {
       imports.push(`"github.com/gin-gonic/gin"`);
     }
 
@@ -84,6 +85,8 @@ export function generateServer(
     regions: [
       {
         id: serverMainRegionId,
+        stableHash: `${serverFilePath}:${serverMainRegionId}:${adapter?.name ?? "code-inlay"}`,
+        owner: adapter?.name ?? "code-inlay",
         language: "go",
         content: content.join("\n"),
       },

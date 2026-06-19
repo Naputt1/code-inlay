@@ -1,15 +1,19 @@
 import type {
-  AdapterRouteContext,
+  AdapterPlugin,
+  AdapterTarget,
+  AppAst,
+  ArchitectureAst,
   BuiltInAdapterName,
   Diagnostic,
   GeneratedRegion,
-  RouterAdapter,
+  RouteAst,
 } from "./types.js";
 import { defaultFileForLayer, defaultRegionId, lowerIdent, pascalCase } from "./naming.js";
 import { requestType, responseType } from "./schema.js";
 
-export const ginAdapter: RouterAdapter = {
+export const ginAdapter: AdapterPlugin = {
   name: "gin",
+  transport: "http",
   generateRoute(ctx) {
     const receiver = `${lowerIdent(ctx.route.moduleName)}Handler`;
     return [
@@ -28,30 +32,56 @@ export const ginAdapter: RouterAdapter = {
   },
 };
 
-export const adapterRegistry: Record<BuiltInAdapterName, RouterAdapter> = {
+export const ginHandlerAdapter: AdapterPlugin = {
+  name: "gin",
+  transport: "http",
+  generateRoute(ctx) {
+    const receiver = `${lowerIdent(ctx.route.moduleName)}Handler`;
+    return [
+      {
+        id: defaultRegionId(ctx.route, "route"),
+        language: "go",
+        content: `api.${methodName(ctx.route.method)}("${ctx.route.fullPath}", ${receiver}.${ctx.route.handlerName})`,
+      },
+    ];
+  },
+  generateMiddleware() {
+    return [];
+  },
+  generateServer() {
+    return [];
+  },
+};
+
+export const adapterRegistry: Record<string, AdapterPlugin> = {
   gin: ginAdapter,
 };
 
-export function resolveAdapter(
-  ref: BuiltInAdapterName | RouterAdapter,
+export function resolveAdapters(
+  targets: AdapterTarget[],
   diagnostics: Diagnostic[],
-): RouterAdapter | undefined {
-  if (typeof ref === "string") {
-    const adapter = adapterRegistry[ref];
-    if (!adapter) {
+): AdapterPlugin[] {
+  const adapters: AdapterPlugin[] = [];
+  for (const target of targets) {
+    const adapter = adapterRegistry[target.name];
+    if (adapter) {
+      adapters.push(adapter);
+    } else {
       diagnostics.push({
         level: "error",
         code: "unknown-adapter",
-        message: `Unknown adapter "${ref}".`,
+        message: `Unknown adapter "${target.name}".`,
       });
     }
-    return adapter;
   }
-  return ref;
+  return adapters;
 }
 
-export function generateGinHandler(ctx: AdapterRouteContext): GeneratedRegion {
-  const route = ctx.route;
+export function generateGinHandler(
+  route: RouteAst,
+  diagnostics: Diagnostic[],
+  owner: string,
+): GeneratedRegion {
   const receiverType = `*${pascalCase(route.moduleName)}Handler`;
   const usecaseField = `${route.handlerName}Usecase`;
   const reqType = requestType(route);
@@ -77,6 +107,8 @@ export function generateGinHandler(ctx: AdapterRouteContext): GeneratedRegion {
 
   return {
     id: defaultRegionId(route, "handler"),
+    stableHash: `${route.stableId}:${owner}:handler:${defaultFileForLayer(route, "handler")}`,
+    owner,
     language: "go",
     content: [
       `func (h ${receiverType}) ${route.handlerName}(c *gin.Context) {`,
@@ -86,10 +118,6 @@ export function generateGinHandler(ctx: AdapterRouteContext): GeneratedRegion {
       `var _ ${resType}`,
     ].join("\n"),
   };
-}
-
-export function routeRegionFile(route: AdapterRouteContext["route"]): string {
-  return defaultFileForLayer(route, "route");
 }
 
 function methodName(method: string): string {

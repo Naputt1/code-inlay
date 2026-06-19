@@ -1,30 +1,40 @@
 #!/usr/bin/env node
-import { compile } from "./compiler.js";
+import { compile, compileWithWatch, printDiagnostics } from "./compiler.js";
 
 type CliArgs = {
-  command: "generate" | "check" | "diff";
+  command: "generate" | "check" | "diff" | "watch";
   configFile: string;
   cwd: string;
   module?: string;
   route?: string;
+  forceRegion?: string;
 };
 
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
+
+  if (args.command === "watch") {
+    await compileWithWatch({
+      configFile: args.configFile,
+      cwd: args.cwd,
+      module: args.module,
+      route: args.route,
+      forceRegion: args.forceRegion,
+      watch: true,
+    });
+    return;
+  }
+
   const result = await compile({
     configFile: args.configFile,
     cwd: args.cwd,
     module: args.module,
     route: args.route,
     check: args.command === "check" || args.command === "diff",
+    forceRegion: args.forceRegion,
   });
 
-  for (const diagnostic of result.diagnostics) {
-    const prefix = diagnostic.level === "error" ? "error" : "warning";
-    const location = diagnostic.file ? ` ${diagnostic.file}` : "";
-    const region = diagnostic.regionId ? ` [${diagnostic.regionId}]` : "";
-    console.error(`${prefix} ${diagnostic.code}${location}${region}: ${diagnostic.message}`);
-  }
+  printDiagnostics(result.diagnostics);
 
   const hasErrors = result.diagnostics.some((diagnostic) => diagnostic.level === "error");
   if (hasErrors) {
@@ -39,9 +49,18 @@ async function main(): Promise<void> {
       console.log(renderSimpleDiff(diff.before, diff.after));
     }
   } else if (result.changedFiles.length > 0) {
-    console.log(`${args.command === "check" ? "Would update" : "Updated"} ${result.changedFiles.length} file(s):`);
+    console.log(
+      `${args.command === "check" ? "Would update" : "Updated"} ${result.changedFiles.length} file(s):`,
+    );
     for (const file of result.changedFiles) {
-      console.log(`- ${file}`);
+      console.log(`  - ${file}`);
+    }
+
+    if (result.dependencyGraph) {
+      const regionCount = Object.keys(result.dependencyGraph.nodes).filter(
+        (id) => result.dependencyGraph!.nodes[id].kind === "generated-region",
+      ).length;
+      console.log(`  (${regionCount} generated regions)`);
     }
   } else {
     console.log("No changes.");
@@ -54,8 +73,15 @@ async function main(): Promise<void> {
 
 function parseArgs(argv: string[]): CliArgs {
   const command = argv[0];
-  if (command !== "generate" && command !== "check" && command !== "diff") {
-    throw new Error("Usage: backend-gen <generate|check|diff> --config backend.config.ts [--module name] [--route id]");
+  if (
+    command !== "generate" &&
+    command !== "check" &&
+    command !== "diff" &&
+    command !== "watch"
+  ) {
+    throw new Error(
+      "Usage: backend-gen <generate|check|diff|watch> --config backend.config.ts [--module name] [--route id] [--force-region id]",
+    );
   }
 
   const args: CliArgs = {
@@ -78,6 +104,9 @@ function parseArgs(argv: string[]): CliArgs {
       index += 1;
     } else if (arg === "--route" && next) {
       args.route = next;
+      index += 1;
+    } else if (arg === "--force-region" && next) {
+      args.forceRegion = next;
       index += 1;
     } else {
       throw new Error(`Unknown or incomplete argument "${arg}".`);

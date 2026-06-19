@@ -3,12 +3,14 @@ import type {
   ArchitectureAst,
   ArchitectureContext,
   ArchitecturePlugin,
+  ArchitectureSelection,
   BuiltInArchitectureName,
   Diagnostic,
   GeneratedLayer,
   RouteAst,
 } from "./types.js";
 import { defaultFileForLayer, defaultRegionId, pascalCase } from "./naming.js";
+import { stableHash } from "./hash.js";
 
 const cleanLayers = ["types", "domain", "repository", "usecase", "handler"] as const;
 
@@ -16,6 +18,7 @@ export const cleanArchitecture: ArchitecturePlugin = {
   name: "clean",
   transform(ctx, ast) {
     return {
+      nodes: [],
       routes: ast.modules.flatMap((module) =>
         module.routes.map((route) => ({
           route,
@@ -39,36 +42,151 @@ export const architectureRegistry: Record<BuiltInArchitectureName, ArchitectureP
 };
 
 export function resolveArchitecture(
-  ref: AppAst["architecture"],
+  selection: ArchitectureSelection,
   diagnostics: Diagnostic[],
-): ArchitecturePlugin | undefined {
-  if (typeof ref === "string") {
-    const architecture = architectureRegistry[ref];
-    if (!architecture) {
-      diagnostics.push({
-        level: "error",
-        code: "unknown-architecture",
-        message: `Unknown architecture "${ref}".`,
-      });
+): ArchitecturePlugin[] {
+  const plugins: ArchitecturePlugin[] = [];
+  for (const ref of selection.refs) {
+    if (typeof ref === "string") {
+      const architecture = architectureRegistry[ref];
+      if (architecture) {
+        plugins.push(architecture);
+      } else {
+        diagnostics.push({
+          level: "error",
+          code: "unknown-architecture",
+          message: `Unknown architecture "${ref}".`,
+        });
+      }
+    } else {
+      plugins.push(ref);
     }
-    return architecture;
   }
-  return ref;
+  return plugins;
 }
 
 export function applyArchitecture(ast: AppAst, diagnostics: Diagnostic[]): ArchitectureAst {
-  const architecture = resolveArchitecture(ast.architecture, diagnostics);
-  if (!architecture) {
-    return { routes: [] };
-  }
+  const allNodes: ArchitectureAst["nodes"] = [];
+  const routeMap = new Map<string, { route: RouteAst; layers: GeneratedLayer[] }>();
 
-  const ctx: ArchitectureContext = {
+  const moduleArchitectures = resolveArchitecture(ast.architecture, diagnostics);
+
+  const baseCtx: ArchitectureContext = {
     diagnostics,
     fileForLayer: defaultFileForLayer,
     regionId: defaultRegionId,
+    owner: "code-inlay",
   };
 
-  return architecture.transform(ctx, ast);
+  for (const module of ast.modules) {
+    const moduleSelection = module.architecture ?? ast.architecture;
+    const modulePlugins = resolveArchitecture(moduleSelection, diagnostics);
+
+    for (const route of module.routes) {
+      const routeSelection = route.architecture ?? moduleSelection;
+      const routePlugins = resolveArchitecture(routeSelection, diagnostics);
+      const effectivePlugins = routePlugins.length > 0 ? routePlugins : modulePlugins;
+
+      for (const plugin of effectivePlugins) {
+        const pluginAst: AppAst = {
+          ...ast,
+          modules: [{ ...module, routes: [route] }],
+        };
+        const ctx: ArchitectureContext = {
+          ...baseCtx,
+          owner: plugin.name,
+        };
+        const result = plugin.transform(ctx, pluginAst);
+
+        for (const expansion of result.routes) {
+          const key = `${route.moduleName}.${route.id}`;
+          if (!routeMap.has(key)) {
+            routeMap.set(key, { route: expansion.route, layers: [] });
+          }
+          const entry = routeMap.get(key)!;
+
+          for (const layer of expansion.layers) {
+            const stableId = `${layer.kind}:${plugin.name}:${route.stableId}:${stableHash(layer.symbolName, 8)}`;
+            const ownedLayer: GeneratedLayer = {
+              ...layer,
+              id: layer.id ?? `${route.moduleName}.${route.id}.${layer.kind}.${plugin.name}`,
+              stableId,
+              owner: plugin.name,
+            };
+            entry.layers.push(ownedLayer);
+          }
+        }
+
+        allNodes.push(...result.nodes);
+      }
+    }
+  }
+
+  const routes = [...routeMap.values()];
+  checkDuplicateSymbols(routes, diagnostics);
+  checkDuplicateRegionIds(routes, diagnostics);
+
+  return { nodes: allNodes, routes };
+}
+
+function checkDuplicateSymbols(
+  expansions: Array<{ route: RouteAst; layers: GeneratedLayer[] }>,
+  diagnostics: Diagnostic[],
+): void {
+  const symbolMap = new Map<string, GeneratedLayer[]>();
+
+  for (const expansion of expansions) {
+    for (const layer of expansion.layers) {
+      const existing = symbolMap.get(layer.symbolName) ?? [];
+      existing.push(layer);
+      symbolMap.set(layer.symbolName, existing);
+    }
+  }
+
+  for (const [symbolName, layers] of symbolMap) {
+    if (layers.length <= 1) continue;
+
+    const mergeKeys = new Set(layers.map((l) => l.mergeKey).filter(Boolean));
+    if (mergeKeys.size === 1 && layers.length === mergeKeys.size) continue;
+
+    const uniqueOwners = new Set(layers.map((l) => l.owner));
+    if (uniqueOwners.size > 1 && mergeKeys.size !== 1) {
+      diagnostics.push({
+        level: "error",
+        code: "duplicate-symbol",
+        message: `Symbol "${symbolName}" is generated by multiple architectures (${[...uniqueOwners].join(", ")}) without a shared merge key.`,
+        nodeId: symbolName,
+      });
+    }
+  }
+}
+
+function checkDuplicateRegionIds(
+  expansions: Array<{ route: RouteAst; layers: GeneratedLayer[] }>,
+  diagnostics: Diagnostic[],
+): void {
+  const regionMap = new Map<string, GeneratedLayer[]>();
+
+  for (const expansion of expansions) {
+    for (const layer of expansion.layers) {
+      if (!layer.regionId) continue;
+      const existing = regionMap.get(layer.regionId) ?? [];
+      existing.push(layer);
+      regionMap.set(layer.regionId, existing);
+    }
+  }
+
+  for (const [regionId, layers] of regionMap) {
+    if (layers.length > 1) {
+      const owners = [...new Set(layers.map((l) => l.owner))];
+      diagnostics.push({
+        level: "error",
+        code: "duplicate-region-id",
+        message: `Region id "${regionId}" is claimed by multiple architecture layers (${owners.join(", ")}).`,
+        regionId,
+      });
+    }
+  }
 }
 
 function stubArchitecture(name: BuiltInArchitectureName, layers: string[]): ArchitecturePlugin {
@@ -82,6 +200,7 @@ function stubArchitecture(name: BuiltInArchitectureName, layers: string[]): Arch
       });
 
       return {
+        nodes: [],
         routes: ast.modules.flatMap((module) =>
           module.routes.map((route: RouteAst) => ({
             route,

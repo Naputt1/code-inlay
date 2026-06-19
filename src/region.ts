@@ -1,14 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import type { Diagnostic, FileDiff, GeneratedFilePatch } from "./types.js";
-
-type RegionMatch = {
-  id: string;
-  startIndex: number;
-  startLineEnd: number;
-  endIndex: number;
-  endLineEnd: number;
-};
+import { formatGoSnippet } from "./format.js";
 
 const startPattern = /^([ \t]*)\/\/ @gen:start ([a-zA-Z0-9._-]+)[ \t]*$/gm;
 const endPattern = /^([ \t]*)\/\/ @gen:end ([a-zA-Z0-9._-]+)[ \t]*$/gm;
@@ -18,13 +11,25 @@ export function applyPatches(input: {
   patches: GeneratedFilePatch[];
   diagnostics: Diagnostic[];
   write: boolean;
+  fileCreation?: "disabled" | "markers-only" | "skeleton";
 }): { changedFiles: string[]; diffs: FileDiff[] } {
+  const fileCreation = input.fileCreation ?? "skeleton";
   const changedFiles: string[] = [];
   const diffs: FileDiff[] = [];
 
   for (const patch of input.patches) {
     const absolutePath = resolve(input.cwd, patch.path);
     if (!existsSync(absolutePath)) {
+      if (fileCreation === "disabled") {
+        input.diagnostics.push({
+          level: "error",
+          code: "file-not-found",
+          message: `File "${patch.path}" does not exist and file creation is disabled.`,
+          file: patch.path,
+        });
+        continue;
+      }
+
       const pkg = derivePackage(patch.path);
       const skeleton = [
         `package ${pkg}`,
@@ -62,14 +67,19 @@ export function applyPatches(input: {
 
 export function injectRegions(
   fileText: string,
-  regions: { id: string; content: string }[],
+  regions: { id: string; content: string; stableHash?: string; owner?: string }[],
   diagnostics: Diagnostic[],
   file?: string,
 ): string {
+  const formattedRegions = regions.map((r) => ({
+    ...r,
+    content: formatGoSnippet(r.content, diagnostics, r.id),
+  }));
+
   const matches = parseRegions(fileText, diagnostics, file);
   let next = fileText;
   const seenPatchRegions = new Set<string>();
-  const planned = regions
+  const planned = formattedRegions
     .map((region) => {
       if (seenPatchRegions.has(region.id)) {
         diagnostics.push({
@@ -106,19 +116,25 @@ export function injectRegions(
   return next;
 }
 
-function parseRegions(fileText: string, diagnostics: Diagnostic[], file?: string): RegionMatch[] {
+export function parseRegions(fileText: string, diagnostics: Diagnostic[], file?: string) {
   const starts = [...fileText.matchAll(startPattern)].map((match) => ({
     id: match[2],
     index: match.index ?? 0,
-    lineEnd: lineEnd(fileText, match.index ?? 0),
+    lineEnd: lineEndIndex(fileText, match.index ?? 0),
   }));
   const ends = [...fileText.matchAll(endPattern)].map((match) => ({
     id: match[2],
     index: match.index ?? 0,
-    lineEnd: lineEnd(fileText, match.index ?? 0),
+    lineEnd: lineEndIndex(fileText, match.index ?? 0),
   }));
 
-  const matches: RegionMatch[] = [];
+  const matches: Array<{
+    id: string;
+    startIndex: number;
+    startLineEnd: number;
+    endIndex: number;
+    endLineEnd: number;
+  }> = [];
   const seen = new Set<string>();
 
   for (const start of starts) {
@@ -173,7 +189,66 @@ function parseRegions(fileText: string, diagnostics: Diagnostic[], file?: string
   return matches;
 }
 
-function lineEnd(fileText: string, index: number): number {
+export function detectDrift(
+  fileText: string,
+  regions: Array<{ id: string; content: string; stableHash?: string; contentHash?: string }>,
+  cache: Record<string, { contentHash: string }>,
+  diagnostics: Diagnostic[],
+  file?: string,
+  forceRegions?: string[],
+): boolean {
+  const forceSet = new Set(forceRegions ?? []);
+  let hasDrift = false;
+
+  for (const region of regions) {
+    if (forceSet.has(region.id)) continue;
+
+    const cached = cache[region.id];
+    if (!cached) continue;
+
+    const currentContent = extractRegionContent(fileText, region.id);
+    if (!currentContent) continue;
+
+    const currentContentHash = simpleHash(currentContent);
+    if (currentContentHash !== cached.contentHash) {
+      diagnostics.push({
+        level: "warning",
+        code: "region-drift",
+        message: `Region "${region.id}" has been manually edited. Run --force-region ${region.id} to overwrite.`,
+        file,
+        regionId: region.id,
+      });
+      hasDrift = true;
+    }
+  }
+
+  return hasDrift;
+}
+
+function extractRegionContent(fileText: string, regionId: string): string {
+  const escapedId = regionId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const startPat = new RegExp(`// @gen:start ${escapedId}`);
+  const endPat = new RegExp(`// @gen:end ${escapedId}`);
+
+  const startMatch = fileText.match(startPat);
+  const endMatch = fileText.match(endPat);
+  if (!startMatch || !endMatch || startMatch.index === undefined || endMatch.index === undefined) return "";
+
+  const startLineEnd = lineEndIndex(fileText, startMatch.index);
+  return fileText.slice(startLineEnd, endMatch.index);
+}
+
+function simpleHash(content: string): string {
+  let hash = 0;
+  for (let i = 0; i < content.length; i++) {
+    const char = content.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash |= 0;
+  }
+  return hash.toString(36);
+}
+
+function lineEndIndex(fileText: string, index: number): number {
   const nextLine = fileText.indexOf("\n", index);
   return nextLine === -1 ? fileText.length : nextLine + 1;
 }

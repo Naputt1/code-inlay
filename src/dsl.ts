@@ -3,7 +3,10 @@ import type {
   AppDefinition,
   ArchitecturePlugin,
   ArchitectureRef,
+  ArchitectureSelection,
   AstTransformer,
+  BackendCompilerPlugin,
+  CompileSettings,
   HttpMethod,
   MiddlewareDefinition,
   ModuleDefinition,
@@ -11,6 +14,7 @@ import type {
   RouterAdapter,
   RouterDefinition,
   SchemaLike,
+  AdapterSelection,
 } from "./types.js";
 
 export type DefineRouteInput<
@@ -20,6 +24,9 @@ export type DefineRouteInput<
   id: string;
   method: HttpMethod;
   path: string;
+  architecture?: ArchitectureRef | ArchitectureRef[] | ArchitectureSelection;
+  adapter?: AdapterRef | AdapterRef[] | AdapterSelection;
+  adapters?: AdapterRef[] | AdapterSelection;
   input?: TInput;
   response?: TResponse;
   handler: string;
@@ -31,6 +38,9 @@ type DefineRouteBase = {
   id: string;
   method: HttpMethod;
   path: string;
+  architecture?: ArchitectureRef | ArchitectureRef[] | ArchitectureSelection;
+  adapter?: AdapterRef | AdapterRef[] | AdapterSelection;
+  adapters?: AdapterRef[] | AdapterSelection;
   handler: string;
   middleware?: MiddlewareDefinition[];
   metadata?: Record<string, unknown>;
@@ -61,6 +71,9 @@ export function defineRoute<
     id: input.id,
     method: input.method,
     path: input.path,
+    architecture: input.architecture,
+    adapter: input.adapter,
+    adapters: input.adapters,
     input: input.input,
     response: input.response,
     handler: input.handler,
@@ -82,12 +95,16 @@ export function defineMiddleware(input: {
 
 export function defineModule(input: {
   name: string;
+  architecture?: ArchitectureRef | ArchitectureRef[] | ArchitectureSelection;
+  adapters?: AdapterRef[] | AdapterSelection;
   routes?: RouteDefinition[];
   middleware?: MiddlewareDefinition[];
 }): ModuleDefinition {
   return {
     kind: "ModuleDefinition",
     name: input.name,
+    architecture: input.architecture,
+    adapters: input.adapters,
     routes: input.routes ?? [],
     middleware: input.middleware ?? [],
   };
@@ -107,17 +124,27 @@ export function defineRouter(input: {
 }
 
 export function defineApp(input: {
-  architecture: ArchitectureRef;
-  router: RouterDefinition;
+  architecture?: ArchitectureRef | ArchitectureRef[] | ArchitectureSelection;
+  architectures?: ArchitectureRef[] | ArchitectureSelection;
+  adapters?: AdapterRef[] | AdapterSelection;
+  router?: RouterDefinition;
   modules: ModuleDefinition[];
   transformers?: AstTransformer[];
+  plugins?: BackendCompilerPlugin[];
+  options?: Partial<CompileSettings>;
 }): AppDefinition {
   return {
     kind: "AppDefinition",
     architecture: input.architecture,
+    architectures: input.architectures,
+    adapters: input.adapters,
     router: input.router,
     modules: input.modules,
     transformers: input.transformers ?? [],
+    plugins: input.plugins ?? [],
+    options: {
+      fileCreation: input.options?.fileCreation ?? "skeleton",
+    },
   };
 }
 

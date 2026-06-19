@@ -6,12 +6,14 @@ import type {
   GeneratedRegion,
   GenerationAst,
   RouteAst,
+  AdapterPlugin,
 } from "./types.js";
 import type { GoModuleInfo } from "./env.js";
 import { defaultFileForLayer, defaultRegionId, pascalCase } from "./naming.js";
 import { generateRouteTypes, requestType, responseType } from "./schema.js";
-import { generateGinHandler, resolveAdapter } from "./adapters.js";
+import { generateGinHandler, resolveAdapters } from "./adapters.js";
 import { generateServer, serverFilePath } from "./srvgen.js";
+import { stableHash } from "./hash.js";
 
 export function generateCode(
   ast: AppAst,
@@ -20,7 +22,6 @@ export function generateCode(
   moduleInfo?: GoModuleInfo,
 ): GenerationAst {
   const files = new Map<string, GeneratedRegion[]>();
-  const adapter = resolveAdapter(ast.router.adapter, diagnostics);
 
   const add = (path: string, region: GeneratedRegion) => {
     const regions = files.get(path) ?? [];
@@ -36,17 +37,34 @@ export function generateCode(
       if (content !== undefined) {
         add(layer.file, {
           id: layer.regionId,
+          stableHash: layer.stableId
+            ? `${layer.stableId}:${layer.file}:codegen`
+            : `${route.stableId}:${layer.kind}:${layer.file}`,
+          owner: layer.owner ?? "code-inlay",
           language: "go",
           content,
         });
       }
     }
 
-    if (adapter) {
-      const ctx = { diagnostics, route, architecture };
-
+    const adapters = resolveAdapters(route.resolvedAdapters, diagnostics);
+    for (const adapter of adapters) {
       if (adapter.name === "gin") {
-        add(defaultFileForLayer(route, "handler"), generateGinHandler(ctx));
+        add(defaultFileForLayer(route, "handler"), {
+          ...generateGinHandler(route, diagnostics, adapter.name),
+          stableHash: `${route.stableId}:${adapter.name}:handler:${defaultFileForLayer(route, "handler")}`,
+          owner: adapter.name,
+        });
+      }
+
+      const routeCtx = { diagnostics, route, architecture };
+      const routeRegions = adapter.generateRoute?.(routeCtx) ?? [];
+      for (const region of routeRegions) {
+        add(defaultFileForLayer(route, "route"), {
+          ...region,
+          stableHash: region.stableHash ?? `${route.stableId}:${adapter.name}:route:${defaultFileForLayer(route, "route")}`,
+          owner: adapter.name,
+        });
       }
     }
   }
@@ -55,10 +73,21 @@ export function generateCode(
     add(file, { id: regionId, language: "go", content });
   }
 
-  if (moduleInfo && adapter) {
-    const serverPatch = generateServer(ast, architecture, moduleInfo);
-    for (const region of serverPatch.regions) {
-      add(serverPatch.path, region);
+  if (moduleInfo) {
+    const adapters = resolveAdapters(ast.adapters.refs.map((ref) => {
+      if (typeof ref === "string") return { name: ref, transport: ref === "gin" ? "http" : ref };
+      return { name: ref.name, transport: ref.transport ?? "http" };
+    }), diagnostics);
+
+    for (const adapter of adapters) {
+      const serverPatch = generateServer(ast, architecture, moduleInfo, adapter);
+      for (const region of serverPatch.regions) {
+        add(serverPatch.path, {
+          ...region,
+          stableHash: region.stableHash ?? `${adapter.name}:server:${serverFilePath}`,
+          owner: adapter.name,
+        });
+      }
     }
   }
 

@@ -8,3 +8,6 @@ export * from "./architecture.js";
 export * from "./adapters.js";
 export * from "./env.js";
 export * from "./srvgen.js";
+export * from "./cache.js";
+export * from "./writer.js";
+export * from "./plugins.js";

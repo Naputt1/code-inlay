@@ -1,18 +1,29 @@
 import { pathToFileURL } from "node:url";
 import { resolve } from "node:path";
+import { watch } from "node:fs";
 import type {
   AppDefinition,
   CompileOptions,
   CompileResult,
   Diagnostic,
   GeneratedFilePatch,
+  AppAst,
 } from "./types.js";
 import { buildAst } from "./ast.js";
 import { applyArchitecture } from "./architecture.js";
 import { generateCode } from "./codegen.js";
-import { applyPatches } from "./region.js";
+import { applyPatches, detectDrift } from "./region.js";
 import { formatGoSnippet } from "./format.js";
 import { checkGoEnvironment } from "./env.js";
+import { createPluginRegistry, runTransformerStage, runValidators } from "./plugins.js";
+import {
+  buildDependencyGraph,
+  readCache,
+  writeCache,
+  validateCache,
+  invalidateChanged,
+} from "./cache.js";
+import { atomicWritePatches, validateBeforeWrite } from "./writer.js";
 
 export async function compile(options: CompileOptions): Promise<CompileResult> {
   const cwd = options.cwd ?? process.cwd();
@@ -23,9 +34,18 @@ export async function compile(options: CompileOptions): Promise<CompileResult> {
     return emptyResult(diagnostics);
   }
 
-  const ast = buildAst(app, diagnostics);
+  const registry = createPluginRegistry(app, diagnostics);
+
+  let ast = buildAst(app, diagnostics);
   const filteredAst = filterAst(ast, options.module, options.route);
-  const architecture = applyArchitecture(filteredAst, diagnostics);
+  ast = filteredAst;
+
+  ast = await runTransformerStage("preTransform", ast, registry, diagnostics);
+
+  const architecture = applyArchitecture(ast, diagnostics);
+  ast = await runTransformerStage("architecture", ast, registry, diagnostics);
+
+  ast = await runTransformerStage("adapter", ast, registry, diagnostics);
 
   let moduleInfo: ReturnType<typeof checkGoEnvironment>;
   if (options.configFile !== undefined) {
@@ -33,11 +53,25 @@ export async function compile(options: CompileOptions): Promise<CompileResult> {
     moduleInfo = checkGoEnvironment(cwd, diagnostics, adapterName);
   }
 
-  const generation = formatGeneration(generateCode(filteredAst, architecture, diagnostics, moduleInfo), diagnostics);
+  let generation = generateCode(ast, architecture, diagnostics, moduleInfo);
+  ast = await runTransformerStage("codegen", ast, registry, diagnostics);
+  ast = await runTransformerStage("postTransform", ast, registry, diagnostics);
 
-  if (options.dryRun || hasErrors(diagnostics)) {
+  generation = {
+    files: generation.files.map((file) => ({
+      ...file,
+      regions: file.regions.map((region) => ({
+        ...region,
+        content: region.language === "go" ? formatGoSnippet(region.content, diagnostics, region.id) : region.content,
+      })),
+    })),
+  };
+
+  await runValidators(ast, registry, diagnostics);
+
+  if (!validateBeforeWrite(generation.files, diagnostics)) {
     return {
-      ast: filteredAst,
+      ast,
       architecture,
       generation,
       diagnostics,
@@ -46,21 +80,162 @@ export async function compile(options: CompileOptions): Promise<CompileResult> {
     };
   }
 
-  const injected = applyPatches({
+  const cache = readCache(cwd);
+  if (cache) {
+    for (const file of generation.files) {
+      for (const region of file.regions) {
+        if (region.stableHash && cache.regions[region.stableHash]) {
+          detectDrift(
+            "",
+            [region],
+            { [region.stableHash]: cache.regions[region.stableHash] },
+            diagnostics,
+            file.path,
+            options.forceRegions ?? (options.forceRegion ? [options.forceRegion] : undefined),
+          );
+        }
+      }
+    }
+  }
+
+  if (options.dryRun || hasErrors(diagnostics)) {
+    return {
+      ast,
+      architecture,
+      generation,
+      diagnostics,
+      changedFiles: [],
+      diffs: [],
+    };
+  }
+
+  if (options.check) {
+    const dryInjected = applyPatches({
+      cwd,
+      patches: generation.files,
+      diagnostics,
+      write: false,
+      fileCreation: app.options.fileCreation,
+    });
+    return {
+      ast,
+      architecture,
+      generation,
+      diagnostics,
+      changedFiles: dryInjected.changedFiles,
+      diffs: dryInjected.diffs,
+    };
+  }
+
+  const injected = atomicWritePatches(
+    generation.files,
     cwd,
-    patches: generation.files,
+    app.options.fileCreation,
     diagnostics,
-    write: !options.dryRun && !options.check,
-  });
+  );
+
+  if (!hasErrors(diagnostics)) {
+    const dependencyGraph = buildDependencyGraph(ast, architecture, generation);
+    const pluginManifestHash = registry.manifestHash;
+    const regions: Record<string, { id: string; stableHash: string; contentHash: string; file: string; owner?: string }> = {};
+    const files: Record<string, { regions: string[] }> = {};
+
+    for (const file of generation.files) {
+      files[file.path] = { regions: file.regions.map((r) => r.stableHash ?? r.id) };
+      for (const region of file.regions) {
+        const key = region.stableHash ?? region.id;
+        regions[key] = {
+          id: region.id,
+          stableHash: region.stableHash ?? region.id,
+          contentHash: region.contentHash ?? "",
+          file: file.path,
+          owner: region.owner,
+        };
+      }
+    }
+
+    writeCache(cwd, {
+      compilerVersion: "0.2.0",
+      astVersion: "2.0",
+      pluginManifestHash,
+      dependencyGraph,
+      regions,
+      files,
+    });
+  }
 
   return {
-    ast: filteredAst,
+    ast,
     architecture,
     generation,
     diagnostics,
     changedFiles: injected.changedFiles,
     diffs: injected.diffs,
+    dependencyGraph: buildDependencyGraph(ast, architecture, generation),
   };
+}
+
+export async function compileIncremental(options: CompileOptions): Promise<CompileResult> {
+  const cwd = options.cwd ?? process.cwd();
+  const diagnostics: Diagnostic[] = [];
+
+  const cache = readCache(cwd);
+
+  if (cache && validateCache(cache, "0.2.0", "2.0", "")) {
+    if (options.changedFiles && options.changedFiles.length > 0) {
+      const invalidated = invalidateChanged(cache, cache.dependencyGraph, options.changedFiles);
+      if (invalidated.size === 0 && !options.watch) {
+        return {
+          generation: { files: [] },
+          diagnostics: [],
+          changedFiles: [],
+          diffs: [],
+        };
+      }
+    }
+  }
+
+  return compile(options);
+}
+
+export async function compileWithWatch(options: CompileOptions): Promise<void> {
+  const cwd = options.cwd ?? process.cwd();
+  let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+
+  const runCompile = async () => {
+    const result = await compileIncremental(options);
+    printDiagnostics(result.diagnostics);
+
+    if (result.diagnostics.some((d) => d.level === "error")) {
+      return;
+    }
+
+    if (result.changedFiles.length > 0) {
+      console.log(`Updated ${result.changedFiles.length} file(s):`);
+      for (const file of result.changedFiles) {
+        console.log(`  - ${file}`);
+      }
+    }
+  };
+
+  const configPath = options.configFile ? resolve(cwd, options.configFile) : undefined;
+
+  const debouncedRun = () => {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(runCompile, 300);
+  };
+
+  if (configPath) {
+    watch(configPath, debouncedRun);
+  }
+
+  watch(resolve(cwd, "internal"), { recursive: true }, debouncedRun);
+  watch(resolve(cwd, "cmd"), { recursive: true }, debouncedRun);
+
+  console.log("Watching for changes... (Ctrl+C to stop)");
+  await runCompile();
+
+  await new Promise<void>(() => {});
 }
 
 async function loadConfig(
@@ -156,21 +331,6 @@ function filterAst<T extends { modules: { name: string; routes: { id: string }[]
   };
 }
 
-function formatGeneration(
-  generation: { files: GeneratedFilePatch[] },
-  diagnostics: Diagnostic[],
-): { files: GeneratedFilePatch[] } {
-  return {
-    files: generation.files.map((file) => ({
-      ...file,
-      regions: file.regions.map((region) => ({
-        ...region,
-        content: region.language === "go" ? formatGoSnippet(region.content, diagnostics, region.id) : region.content,
-      })),
-    })),
-  };
-}
-
 function hasErrors(diagnostics: Diagnostic[]): boolean {
   return diagnostics.some((diagnostic) => diagnostic.level === "error");
 }
@@ -182,4 +342,13 @@ function emptyResult(diagnostics: Diagnostic[]): CompileResult {
     changedFiles: [],
     diffs: [],
   };
+}
+
+export function printDiagnostics(diagnostics: Diagnostic[]): void {
+  for (const diagnostic of diagnostics) {
+    const prefix = diagnostic.level === "error" ? "error" : "warning";
+    const location = diagnostic.file ? ` ${diagnostic.file}` : "";
+    const region = diagnostic.regionId ? ` [${diagnostic.regionId}]` : "";
+    console.error(`${prefix} ${diagnostic.code}${location}${region}: ${diagnostic.message}`);
+  }
 }
