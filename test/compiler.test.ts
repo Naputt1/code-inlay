@@ -91,8 +91,11 @@ describe("compiler", () => {
       [
         "package http",
         "",
-        "// @gen:start user.create.route",
-        "// @gen:end user.create.route",
+        "// @gen:start routes.register",
+        "func RegisterRoutes(api *gin.RouterGroup) {",
+        "",
+        "}",
+        "// @gen:end routes.register",
         "",
       ].join("\n"),
     );

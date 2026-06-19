@@ -1,9 +1,25 @@
 import { spawnSync } from "node:child_process";
 import type { Diagnostic } from "./types.js";
 
+function isCompleteSnippet(content: string): boolean {
+  if (/^}$/.test(content)) return false;
+  if (content.startsWith("type ") && !content.trimEnd().endsWith("}")) return false;
+  let depth = 0;
+  for (const ch of content) {
+    if (ch === "{") depth++;
+    else if (ch === "}") depth--;
+  }
+  if (depth !== 0) return false;
+  return true;
+}
+
 export function formatGoSnippet(content: string, diagnostics: Diagnostic[], regionId: string): string {
   const trimmed = content.trimEnd();
   if (!trimmed) return "";
+
+  if (!isCompleteSnippet(trimmed)) {
+    return trimmed;
+  }
 
   const mode = classifySnippet(trimmed);
   const source = wrapSnippet(trimmed, mode);

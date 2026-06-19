@@ -6,10 +6,9 @@ import type {
   GeneratedRegion,
   GenerationAst,
   RouteAst,
-  AdapterPlugin,
 } from "./types.js";
 import type { GoModuleInfo } from "./env.js";
-import { defaultFileForLayer, defaultRegionId, pascalCase } from "./naming.js";
+import { defaultFileForLayer, defaultRegionId, lowerIdent, pascalCase } from "./naming.js";
 import { generateRouteTypes, requestType, responseType } from "./schema.js";
 import { generateGinHandler, resolveAdapters } from "./adapters.js";
 import { generateServer, serverFilePath } from "./srvgen.js";
@@ -28,6 +27,9 @@ export function generateCode(
     regions.push(region);
     files.set(path, regions);
   };
+
+  const routeLinesByFile = new Map<string, string[]>();
+  const modulesWithHandlers = new Map<string, string[]>();
 
   for (const expansion of architecture.routes) {
     const route = expansion.route;
@@ -60,13 +62,68 @@ export function generateCode(
       const routeCtx = { diagnostics, route, architecture };
       const routeRegions = adapter.generateRoute?.(routeCtx) ?? [];
       for (const region of routeRegions) {
-        add(defaultFileForLayer(route, "route"), {
-          ...region,
-          stableHash: region.stableHash ?? `${route.stableId}:${adapter.name}:route:${defaultFileForLayer(route, "route")}`,
-          owner: adapter.name,
-        });
+        const routeFile = defaultFileForLayer(route, "route");
+        const lines = routeLinesByFile.get(routeFile) ?? [];
+        lines.push(region.content);
+        routeLinesByFile.set(routeFile, lines);
       }
     }
+  }
+
+  for (const [routeFile, routeLines] of routeLinesByFile) {
+    const moduleImports: string[] = [];
+    const handlerInitLines: string[] = [];
+
+    for (const module of ast.modules) {
+      const modPkg = module.name;
+      const handlerType = `${pascalCase(modPkg)}Handler`;
+      const handlerVar = `${lowerIdent(modPkg)}Handler`;
+      const layerKinds = new Set(architecture.routes
+        .filter((r) => r.route.moduleName === modPkg)
+        .flatMap((r) => r.layers.map((l) => l.kind)));
+
+      if (layerKinds.has("handler") || layerKinds.has("usecase")) {
+        if (moduleInfo) {
+          moduleImports.push(`"${moduleInfo.modulePath}/internal/${modPkg}"`);
+        }
+        const usecaseFields: string[] = [];
+        for (const expansion of architecture.routes) {
+          if (expansion.route.moduleName !== modPkg) continue;
+          const layers = new Set(expansion.layers.map((l) => l.kind));
+          if (!layers.has("handler") && !layers.has("usecase")) continue;
+          usecaseFields.push(`\t\t${expansion.route.handlerName}Usecase: nil, // TODO: inject`);
+        }
+        handlerInitLines.push(`\t${handlerVar} := &${modPkg}.${handlerType}{`);
+        handlerInitLines.push(...usecaseFields);
+        handlerInitLines.push(`\t}`);
+      }
+    }
+
+    const body: string[] = [];
+    if (moduleImports.length > 0 || moduleInfo) {
+      body.push(`import (`);
+      body.push(`\t"github.com/gin-gonic/gin"`);
+      for (const imp of moduleImports.sort()) {
+        body.push(`\t${imp}`);
+      }
+      body.push(`)`);
+      body.push(``);
+    }
+    body.push(`func RegisterRoutes(api *gin.RouterGroup) {`);
+    body.push(...handlerInitLines);
+    body.push(``);
+    for (const line of routeLines) {
+      body.push(`\t${line}`);
+    }
+    body.push(`}`);
+
+    add(routeFile, {
+      id: "routes.register",
+      stableHash: `${routeFile}:register`,
+      owner: "code-inlay",
+      language: "go",
+      content: body.join("\n"),
+    });
   }
 
   for (const { file, regionId, content } of generateHandlerStructs(architecture)) {

@@ -219,8 +219,8 @@ function derivePackage(filePath: string): string {
   return dir.split(/[\\/]/).pop() ?? "main";
 }
 
-const startPattern = /^([ \t]*)\/\/ @gen:start ([a-zA-Z0-9._-]+)(?: hash:([a-f0-9]+))?(?: owner:(\S+))?[ \t]*$/gm;
-const endPattern = /^([ \t]*)\/\/ @gen:end ([a-zA-Z0-9._-]+)(?: hash:([a-f0-9]+))?[ \t]*$/gm;
+const startPattern = /^([ \t]*)\/\/ @gen:start ([a-zA-Z0-9._-]+)(?: hash:(\S+))?(?: owner:(\S+))?[ \t]*$/gm;
+const endPattern = /^([ \t]*)\/\/ @gen:end ([a-zA-Z0-9._-]+)(?: hash:(\S+))?[ \t]*$/gm;
 
 type RegionMatch = {
   id: string;
@@ -293,7 +293,7 @@ export function injectContent(
     const wsStart = existingStartLine.match(/^([ \t]*)/)?.[1] ?? "";
     const wsEnd = existingEndLine.match(/^([ \t]*)/)?.[1] ?? "";
 
-    next = `${beforeStart}${wsStart}${startMarker}${newline}${content}${newline}${wsEnd}${endMarker}${afterEnd}`;
+    next = `${beforeStart}${wsStart}${startMarker}${newline}${content}${newline}${wsEnd}${endMarker}${newline}${afterEnd}`;
   }
 
   return next;
