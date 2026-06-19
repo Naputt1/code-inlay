@@ -28,7 +28,7 @@ export function generateCode(
     files.set(path, regions);
   };
 
-  const routeLinesByFile = new Map<string, string[]>();
+  const routeLinesByFile = new Map<string, Array<{ content: string; group: string }>>();
   const middlewareByFile = new Map<string, Set<string>>();
 
   const domainModules = new Set<string>();
@@ -105,18 +105,32 @@ export function generateCode(
         }
         middlewareByFile.set(routeFile, mwSet);
 
-        const mwVars = routeMws.map(mwToParamName);
+        const routeGroup = (route.metadata?._group as string) ?? "";
+        const groupMwNames = new Set((route.metadata?._groupMw as string[]) ?? []);
+        const routeMwVars = routeMws.filter((n) => !groupMwNames.has(n)).map(mwToParamName);
+        const allMwVars = routeMws.map(mwToParamName);
         let line = region.content;
-        if (mwVars.length > 0) {
+        if (routeMwVars.length > 0) {
           const lastComma = region.content.lastIndexOf(", ");
           const before = region.content.slice(0, lastComma);
           const after = region.content.slice(lastComma + 2);
-          line = `${before}, ${mwVars.join(", ")}, ${after}`;
+          line = `${before}, ${routeMwVars.join(", ")}, ${after}`;
         }
-        lines.push(line);
+        lines.push({ content: line, group: routeGroup });
         routeLinesByFile.set(routeFile, lines);
       }
     }
+  }
+
+  const groupMwByPrefix = new Map<string, Set<string>>();
+  for (const expansion of architecture.routes) {
+    const route = expansion.route;
+    const routeGroup = (route.metadata?._group as string) ?? "";
+    if (!routeGroup) continue;
+    const groupMwNames = (route.metadata?._groupMw as string[]) ?? [];
+    const existing = groupMwByPrefix.get(routeGroup) ?? new Set();
+    for (const n of groupMwNames) existing.add(n);
+    groupMwByPrefix.set(routeGroup, existing);
   }
 
   const usecaseImportsAdded = new Set<string>();
@@ -180,9 +194,60 @@ export function generateCode(
     body.push(`func RegisterRoutes(${params}) {`);
     body.push(...handlerInitLines);
     body.push(``);
-    for (const line of routeLines) {
-      body.push(`\t${line}`);
+    const groups = new Map<string, typeof routeLines>();
+    const ungrouped: typeof routeLines = [];
+    for (const rl of routeLines) {
+      if (rl.group) {
+        const g = groups.get(rl.group) ?? [];
+        g.push(rl);
+        groups.set(rl.group, g);
+      } else {
+        ungrouped.push(rl);
+      }
     }
+
+    const groupVar = (prefix: string) => {
+      const cleaned = prefix.replace(/^\/+/, "").replace(/\/+/g, "_");
+      return cleaned || "root";
+    };
+
+    const stripPath = (full: string, prefix: string) => {
+      if (!prefix) return full;
+      const base = full.startsWith(prefix) ? full.slice(prefix.length) : full;
+      return base || "";
+    };
+
+    for (const rl of ungrouped) {
+      body.push(`\t${rl.content}`);
+    }
+    if (ungrouped.length > 0 && groups.size > 0) {
+      body.push(``);
+    }
+    for (const [prefix, lines] of groups) {
+      const gv = groupVar(prefix);
+      const gMw = groupMwByPrefix.get(prefix);
+      const gMwArgs = gMw && gMw.size > 0
+        ? [...gMw].sort().map(mwToParamName).join(", ")
+        : "";
+      const groupDecl = gMwArgs ? `${gv} := api.Group("${prefix}", ${gMwArgs})` : `${gv} := api.Group("${prefix}")`;
+      body.push(`\t${groupDecl}`);
+      body.push(`\t{`);
+      for (const rl of lines) {
+        const lineWithGv = rl.content.replace(/^api\./, `${gv}.`);
+        const pathMatch = lineWithGv.match(/^(\w+)\.(\w+)\((".*?")/);
+        if (pathMatch) {
+          const oldPath = pathMatch[3].slice(1, -1);
+          const newPath = stripPath(oldPath, prefix);
+          const fixed = lineWithGv.replace(pathMatch[3], JSON.stringify(newPath));
+          body.push(`\t\t${fixed}`);
+        } else {
+          body.push(`\t\t${lineWithGv}`);
+        }
+      }
+      body.push(`\t}`);
+      body.push(``);
+    }
+    if (body[body.length - 1] === "") body.pop();
     body.push(`}`);
 
     add(routeFile, {

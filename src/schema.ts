@@ -74,6 +74,19 @@ export function generateRouteTypes(route: RouteAst, diagnostics: Diagnostic[]): 
             optional,
           };
         }
+        if (isZodArray(inner)) {
+          const elem = unwrap(inner.element);
+          if (isZodObject(elem)) {
+            const childName = `${name}${pascalCase(fieldName)}Item`;
+            registerSub(childName, elem);
+            return {
+              name: pascalCase(fieldName),
+              type: `[]${childName}`,
+              jsonName: fieldName,
+              optional,
+            };
+          }
+        }
         return {
           name: pascalCase(fieldName),
           type: schemaToGoType(fieldSchema, diagnostics),
@@ -103,6 +116,19 @@ export function generateRouteTypes(route: RouteAst, diagnostics: Diagnostic[]): 
             jsonName: fieldName,
             optional,
           };
+        }
+        if (isZodArray(inner)) {
+          const elem = unwrap(inner.element);
+          if (isZodObject(elem)) {
+            const childName = `${prefix}${pascalCase(fieldName)}Item`;
+            registerSub(childName, elem);
+            return {
+              name: pascalCase(fieldName),
+              type: `[]${childName}`,
+              jsonName: fieldName,
+              optional,
+            };
+          }
         }
         return {
           name: pascalCase(fieldName),
@@ -195,11 +221,6 @@ function schemaToGoType(schema: SchemaLike, diagnostics: Diagnostic[]): string {
   } else if (isZodArray(unwrapped)) {
     type = `[]${schemaToGoType(unwrapped.element, diagnostics)}`;
   } else if (isZodObject(unwrapped)) {
-    diagnostics.push({
-      level: "warning",
-      code: "nested-object-unnamed",
-      message: "Nested object must be processed through generateRouteTypes for proper struct generation.",
-    });
     type = "any";
   } else {
     type = "any";

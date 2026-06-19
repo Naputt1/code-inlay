@@ -176,6 +176,32 @@ export function defineApp(input: {
   };
 }
 
+export function defineRouteGroup(input: {
+  prefix: string;
+  middleware?: MiddlewareDefinition[];
+  architecture?: ArchitectureRef | ArchitectureRef[] | ArchitectureSelection;
+  routes: RouteDefinition[];
+}): RouteDefinition[] {
+  return input.routes.map((route) => ({
+    ...route,
+    path: joinPath(input.prefix, route.path),
+    architecture: route.architecture ?? input.architecture,
+    middleware: [...(input.middleware ?? []), ...route.middleware],
+    metadata: {
+      ...route.metadata,
+      _group: input.prefix,
+      _groupMw: (input.middleware ?? []).map((m) => m.name),
+    },
+  }));
+}
+
+function joinPath(prefix: string, path: string): string {
+  if (!path) return prefix;
+  const a = prefix.replace(/\/+$/, "");
+  const b = path.startsWith("/") ? path : `/${path}`;
+  return `${a}${b}` || "/";
+}
+
 export function defineArchitecture(
   plugin: ArchitecturePlugin,
 ): ArchitecturePlugin {

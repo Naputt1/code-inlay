@@ -20,28 +20,7 @@ export const ginAdapter: AdapterPlugin = {
       {
         id: defaultRegionId(ctx.route, "route"),
         language: "go",
-        content: `api.${methodName(ctx.route.method)}("${ctx.route.fullPath}", ${receiver}.${ctx.route.handlerName})`,
-      },
-    ];
-  },
-  generateMiddleware() {
-    return [];
-  },
-  generateServer() {
-    return [];
-  },
-};
-
-export const ginHandlerAdapter: AdapterPlugin = {
-  name: "gin",
-  transport: "http",
-  generateRoute(ctx) {
-    const receiver = `${lowerIdent(ctx.route.moduleName)}Handler`;
-    return [
-      {
-        id: defaultRegionId(ctx.route, "route"),
-        language: "go",
-        content: `api.${methodName(ctx.route.method)}("${ctx.route.fullPath}", ${receiver}.${ctx.route.handlerName})`,
+        content: `api.${methodName(ctx.route.method)}("${ctx.route.path}", ${receiver}.${ctx.route.handlerName})`,
       },
     ];
   },

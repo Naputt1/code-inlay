@@ -41,6 +41,7 @@ export function defaultRegionId(route: RouteAst, layer: string): string {
 }
 
 export function joinPath(prefix: string, path: string): string {
+  if (!path) return prefix;
   const normalizedPrefix = prefix.replace(/\/+$/, "");
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   return `${normalizedPrefix}${normalizedPath}` || "/";
