@@ -36,7 +36,7 @@ export const cleanArchitecture: ArchitecturePlugin = {
 
 export const architectureRegistry: Record<BuiltInArchitectureName, ArchitecturePlugin> = {
   clean: cleanArchitecture,
-  minimal: stubArchitecture("minimal", ["types", "handler"]),
+  minimal: stubArchitecture("minimal", ["types", "usecase", "handler"]),
   atomic: stubArchitecture("atomic", ["types", "handler", "service", "store"]),
   layered: stubArchitecture("layered", ["types", "controller", "service", "repository", "model"]),
 };

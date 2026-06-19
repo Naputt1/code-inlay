@@ -29,12 +29,28 @@ export function generateCode(
   };
 
   const routeLinesByFile = new Map<string, string[]>();
-  const modulesWithHandlers = new Map<string, string[]>();
+  const middlewareByFile = new Map<string, Set<string>>();
+
+  const domainModules = new Set<string>();
+  const repositoryModules = new Set<string>();
+  const handlerImportsAdded = new Set<string>();
+  const usecaseFiles = new Set<string>();
 
   for (const expansion of architecture.routes) {
     const route = expansion.route;
 
     for (const layer of expansion.layers) {
+      if (layer.kind === "domain") {
+        if (domainModules.has(route.moduleName)) continue;
+        domainModules.add(route.moduleName);
+      }
+      if (layer.kind === "repository") {
+        if (repositoryModules.has(route.moduleName)) continue;
+        repositoryModules.add(route.moduleName);
+      }
+      if (layer.kind === "usecase") {
+        usecaseFiles.add(layer.file);
+      }
       const content = generateLayerContent(route, layer.kind, diagnostics);
       if (content !== undefined) {
         add(layer.file, {
@@ -52,9 +68,26 @@ export function generateCode(
     const adapters = resolveAdapters(route.resolvedAdapters, diagnostics);
     for (const adapter of adapters) {
       if (adapter.name === "gin") {
-        add(defaultFileForLayer(route, "handler"), {
+        const handlerFile = defaultFileForLayer(route, "handler");
+        if (!handlerImportsAdded.has(handlerFile)) {
+          handlerImportsAdded.add(handlerFile);
+          add(handlerFile, {
+            id: `${route.moduleName}.0handler.imports`,
+            stableHash: `${handlerFile}:imports`,
+            owner: "code-inlay",
+            language: "go",
+            content: [
+              `import (`,
+              `\t"net/http"`,
+              ``,
+              `\t"github.com/gin-gonic/gin"`,
+              `)`,
+            ].join("\n"),
+          });
+        }
+        add(handlerFile, {
           ...generateGinHandler(route, diagnostics, adapter.name),
-          stableHash: `${route.stableId}:${adapter.name}:handler:${defaultFileForLayer(route, "handler")}`,
+          stableHash: `${route.stableId}:${adapter.name}:handler:${handlerFile}`,
           owner: adapter.name,
         });
       }
@@ -64,15 +97,47 @@ export function generateCode(
       for (const region of routeRegions) {
         const routeFile = defaultFileForLayer(route, "route");
         const lines = routeLinesByFile.get(routeFile) ?? [];
-        lines.push(region.content);
+
+        const routeMws = collectMiddlewareNames(route, ast);
+        const mwSet = middlewareByFile.get(routeFile) ?? new Set();
+        for (const mw of routeMws) {
+          mwSet.add(mw);
+        }
+        middlewareByFile.set(routeFile, mwSet);
+
+        const mwVars = routeMws.map(mwToParamName);
+        let line = region.content;
+        if (mwVars.length > 0) {
+          const lastComma = region.content.lastIndexOf(", ");
+          const before = region.content.slice(0, lastComma);
+          const after = region.content.slice(lastComma + 2);
+          line = `${before}, ${mwVars.join(", ")}, ${after}`;
+        }
+        lines.push(line);
         routeLinesByFile.set(routeFile, lines);
       }
     }
   }
 
+  const usecaseImportsAdded = new Set<string>();
+  for (const uf of usecaseFiles) {
+    const modName = uf.split("/")[1] ?? "unknown";
+    const regionId = `${modName}.0usecase.imports`;
+    if (usecaseImportsAdded.has(regionId)) continue;
+    usecaseImportsAdded.add(regionId);
+    add(uf, {
+      id: regionId,
+      stableHash: `${uf}:imports`,
+      owner: "code-inlay",
+      language: "go",
+      content: `import "context"`,
+    });
+  }
+
   for (const [routeFile, routeLines] of routeLinesByFile) {
     const moduleImports: string[] = [];
     const handlerInitLines: string[] = [];
+    const mwNames = middlewareByFile.get(routeFile) ?? new Set();
 
     for (const module of ast.modules) {
       const modPkg = module.name;
@@ -99,8 +164,11 @@ export function generateCode(
       }
     }
 
+    const mwParams = [...mwNames].sort().map((n) => `${mwToParamName(n)} gin.HandlerFunc`).join(", ");
+    const params = mwParams ? `api *gin.RouterGroup, ${mwParams}` : `api *gin.RouterGroup`;
+
     const body: string[] = [];
-    if (moduleImports.length > 0 || moduleInfo) {
+    if (moduleImports.length > 0 || moduleInfo || mwNames.size > 0) {
       body.push(`import (`);
       body.push(`\t"github.com/gin-gonic/gin"`);
       for (const imp of moduleImports.sort()) {
@@ -109,7 +177,7 @@ export function generateCode(
       body.push(`)`);
       body.push(``);
     }
-    body.push(`func RegisterRoutes(api *gin.RouterGroup) {`);
+    body.push(`func RegisterRoutes(${params}) {`);
     body.push(...handlerInitLines);
     body.push(``);
     for (const line of routeLines) {
@@ -236,4 +304,23 @@ function generateHandlerStructs(architecture: ArchitectureAst): HandlerStructOut
   }
 
   return result;
+}
+
+function collectMiddlewareNames(route: RouteAst, ast: AppAst): string[] {
+  const names = new Set<string>();
+  for (const mw of route.middleware) {
+    names.add(mw.name);
+  }
+  const mod = ast.modules.find((m) => m.name === route.moduleName);
+  if (mod) {
+    for (const mw of mod.middleware) {
+      names.add(mw.name);
+    }
+  }
+  return [...names];
+}
+
+function mwToParamName(name: string): string {
+  if (!name) return "";
+  return name.charAt(0).toLowerCase() + name.slice(1);
 }

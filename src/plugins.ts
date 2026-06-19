@@ -18,6 +18,7 @@ import type {
 } from "./types.js";
 import { architectureRegistry } from "./architecture.js";
 import { adapterRegistry } from "./adapters.js";
+import { builtinTargets } from "./targets/index.js";
 import { stableHash } from "./hash.js";
 
 export type PluginRegistry = {
@@ -82,7 +83,12 @@ export function createPluginRegistry(
     validators.push(...(plugin.validators ?? []));
   }
 
+  for (const [name, target] of Object.entries(builtinTargets)) {
+    targets.set(name, target);
+  }
+
   for (const target of app.targets ?? []) {
+    if (!target || typeof target !== "object" || !("name" in target)) continue;
     if (targets.has(target.name)) {
       diagnostics.push({
         level: "warning",

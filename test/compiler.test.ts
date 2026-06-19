@@ -69,13 +69,29 @@ describe("compiler", () => {
     );
     writeFileSync(
       join(cwd, "internal/user/usecase.go"),
-      ["package user", "", "// @gen:start user.create.usecase", "// @gen:end user.create.usecase", ""].join("\n"),
+      [
+        "package user",
+        "",
+        "// @gen:start user.0usecase.imports",
+        `import "context"`,
+        "// @gen:end user.0usecase.imports",
+        "// @gen:start user.create.usecase",
+        "// @gen:end user.create.usecase",
+        "",
+      ].join("\n"),
     );
     writeFileSync(
       join(cwd, "internal/user/handler.go"),
       [
         "package user",
         "",
+        "// @gen:start user.0handler.imports",
+        `import (`,
+        `\t"net/http"`,
+        ``,
+        `\t"github.com/gin-gonic/gin"`,
+        `)`,
+        "// @gen:end user.0handler.imports",
         "// @gen:start user.0handler.struct",
         "// @gen:end user.0handler.struct",
         "",
