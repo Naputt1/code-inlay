@@ -199,6 +199,7 @@ function buildSkeleton(regions: GeneratedFilePatch["regions"], pkg?: string): st
     lines.push("");
   }
   for (const r of regions) {
+    if (r.language === "json") continue;
     lines.push(`// @gen:start ${r.id}`);
     lines.push(`// @gen:end ${r.id}`);
   }
@@ -236,6 +237,10 @@ export function injectContent(
     ...r,
     content: r.language === "go" ? formatGoSnippet(r.content, diagnostics, r.id) : r.content,
   }));
+
+  if (formattedRegions.length > 0 && formattedRegions.every((r) => r.language === "json")) {
+    return formattedRegions.map((r) => r.content).join("\n");
+  }
 
   const matches = parseRegionMarkers(fileText, diagnostics, file);
   let next = fileText;
