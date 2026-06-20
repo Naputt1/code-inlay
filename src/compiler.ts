@@ -1,5 +1,6 @@
+import { existsSync, readFileSync, writeFileSync, readdirSync, statSync } from "node:fs";
 import { pathToFileURL } from "node:url";
-import { resolve } from "node:path";
+import { resolve, dirname } from "node:path";
 import { watch } from "node:fs";
 import type {
   AppDefinition,
@@ -27,7 +28,7 @@ import {
   validateCache,
   invalidateChanged,
 } from "./cache.js";
-import { atomicWritePatches, validateBeforeWrite } from "./writer.js";
+import { atomicWritePatches, removeOrphanedRegions, validateBeforeWrite } from "./writer.js";
 
 export async function compile(options: CompileOptions): Promise<CompileResult> {
   const cwd = options.cwd ?? process.cwd();
@@ -156,12 +157,53 @@ export async function compile(options: CompileOptions): Promise<CompileResult> {
     };
   }
 
+  const oldCache = readCache(cwd);
+
   const injected = atomicWritePatches(
     generation.files,
     cwd,
     app.options.fileCreation,
     diagnostics,
   );
+
+  const currentPatchFiles = new Set(generation.files.map((f) => f.path));
+  const currentRegionIds = new Set(generation.files.flatMap((f) => f.regions.map((r) => r.id)));
+
+  if (!hasErrors(diagnostics)) {
+    const internalDir = resolve(cwd, "internal");
+    if (existsSync(internalDir)) {
+      const scanDir = (dir: string): void => {
+        let entries: string[];
+        try {
+          entries = readdirSync(dir);
+        } catch {
+          return;
+        }
+        for (const entry of entries) {
+          const abs = resolve(dir, entry);
+          try {
+            const st = statSync(abs);
+            if (st.isDirectory()) {
+              scanDir(abs);
+            } else if (st.isFile() && entry.endsWith(".go") && !currentPatchFiles.has(abs.replace(resolve(cwd), "").replace(/^\//, ""))) {
+              const relPath = abs.replace(resolve(cwd) + "/", "");
+              if (currentPatchFiles.has(relPath)) continue;
+              const content = readFileSync(abs, "utf8");
+              if (!content.includes("// @gen:start")) continue;
+              const after = removeOrphanedRegions(content, currentRegionIds, diagnostics, relPath);
+              if (content !== after) {
+                writeFileSync(abs, after, "utf8");
+                injected.changedFiles.push(relPath);
+              }
+            }
+          } catch {
+            // skip unreadable entries
+          }
+        }
+      };
+      scanDir(internalDir);
+    }
+  }
 
   if (!hasErrors(diagnostics)) {
     const dependencyGraph = buildDependencyGraph(ast, architecture, generation);
@@ -174,6 +216,7 @@ export async function compile(options: CompileOptions): Promise<CompileResult> {
         contentHash: string;
         file: string;
         owner?: string;
+        groupKey?: string;
       }
     > = {};
     const files: Record<string, { regions: string[] }> = {};
@@ -190,6 +233,7 @@ export async function compile(options: CompileOptions): Promise<CompileResult> {
           contentHash: region.contentHash ?? "",
           file: file.path,
           owner: region.owner,
+          groupKey: region.groupKey,
         };
       }
     }

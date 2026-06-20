@@ -74,6 +74,7 @@ export function buildAst(
         name: module.name,
         architecture: moduleArchitecture,
         adapters: moduleAdapters,
+        usecaseOrganization: module.usecaseOrganization,
         middleware: module.middleware.map((middleware) =>
           toMiddlewareAst(middleware, `module:${module.name}`),
         ),
@@ -117,6 +118,7 @@ export function buildAst(
                 `module:${module.name}:route:${route.id}`,
               ),
             ),
+            usecaseGroup: route.usecaseGroup,
             metadata: route.metadata,
           };
         }),

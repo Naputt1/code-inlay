@@ -20,6 +20,7 @@ import type {
   SchemaLike,
   TestingConfig,
   AdapterSelection,
+  UsecaseOrganization,
 } from "./types.js";
 
 export type DefineRouteInput<
@@ -35,6 +36,7 @@ export type DefineRouteInput<
   input?: TInput;
   response?: TResponse;
   handler: string;
+  usecaseGroup?: string;
   middleware?: MiddlewareDefinition[];
   metadata?: Record<string, unknown>;
 };
@@ -47,6 +49,7 @@ type DefineRouteBase = {
   adapter?: AdapterRef | AdapterRef[] | AdapterSelection;
   adapters?: AdapterRef[] | AdapterSelection;
   handler: string;
+  usecaseGroup?: string;
   middleware?: MiddlewareDefinition[];
   metadata?: Record<string, unknown>;
 };
@@ -87,6 +90,7 @@ export function defineRoute<
     input: input.input,
     response: input.response,
     handler: input.handler,
+    usecaseGroup: input.usecaseGroup,
     middleware: input.middleware ?? [],
     metadata: input.metadata ?? {},
   };
@@ -107,6 +111,7 @@ export function defineModule(input: {
   name: string;
   architecture?: ArchitectureRef | ArchitectureRef[] | ArchitectureSelection;
   adapters?: AdapterRef[] | AdapterSelection;
+  usecaseOrganization?: UsecaseOrganization;
   routes?: RouteDefinition[];
   middleware?: MiddlewareDefinition[];
 }): ModuleDefinition {
@@ -115,6 +120,7 @@ export function defineModule(input: {
     name: input.name,
     architecture: input.architecture,
     adapters: input.adapters,
+    usecaseOrganization: input.usecaseOrganization,
     routes: input.routes ?? [],
     middleware: input.middleware ?? [],
   };
@@ -159,6 +165,7 @@ export function defineApp(input: {
     targets: input.targets ?? [],
     options: {
       fileCreation: input.options?.fileCreation ?? "skeleton",
+      usecaseOrganization: input.options?.usecaseOrganization,
       targets: input.options?.targets ?? ["go-server"],
       targetOptions: input.options?.targetOptions,
       runtime: input.runtime ?? { enabled: false },

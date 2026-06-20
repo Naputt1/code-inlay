@@ -70,8 +70,21 @@ export type AdapterTarget = {
 
 export type FileCreationMode = "disabled" | "markers-only" | "skeleton";
 
+export type UsecaseGroupBy =
+  | "path"
+  | "operation"
+  | "handler"
+  | "module"
+  | ((route: RouteAst) => string);
+
+export type UsecaseOrganization = {
+  strategy: "merged" | "single" | "grouped";
+  groupBy?: UsecaseGroupBy;
+};
+
 export type CompileSettings = {
   fileCreation: FileCreationMode;
+  usecaseOrganization?: UsecaseOrganization;
   targets?: string[];
   targetOptions?: Record<string, Record<string, unknown>>;
   runtime?: RuntimeConfig;
@@ -95,6 +108,7 @@ export type RouteDefinition<
   response?: TResponse;
   handler: string;
   middleware: MiddlewareDefinition[];
+  usecaseGroup?: string;
   metadata: Record<string, unknown>;
 };
 
@@ -109,6 +123,7 @@ export type ModuleDefinition = {
   name: string;
   architecture?: ArchitectureRef | ArchitectureRef[] | ArchitectureSelection;
   adapters?: AdapterRef[] | AdapterSelection;
+  usecaseOrganization?: UsecaseOrganization;
   routes: RouteDefinition[];
   middleware: MiddlewareDefinition[];
 };
@@ -178,6 +193,7 @@ export type ModuleAst = AstNodeBase<"Module"> & {
   name: string;
   architecture?: ArchitectureSelection;
   adapters?: AdapterSelection;
+  usecaseOrganization?: UsecaseOrganization;
   routes: RouteAst[];
   middleware: MiddlewareAst[];
 };
@@ -195,6 +211,7 @@ export type RouteAst = AstNodeBase<"Route"> & {
   input?: SchemaLike;
   response?: SchemaLike;
   middleware: MiddlewareAst[];
+  usecaseGroup?: string;
   metadata: Record<string, unknown>;
 };
 
@@ -269,6 +286,7 @@ export type GeneratedRegion = {
   contentHash?: string;
   language: "go" | "typescript" | "yaml" | "json" | "markdown";
   content: string;
+  groupKey?: string;
 };
 
 export type TargetContext = {
@@ -502,4 +520,5 @@ export type CachedRegion = {
   contentHash: string;
   file: string;
   owner?: string;
+  groupKey?: string;
 };

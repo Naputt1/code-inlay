@@ -87,6 +87,63 @@ export function validateBeforeWrite(
   return valid;
 }
 
+const orphanPattern = /^([ \t]*)\/\/ @gen:start ([a-zA-Z0-9._-]+)(?: hash:(\S+))?(?: owner:(\S+))?[ \t]*$/gm;
+
+export function removeOrphanedRegions(
+  fileText: string,
+  plannedRegionIds: Set<string>,
+  diagnostics: Diagnostic[],
+  file?: string,
+): string {
+  const planned = new Set(plannedRegionIds);
+  let result = fileText;
+
+  const orphans: Array<{ id: string; start: number; end: number }> = [];
+  const starts: Array<{ id: string; index: number; lineEnd: number }> = [];
+  let match: RegExpExecArray | null;
+
+  const localStart = new RegExp(orphanPattern.source, orphanPattern.flags);
+  while ((match = localStart.exec(result)) !== null) {
+    const id = match[2];
+    if (planned.has(id)) continue;
+    if (!id.endsWith(".usecase") && !id.endsWith(".0usecase.imports")) continue;
+    starts.push({ id, index: match.index, lineEnd: lineEndIndex(result, match.index) });
+  }
+
+  const localEnd = new RegExp(endPattern.source, endPattern.flags);
+  const ends: Array<{ id: string; index: number; lineEnd: number }> = [];
+  while ((match = localEnd.exec(result)) !== null) {
+    ends.push({ id: match[2], index: match.index, lineEnd: lineEndIndex(result, match.index) });
+  }
+
+  for (const start of starts) {
+    const end = ends.find((candidate) => candidate.id === start.id && candidate.index > start.index);
+    if (!end) continue;
+    orphans.push({ id: start.id, start: start.index, end: end.lineEnd });
+    diagnostics.push({
+      level: "warning",
+      code: "orphaned-region-removed",
+      message: `Removed orphaned region "${start.id}" that is no longer generated.`,
+      file,
+      regionId: start.id,
+    });
+  }
+
+  orphans.sort((a, b) => b.start - a.start);
+  for (const orphan of orphans) {
+    const before = result.slice(0, orphan.start);
+    const after = result.slice(orphan.end);
+    const beforeTrimmed = before.replace(/\n+$/, "");
+    const gap = before.length - beforeTrimmed.length;
+    const afterTrimmed = after.replace(/^\n+/, "");
+    const afterGap = after.length - afterTrimmed.length;
+    const separator = gap > 0 && afterGap > 0 ? "\n" : "\n\n";
+    result = beforeTrimmed + separator + afterTrimmed;
+  }
+
+  return result;
+}
+
 export function atomicWritePatches(
   patches: GeneratedFilePatch[],
   cwd: string,
@@ -134,7 +191,9 @@ export function atomicWritePatches(
     const statBefore = statSync(absolutePath);
     const before = readFileSync(absolutePath, "utf8");
 
-    const after = injectContent(before, patch.regions, diagnostics, patch.path);
+    let after = injectContent(before, patch.regions, diagnostics, patch.path);
+    const plannedIds = new Set(patch.regions.map((r) => r.id));
+    after = removeOrphanedRegions(after, plannedIds, diagnostics, patch.path);
     if (before !== after) {
       const statAfter = statSync(absolutePath);
       if (statAfter.mtimeMs !== statBefore.mtimeMs || statAfter.size !== statBefore.size) {

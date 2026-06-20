@@ -7,6 +7,7 @@ import { pluginCommand } from "./plugin.js";
 import { inspectCommand } from "./inspect.js";
 import { docsCommand } from "./docs.js";
 import { initCommand } from "./init.js";
+import { migrateCommand } from "./migrate.js";
 
 export type ParsedArgs = {
   command: string;
@@ -40,6 +41,9 @@ async function main(): Promise<void> {
       break;
     case "docs":
       await docsCommand(parsed);
+      break;
+    case "migrate":
+      await migrateCommand(parsed);
       break;
     case "init":
       await initCommand(parsed);
@@ -80,7 +84,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
     i += 1;
   }
 
-  const subCommands = ["plugin", "inspect", "docs"];
+  const subCommands = ["plugin", "inspect", "docs", "migrate"];
   const subcommand = subCommands.includes(command) ? args[0] : undefined;
   const subArgs = subcommand ? args.slice(1) : args;
 
@@ -114,6 +118,7 @@ Commands:
   diff                         Show pending changes
   dev                          Watch mode with live-reload
   plugin <add|remove|list|update>  Plugin management
+  migrate                      Detect and apply usecase organization changes
   inspect <ast|route|regions|plugins|graph>  Introspection
   docs <api|markdown|diagram>  Documentation generation
   init                         Scaffold a new project

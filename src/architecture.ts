@@ -9,7 +9,15 @@ import type {
   GeneratedLayer,
   RouteAst,
 } from "./types.js";
-import { defaultFileForLayer, defaultRegionId, pascalCase } from "./naming.js";
+import {
+  defaultFileForLayer,
+  defaultRegionId,
+  fileForUsecaseGroup,
+  pascalCase,
+  regionIdForUsecase,
+  resolveUsecaseGroupKey,
+  resolveUsecaseOrg,
+} from "./naming.js";
 import { stableHash } from "./hash.js";
 
 function buildArchitecture(name: string, layerKinds: readonly string[]): ArchitecturePlugin {
@@ -79,8 +87,6 @@ export function applyArchitecture(ast: AppAst, diagnostics: Diagnostic[]): Archi
   const allNodes: ArchitectureAst["nodes"] = [];
   const routeMap = new Map<string, { route: RouteAst; layers: GeneratedLayer[] }>();
 
-  const moduleArchitectures = resolveArchitecture(ast.architecture, diagnostics);
-
   const baseCtx: ArchitectureContext = {
     diagnostics,
     fileForLayer: defaultFileForLayer,
@@ -97,6 +103,27 @@ export function applyArchitecture(ast: AppAst, diagnostics: Diagnostic[]): Archi
       const routePlugins = resolveArchitecture(routeSelection, diagnostics);
       const effectivePlugins = routePlugins.length > 0 ? routePlugins : modulePlugins;
 
+      const usecaseOrg = resolveUsecaseOrg(route, module.usecaseOrganization, ast.options.usecaseOrganization);
+      const usecaseGroupKey = resolveUsecaseGroupKey(route, usecaseOrg);
+
+      const ctxUsecaseFileForLayer = (r: RouteAst, layer: string): string => {
+        if (layer === "usecase") {
+          const org = resolveUsecaseOrg(r, module.usecaseOrganization, ast.options.usecaseOrganization);
+          const gk = resolveUsecaseGroupKey(r, org);
+          return fileForUsecaseGroup(r.moduleName, gk);
+        }
+        return defaultFileForLayer(r, layer);
+      };
+
+      const ctxUsecaseRegionId = (r: RouteAst, layer: string): string => {
+        if (layer === "usecase") {
+          const org = resolveUsecaseOrg(r, module.usecaseOrganization, ast.options.usecaseOrganization);
+          const gk = resolveUsecaseGroupKey(r, org);
+          return regionIdForUsecase(r, gk);
+        }
+        return defaultRegionId(r, layer);
+      };
+
       for (const plugin of effectivePlugins) {
         const pluginAst: AppAst = {
           ...ast,
@@ -104,6 +131,8 @@ export function applyArchitecture(ast: AppAst, diagnostics: Diagnostic[]): Archi
         };
         const ctx: ArchitectureContext = {
           ...baseCtx,
+          fileForLayer: ctxUsecaseFileForLayer,
+          regionId: ctxUsecaseRegionId,
           owner: plugin.name,
         };
         const result = plugin.transform(ctx, pluginAst);

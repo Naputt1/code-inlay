@@ -8,7 +8,15 @@ import type {
   RouteAst,
 } from "./types.js";
 import type { GoModuleInfo } from "./env.js";
-import { defaultFileForLayer, defaultRegionId, lowerIdent, pascalCase } from "./naming.js";
+import {
+  defaultFileForLayer,
+  defaultRegionId,
+  lowerIdent,
+  pascalCase,
+  regionIdForUsecaseImports,
+  resolveUsecaseGroupKey,
+  resolveUsecaseOrg,
+} from "./naming.js";
 import { generateRouteTypes, requestType, responseType } from "./schema.js";
 import { generateGinHandler, resolveAdapters } from "./adapters.js";
 import { generateServer, serverFilePath } from "./srvgen.js";
@@ -34,7 +42,7 @@ export function generateCode(
   const domainModules = new Set<string>();
   const repositoryModules = new Set<string>();
   const handlerImportsAdded = new Set<string>();
-  const usecaseFiles = new Set<string>();
+  const usecaseFileInfo = new Map<string, { moduleName: string; groupKey: string }>();
 
   for (const expansion of architecture.routes) {
     const route = expansion.route;
@@ -48,8 +56,26 @@ export function generateCode(
         if (repositoryModules.has(route.moduleName)) continue;
         repositoryModules.add(route.moduleName);
       }
-      if (layer.kind === "usecase") {
-        usecaseFiles.add(layer.file);
+      const layerGroupKey =
+        layer.kind === "usecase"
+          ? (() => {
+              const mod = ast.modules.find((m) => m.name === route.moduleName);
+              const org = resolveUsecaseOrg(
+                route,
+                mod?.usecaseOrganization,
+                ast.options.usecaseOrganization,
+              );
+              return resolveUsecaseGroupKey(route, org);
+            })()
+          : undefined;
+
+      if (layer.kind === "usecase" && layerGroupKey) {
+        if (!usecaseFileInfo.has(layer.file)) {
+          usecaseFileInfo.set(layer.file, {
+            moduleName: route.moduleName,
+            groupKey: layerGroupKey,
+          });
+        }
       }
       const content = generateLayerContent(route, layer.kind, diagnostics);
       if (content !== undefined) {
@@ -61,6 +87,7 @@ export function generateCode(
           owner: layer.owner ?? "code-inlay",
           language: "go",
           content,
+          groupKey: layerGroupKey,
         });
       }
     }
@@ -134,14 +161,13 @@ export function generateCode(
   }
 
   const usecaseImportsAdded = new Set<string>();
-  for (const uf of usecaseFiles) {
-    const modName = uf.split("/")[1] ?? "unknown";
-    const regionId = `${modName}.0usecase.imports`;
+  for (const [file, info] of usecaseFileInfo) {
+    const regionId = regionIdForUsecaseImports(info.moduleName, info.groupKey);
     if (usecaseImportsAdded.has(regionId)) continue;
     usecaseImportsAdded.add(regionId);
-    add(uf, {
+    add(file, {
       id: regionId,
-      stableHash: `${uf}:imports`,
+      stableHash: `${file}:imports:${info.groupKey}`,
       owner: "code-inlay",
       language: "go",
       content: `import "context"`,
