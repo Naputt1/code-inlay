@@ -3,11 +3,26 @@ import { compile } from "../compiler.js";
 import { renderGraph, renderPluginExecutionOrder } from "../graph.js";
 import type { ParsedArgs } from "./index.js";
 import type { GraphFormat } from "../graph.js";
+import { basename, dirname, resolve } from "node:path";
 
 export async function inspectCommand(parsed: ParsedArgs): Promise<void> {
   const subcommand = parsed.subcommand ?? "ast";
-  const cwd = (parsed.flags.cwd as string) ?? process.cwd();
-  const configFile = (parsed.flags.config as string) ?? "backend.config.ts";
+  const configFlag = parsed.flags.config as string | undefined;
+  const cwdFlag = parsed.flags.cwd as string | undefined;
+
+  let cwd: string;
+  let configFile: string;
+
+  if (cwdFlag) {
+    cwd = cwdFlag;
+    configFile = configFlag ?? "backend.config.ts";
+  } else if (configFlag) {
+    cwd = resolve(process.cwd(), dirname(configFlag));
+    configFile = basename(configFlag);
+  } else {
+    cwd = process.cwd();
+    configFile = "backend.config.ts";
+  }
   const format = (parsed.flags.format as string) ?? "tree";
 
   switch (subcommand) {

@@ -2,11 +2,26 @@ import type { AppAst, ArchitectureAst } from "../types.js";
 import { compile } from "../compiler.js";
 import { generateApiDocs } from "../docsgen.js";
 import type { ParsedArgs } from "./index.js";
+import { basename, dirname, resolve } from "node:path";
 
 export async function docsCommand(parsed: ParsedArgs): Promise<void> {
   const subcommand = parsed.subcommand ?? "api";
-  const cwd = (parsed.flags.cwd as string) ?? process.cwd();
-  const configFile = (parsed.flags.config as string) ?? "backend.config.ts";
+  const configFlag = parsed.flags.config as string | undefined;
+  const cwdFlag = parsed.flags.cwd as string | undefined;
+
+  let cwd: string;
+  let configFile: string;
+
+  if (cwdFlag) {
+    cwd = cwdFlag;
+    configFile = configFlag ?? "backend.config.ts";
+  } else if (configFlag) {
+    cwd = resolve(process.cwd(), dirname(configFlag));
+    configFile = basename(configFlag);
+  } else {
+    cwd = process.cwd();
+    configFile = "backend.config.ts";
+  }
 
   const result = await compile({ configFile, cwd, dryRun: true });
 
