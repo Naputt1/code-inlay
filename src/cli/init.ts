@@ -37,7 +37,7 @@ export default defineApp({
 
   const goModContent = `module ${projectDir === "." ? "my-api" : projectDir}
 
-go 1.22
+go 1.26
 `;
 
   const mainGoContent = `package main

@@ -34,7 +34,7 @@ function generateGoModule(): GeneratedFilePatch {
     id: "runtime.go.mod",
     owner: "runtime",
     language: "go",
-    content: [`module github.com/code-inlay/runtime`, ``, `go 1.22`].join("\n"),
+    content: [`module github.com/code-inlay/runtime`, ``, `go 1.26`].join("\n"),
   };
 
   return {
