@@ -14,10 +14,10 @@ export const openapiTarget: CodeTarget = {
       paths: Record<string, unknown>;
       components: { schemas: Record<string, unknown> };
     } = {
-      openapi: (options.targetOptions?.["openapi"]?.version as string) ?? "3.1.0",
+      openapi: (options.targetOptions?.["openapi"]?.specVersion as string) ?? "3.1.0",
       info: {
         title: (options.targetOptions?.["openapi"]?.title as string) ?? "API",
-        version: (options.targetOptions?.["openapi"]?.apiVersion as string) ?? "1.0.0",
+        version: (options.targetOptions?.["openapi"]?.version as string) ?? "1.0.0",
       },
       paths: {},
       components: {
