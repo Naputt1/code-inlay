@@ -2,6 +2,7 @@ import type {
   CodeTarget,
   GeneratedFilePatch,
   GeneratedRegion,
+  ModuleAst,
   RouteAst,
 } from "../types.js";
 import { pascalCase } from "../naming.js";
@@ -20,19 +21,11 @@ export const tsClientTarget: CodeTarget = {
       (options.targetOptions?.["ts-client"]?.outputDir as string) ?? "clients";
 
     const typesRegions: GeneratedRegion[] = [];
-    const imports = new Set<string>();
-    const methodBodies: string[] = [];
 
     for (const module of ast.modules) {
       for (const route of module.routes) {
         const typeRegions = generateTypesForRoute(route, module.name);
         typesRegions.push(...typeRegions);
-
-        const method = generateClientMethod(route, module.name);
-        methodBodies.push(method);
-
-        if (route.input) imports.add(routeTypeName(route, "Request"));
-        if (route.response) imports.add(routeTypeName(route, "Response"));
       }
     }
 
@@ -41,53 +34,57 @@ export const tsClientTarget: CodeTarget = {
       regions: typesRegions,
     });
 
-    const classBody: string[] = [];
-    classBody.push(`import type {`);
-    for (const imp of [...imports].sort()) {
-      classBody.push(`  ${imp},`);
-    }
-    classBody.push(`} from "./types.js";`);
-    classBody.push(``);
-    classBody.push(`export class ApiClient {`);
-    classBody.push(`  constructor(private baseUrl: string, private headers?: Record<string, string>) {}`);
-    classBody.push(``);
-    classBody.push(`  private async request<T>(path: string, options?: RequestInit): Promise<T> {`);
-    classBody.push(`    const res = await fetch(\`\${this.baseUrl}\${path}\`, {`);
-    classBody.push(`      ...options,`);
-    classBody.push(`      headers: { "Content-Type": "application/json", ...this.headers, ...options?.headers },`);
-    classBody.push(`    });`);
-    classBody.push(`    if (!res.ok) {`);
-    classBody.push(`      const body = await res.text();`);
-    classBody.push(`      throw new ApiError(res.status, body);`);
-    classBody.push(`    }`);
-    classBody.push(`    return res.json() as Promise<T>;`);
-    classBody.push(`  }`);
-    classBody.push(``);
-    for (const m of methodBodies) {
-      for (const line of m.split("\n")) {
-        classBody.push(`  ${line}`);
-      }
-      classBody.push(``);
-    }
-    classBody.push(`}`);
-    classBody.push(``);
-    classBody.push(`export class ApiError extends Error {`);
-    classBody.push(`  constructor(public status: number, body: string) {`);
-    classBody.push(`    super(\`API error \${status}: \${body}\`);`);
-    classBody.push(`  }`);
-    classBody.push(`}`);
-
-    const hash = contentHash(classBody.join("\n"));
-
+    const baseContent = generateBaseClientContent();
     patches.push({
-      path: `${clientDir}/api.ts`,
+      path: `${clientDir}/base.ts`,
       regions: [
         {
-          id: "client.api",
-          stableHash: `ts-client:api:${hash}`,
+          id: "client.base",
+          stableHash: `ts-client:base:${contentHash(baseContent)}`,
           owner: "ts-client",
           language: "typescript",
-          content: classBody.join("\n"),
+          content: baseContent,
+        },
+      ],
+    });
+
+    const indexModules: { name: string; className: string }[] = [];
+
+    for (const module of ast.modules) {
+      if (module.routes.length === 0) continue;
+
+      const moduleContent = generateModuleClient(module);
+      if (!moduleContent) continue;
+
+      indexModules.push({
+        name: module.name,
+        className: `${pascalCase(module.name)}Client`,
+      });
+
+      patches.push({
+        path: `${clientDir}/${module.name}.ts`,
+        regions: [
+          {
+            id: `client.${module.name}`,
+            stableHash: `ts-client:${module.name}:${contentHash(moduleContent)}`,
+            owner: "ts-client",
+            language: "typescript",
+            content: moduleContent,
+          },
+        ],
+      });
+    }
+
+    const indexContent = generateIndexContent(indexModules);
+    patches.push({
+      path: `${clientDir}/index.ts`,
+      regions: [
+        {
+          id: "client.index",
+          stableHash: `ts-client:index:${contentHash(indexContent)}`,
+          owner: "ts-client",
+          language: "typescript",
+          content: indexContent,
         },
       ],
     });
@@ -223,10 +220,7 @@ function extractPathParams(path: string): string[] {
   return params;
 }
 
-function generateClientMethod(
-  route: RouteAst,
-  moduleName: string,
-): string {
+function generateClientMethod(route: RouteAst): string {
   const fnName = pascalCase(route.id);
   const resType = route.response ? routeTypeName(route, "Response") : "void";
   const hasBody =
@@ -277,4 +271,94 @@ function generateClientMethod(
   body.push(`}`);
 
   return body.join("\n");
+}
+
+function generateBaseClientContent(): string {
+  return [
+    `export class ApiError extends Error {`,
+    `  constructor(public status: number, body: string) {`,
+    `    super(\`API error \${status}: \${body}\`);`,
+    `  }`,
+    `}`,
+    ``,
+    `export class BaseApiClient {`,
+    `  constructor(protected baseUrl: string, protected headers?: Record<string, string>) {}`,
+    ``,
+    `  protected async request<T>(path: string, options?: RequestInit): Promise<T> {`,
+    `    const res = await fetch(\`\${this.baseUrl}\${path}\`, {`,
+    `      ...options,`,
+    `      headers: { "Content-Type": "application/json", ...this.headers, ...options?.headers },`,
+    `    });`,
+    `    if (!res.ok) {`,
+    `      const body = await res.text();`,
+    `      throw new ApiError(res.status, body);`,
+    `    }`,
+    `    return res.json() as Promise<T>;`,
+    `  }`,
+    `}`,
+  ].join("\n");
+}
+
+function generateModuleClient(module: ModuleAst): string {
+  const imports = new Set<string>();
+  const methods: string[] = [];
+
+  for (const route of module.routes) {
+    if (route.input) imports.add(routeTypeName(route, "Request"));
+    if (route.response) imports.add(routeTypeName(route, "Response"));
+
+    const method = generateClientMethod(route);
+    methods.push(method);
+  }
+
+  if (methods.length === 0) return "";
+
+  const lines: string[] = [];
+
+  if (imports.size > 0) {
+    lines.push(`import type {`);
+    for (const imp of [...imports].sort()) {
+      lines.push(`  ${imp},`);
+    }
+    lines.push(`} from "./types.js";`);
+    lines.push(``);
+  }
+
+  lines.push(`import { BaseApiClient } from "./base.js";`);
+  lines.push(``);
+
+  const className = `${pascalCase(module.name)}Client`;
+  lines.push(`export class ${className} extends BaseApiClient {`);
+
+  for (const method of methods) {
+    for (const line of method.split("\n")) {
+      lines.push(`  ${line}`);
+    }
+    lines.push(``);
+  }
+
+  lines.push(`}`);
+
+  return lines.join("\n");
+}
+
+function generateIndexContent(
+  modules: { name: string; className: string }[],
+): string {
+  if (modules.length === 0) {
+    return [
+      `export { BaseApiClient } from "./base.js";`,
+      `export { ApiError } from "./base.js";`,
+    ].join("\n");
+  }
+
+  const lines: string[] = [];
+
+  for (const mod of modules) {
+    lines.push(`export { ${mod.className} } from "./${mod.name}.js";`);
+  }
+  lines.push(`export { BaseApiClient } from "./base.js";`);
+  lines.push(`export { ApiError } from "./base.js";`);
+
+  return lines.join("\n") + "\n";
 }
