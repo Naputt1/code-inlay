@@ -20,8 +20,6 @@ import {
 import { generateRouteTypes, requestType, responseType } from "./schema.js";
 import { generateGinHandler, resolveAdapters } from "./adapters.js";
 import { generateServer, serverFilePath } from "./srvgen.js";
-import { stableHash } from "./hash.js";
-
 export function generateCode(
   ast: AppAst,
   architecture: ArchitectureAst,
@@ -131,7 +129,6 @@ export function generateCode(
         const routeGroup = (route.metadata?._group as string) ?? "";
         const groupMwNames = new Set((route.metadata?._groupMw as string[]) ?? []);
         const routeMwVars = routeMws.filter((n) => !groupMwNames.has(n)).map(mwToParamName);
-        const allMwVars = routeMws.map(mwToParamName);
         let line = region.content;
         if (routeMwVars.length > 0) {
           const lastComma = region.content.lastIndexOf(", ");

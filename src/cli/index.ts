@@ -1,58 +1,10 @@
 #!/usr/bin/env node
-import { generateCommand } from "./generate.js";
-import { checkCommand } from "./check.js";
-import { diffCommand } from "./diff.js";
-import { devCommand } from "./dev.js";
-import { pluginCommand } from "./plugin.js";
-import { inspectCommand } from "./inspect.js";
-import { docsCommand } from "./docs.js";
-import { initCommand } from "./init.js";
-import { migrateCommand } from "./migrate.js";
-
 export type ParsedArgs = {
   command: string;
   subcommand?: string;
   args: string[];
   flags: Record<string, string | boolean | string[]>;
 };
-
-async function main(): Promise<void> {
-  const parsed = parseArgs(process.argv.slice(2));
-
-  switch (parsed.command) {
-    case "generate":
-      await generateCommand(parsed);
-      break;
-    case "check":
-      await checkCommand(parsed);
-      break;
-    case "diff":
-      await diffCommand(parsed);
-      break;
-    case "watch":
-    case "dev":
-      await devCommand(parsed);
-      break;
-    case "plugin":
-      await pluginCommand(parsed);
-      break;
-    case "inspect":
-      await inspectCommand(parsed);
-      break;
-    case "docs":
-      await docsCommand(parsed);
-      break;
-    case "migrate":
-      await migrateCommand(parsed);
-      break;
-    case "init":
-      await initCommand(parsed);
-      break;
-    case "help":
-    default:
-      printHelp();
-  }
-}
 
 export function parseArgs(argv: string[]): ParsedArgs {
   const command = argv[0] ?? "help";

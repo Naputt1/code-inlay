@@ -105,13 +105,6 @@ export function applyArchitecture(ast: AppAst, diagnostics: Diagnostic[]): Archi
       const routePlugins = resolveArchitecture(routeSelection, diagnostics);
       const effectivePlugins = routePlugins.length > 0 ? routePlugins : modulePlugins;
 
-      const usecaseOrg = resolveUsecaseOrg(
-        route,
-        module.usecaseOrganization,
-        ast.options.usecaseOrganization,
-      );
-      const usecaseGroupKey = resolveUsecaseGroupKey(route, usecaseOrg);
-
       const ctxUsecaseFileForLayer = (r: RouteAst, layer: string): string => {
         if (layer === "usecase") {
           const org = resolveUsecaseOrg(

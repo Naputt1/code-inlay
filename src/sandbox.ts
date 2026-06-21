@@ -100,7 +100,6 @@ export function getSandboxConfig(config?: Partial<SandboxConfig>): SandboxConfig
 
 function createSafeMath(): Math {
   const safe = Object.create(Math);
-  const originalRandom = Math.random;
   Object.defineProperty(safe, "random", {
     value: () => {
       console.warn("Math.random() is non-deterministic; returning 0.5");

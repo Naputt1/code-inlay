@@ -2,6 +2,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { Diagnostic } from "../src/types.js";
 import {
   compile,
   defineApp,
@@ -136,7 +137,7 @@ describe("Phase 2: Region v2", () => {
       "// @gen:end test.region",
     ].join("\n");
 
-    const diagnostics: any[] = [];
+    const diagnostics: Diagnostic[] = [];
     const cache: Record<string, { contentHash: string }> = {
       "test.region": { contentHash: "generated-hash" },
     };
@@ -160,7 +161,7 @@ describe("Phase 2: Region v2", () => {
       "// @gen:end test.region",
     ].join("\n");
 
-    const diagnostics: any[] = [];
+    const diagnostics: Diagnostic[] = [];
     const cache: Record<string, { contentHash: string }> = {
       "test.region": { contentHash: "generated-hash" },
     };
@@ -196,7 +197,7 @@ describe("Phase 2: Region v2", () => {
       "// @gen:end test.region",
     ].join("\n");
 
-    const diagnostics: any[] = [];
+    const diagnostics: Diagnostic[] = [];
     const result = upgradeLegacyMarkers(
       fileText,
       [{ id: "test.region", stableHash: "abc123", owner: "gin" }],
@@ -278,7 +279,7 @@ describe("Phase 2: Atomic Write + Rollback", () => {
       },
     ];
 
-    const diagnostics: any[] = [];
+    const diagnostics: Diagnostic[] = [];
     const result = atomicWritePatches(patches, cwd, "disabled", diagnostics);
 
     expect(result.changedFiles).toEqual([]);
@@ -392,7 +393,7 @@ describe("Phase 2: Pre-write Validation", () => {
       },
     ];
 
-    const diagnostics: any[] = [];
+    const diagnostics: Diagnostic[] = [];
     const valid = validateBeforeWrite(patches, diagnostics);
 
     expect(valid).toBe(false);
@@ -410,7 +411,7 @@ describe("Phase 2: Pre-write Validation", () => {
       },
     ];
 
-    const diagnostics: any[] = [];
+    const diagnostics: Diagnostic[] = [];
     const valid = validateBeforeWrite(patches, diagnostics);
 
     expect(valid).toBe(false);

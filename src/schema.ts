@@ -174,38 +174,6 @@ export function responseType(route: RouteAst): string {
   return routeTypeName(route, "Response");
 }
 
-function schemaToStruct(
-  name: string,
-  schema: SchemaLike,
-  diagnostics: Diagnostic[],
-): GoStruct | undefined {
-  const unwrapped = unwrap(schema);
-  if (!isZodObject(unwrapped)) {
-    diagnostics.push({
-      level: "error",
-      code: "unsupported-schema",
-      message: `Schema for ${name} must be a Zod object.`,
-    });
-    return undefined;
-  }
-
-  const shape = unwrapped.shape;
-  const fields = Object.keys(shape)
-    .sort()
-    .map((fieldName) => {
-      const fieldSchema = shape[fieldName] as SchemaLike;
-      const optional = isZodOptional(fieldSchema);
-      return {
-        name: pascalCase(fieldName),
-        type: schemaToGoType(fieldSchema, diagnostics),
-        jsonName: fieldName,
-        optional,
-      };
-    });
-
-  return { name, fields };
-}
-
 function schemaToGoType(schema: SchemaLike, diagnostics: Diagnostic[]): string {
   const optional = isZodOptional(schema);
   const nullable = isZodNullable(schema);

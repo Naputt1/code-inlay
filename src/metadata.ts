@@ -1,12 +1,8 @@
-import type { AppAst, ArchitectureAst, Diagnostic, GeneratedFilePatch, RouteAst } from "./types.js";
+import type { AppAst, GeneratedFilePatch, RouteAst } from "./types.js";
 import { pascalCase } from "./naming.js";
 import { stableHash } from "./hash.js";
 
-export function generateMetadata(
-  ast: AppAst,
-  architecture: ArchitectureAst,
-  diagnostics: Diagnostic[],
-): GeneratedFilePatch[] {
+export function generateMetadata(ast: AppAst): GeneratedFilePatch[] {
   if (!ast.options.metadata?.enabled) return [];
 
   const patches: GeneratedFilePatch[] = [];

@@ -149,8 +149,6 @@ export async function compile(options: CompileOptions): Promise<CompileResult> {
     };
   }
 
-  const oldCache = readCache(cwd);
-
   const injected = atomicWritePatches(generation.files, cwd, app.options.fileCreation, diagnostics);
 
   const currentPatchFiles = new Set(generation.files.map((f) => f.path));
@@ -252,7 +250,6 @@ export async function compile(options: CompileOptions): Promise<CompileResult> {
 
 export async function compileIncremental(options: CompileOptions): Promise<CompileResult> {
   const cwd = options.cwd ?? process.cwd();
-  const diagnostics: Diagnostic[] = [];
 
   const cache = readCache(cwd);
 

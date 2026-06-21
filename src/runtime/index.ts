@@ -1,10 +1,4 @@
-import type {
-  AppAst,
-  RuntimeConfig,
-  Diagnostic,
-  GeneratedFilePatch,
-  GeneratedRegion,
-} from "../types.js";
+import type { AppAst, RuntimeConfig, GeneratedFilePatch, GeneratedRegion } from "../types.js";
 import { contentHash } from "../hash.js";
 
 export function generateRuntimeCode(
@@ -21,10 +15,10 @@ export function generateRuntimeCode(
   patches.push(generateRuntimeTypes());
 
   if (middlewareNames.length > 0) {
-    patches.push(generateMiddlewareChain(middlewareNames));
+    patches.push(generateMiddlewareChain());
   }
 
-  patches.push(generateMainWrapper(ast, middlewareNames));
+  patches.push(generateMainWrapper());
 
   return patches;
 }
@@ -85,7 +79,7 @@ function generateRuntimeTypes(): GeneratedFilePatch {
   };
 }
 
-function generateMiddlewareChain(middlewareNames: string[]): GeneratedFilePatch {
+function generateMiddlewareChain(): GeneratedFilePatch {
   const middlewareCode = [
     `package runtime`,
     ``,
@@ -118,7 +112,7 @@ function generateMiddlewareChain(middlewareNames: string[]): GeneratedFilePatch 
   };
 }
 
-function generateMainWrapper(ast: AppAst, middlewareNames: string[]): GeneratedFilePatch {
+function generateMainWrapper(): GeneratedFilePatch {
   const content: string[] = [
     `// Auto-generated runtime main wrapper`,
     `package main`,

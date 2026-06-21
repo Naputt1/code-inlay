@@ -15,9 +15,9 @@ export function renderGraph(
     case "json":
       return renderJsonGraph(graph);
     case "mermaid":
-      return renderMermaidGraph(ast, architecture, graph);
+      return renderMermaidGraph(ast, architecture);
     case "tree":
-      return renderTreeGraph(ast, architecture, graph);
+      return renderTreeGraph(ast, architecture);
   }
 }
 
@@ -25,11 +25,7 @@ function renderJsonGraph(graph: DependencyGraph): string {
   return JSON.stringify(graph, null, 2);
 }
 
-function renderMermaidGraph(
-  ast: AppAst,
-  architecture: ArchitectureAst,
-  graph: DependencyGraph,
-): string {
+function renderMermaidGraph(ast: AppAst, architecture: ArchitectureAst): string {
   const lines: string[] = [];
   lines.push("graph TD");
 
@@ -60,11 +56,7 @@ function renderMermaidGraph(
   return lines.join("\n");
 }
 
-function renderTreeGraph(
-  ast: AppAst,
-  architecture: ArchitectureAst,
-  graph: DependencyGraph,
-): string {
+function renderTreeGraph(ast: AppAst, architecture: ArchitectureAst): string {
   const lines: string[] = [];
   lines.push(`App: ${ast.id}`);
 

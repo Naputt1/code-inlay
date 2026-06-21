@@ -156,7 +156,7 @@ export function invalidateChanged(
     }
   }
 
-  for (const [nodeId, prevNode] of Object.entries(prev.dependencyGraph.nodes)) {
+  for (const [nodeId] of Object.entries(prev.dependencyGraph.nodes)) {
     if (!current.nodes[nodeId]) {
       invalid.add(nodeId);
     }

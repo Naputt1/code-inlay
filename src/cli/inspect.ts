@@ -164,7 +164,6 @@ async function inspectPlugins(configFile: string, cwd: string): Promise<void> {
   }
 
   const { createPluginRegistry } = await import("../plugins.js");
-  const { buildAst } = await import("../ast.js");
 
   const appDef = await loadAppConfig(configFile, cwd);
   if (!appDef) {
