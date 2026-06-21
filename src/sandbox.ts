@@ -1,9 +1,5 @@
 import vm from "node:vm";
-import type {
-  BackendCompilerPlugin,
-  PluginContext,
-  SandboxConfig,
-} from "./types.js";
+import type { BackendCompilerPlugin, PluginContext, SandboxConfig } from "./types.js";
 
 export type SandboxResult = {
   success: boolean;
@@ -26,12 +22,9 @@ export function runPluginInSandbox(
 
   try {
     const safeConsole = {
-      log: (...args: unknown[]) =>
-        console.log(`[plugin:${plugin.name}]`, ...args),
-      warn: (...args: unknown[]) =>
-        console.warn(`[plugin:${plugin.name}]`, ...args),
-      error: (...args: unknown[]) =>
-        console.error(`[plugin:${plugin.name}]`, ...args),
+      log: (...args: unknown[]) => console.log(`[plugin:${plugin.name}]`, ...args),
+      warn: (...args: unknown[]) => console.warn(`[plugin:${plugin.name}]`, ...args),
+      error: (...args: unknown[]) => console.error(`[plugin:${plugin.name}]`, ...args),
     };
 
     const sandbox = vm.createContext({
@@ -96,9 +89,7 @@ export function checkPluginDeterminism(
   return outputs.every((o) => o === outputs[0]);
 }
 
-export function getSandboxConfig(
-  config?: Partial<SandboxConfig>,
-): SandboxConfig {
+export function getSandboxConfig(config?: Partial<SandboxConfig>): SandboxConfig {
   return {
     enabled: config?.enabled ?? false,
     timeout: config?.timeout ?? 5000,

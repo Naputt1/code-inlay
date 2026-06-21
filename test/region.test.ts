@@ -39,7 +39,9 @@ describe("region injection", () => {
   it("reports missing and duplicate regions", () => {
     const diagnostics: Diagnostic[] = [];
     injectRegions(
-      ["// @gen:start a.b.c", "// @gen:end a.b.c", "// @gen:start a.b.c", "// @gen:end a.b.c"].join("\n"),
+      ["// @gen:start a.b.c", "// @gen:end a.b.c", "// @gen:start a.b.c", "// @gen:end a.b.c"].join(
+        "\n",
+      ),
       [{ id: "missing.region", content: "x" }],
       diagnostics,
     );

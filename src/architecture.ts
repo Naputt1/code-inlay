@@ -29,12 +29,14 @@ function buildArchitecture(name: string, layerKinds: readonly string[]): Archite
         routes: ast.modules.flatMap((module) =>
           module.routes.map((route) => ({
             route,
-            layers: layerKinds.map((layer): GeneratedLayer => ({
-              kind: layer,
-              symbolName: `${pascalCase(route.id)}${pascalCase(route.moduleName)}${pascalCase(layer)}`,
-              file: ctx.fileForLayer(route, layer),
-              regionId: ctx.regionId(route, layer),
-            })),
+            layers: layerKinds.map(
+              (layer): GeneratedLayer => ({
+                kind: layer,
+                symbolName: `${pascalCase(route.id)}${pascalCase(route.moduleName)}${pascalCase(layer)}`,
+                file: ctx.fileForLayer(route, layer),
+                regionId: ctx.regionId(route, layer),
+              }),
+            ),
           })),
         ),
       };
@@ -103,12 +105,20 @@ export function applyArchitecture(ast: AppAst, diagnostics: Diagnostic[]): Archi
       const routePlugins = resolveArchitecture(routeSelection, diagnostics);
       const effectivePlugins = routePlugins.length > 0 ? routePlugins : modulePlugins;
 
-      const usecaseOrg = resolveUsecaseOrg(route, module.usecaseOrganization, ast.options.usecaseOrganization);
+      const usecaseOrg = resolveUsecaseOrg(
+        route,
+        module.usecaseOrganization,
+        ast.options.usecaseOrganization,
+      );
       const usecaseGroupKey = resolveUsecaseGroupKey(route, usecaseOrg);
 
       const ctxUsecaseFileForLayer = (r: RouteAst, layer: string): string => {
         if (layer === "usecase") {
-          const org = resolveUsecaseOrg(r, module.usecaseOrganization, ast.options.usecaseOrganization);
+          const org = resolveUsecaseOrg(
+            r,
+            module.usecaseOrganization,
+            ast.options.usecaseOrganization,
+          );
           const gk = resolveUsecaseGroupKey(r, org);
           return fileForUsecaseGroup(r.moduleName, gk);
         }
@@ -117,7 +127,11 @@ export function applyArchitecture(ast: AppAst, diagnostics: Diagnostic[]): Archi
 
       const ctxUsecaseRegionId = (r: RouteAst, layer: string): string => {
         if (layer === "usecase") {
-          const org = resolveUsecaseOrg(r, module.usecaseOrganization, ast.options.usecaseOrganization);
+          const org = resolveUsecaseOrg(
+            r,
+            module.usecaseOrganization,
+            ast.options.usecaseOrganization,
+          );
           const gk = resolveUsecaseGroupKey(r, org);
           return regionIdForUsecase(r, gk);
         }
@@ -227,5 +241,3 @@ function checkDuplicateRegionIds(
     }
   }
 }
-
-

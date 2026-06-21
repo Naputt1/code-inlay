@@ -42,38 +42,31 @@ async function pluginAdd(args: string[], cwd: string): Promise<void> {
 
   try {
     execSync(`npm install ${packageName}`, { cwd, stdio: "pipe" });
-  } catch (error) {
+  } catch {
     try {
       execSync(`pnpm add ${packageName}`, { cwd, stdio: "pipe" });
     } catch {
       try {
         execSync(`yarn add ${packageName}`, { cwd, stdio: "pipe" });
       } catch {
-        console.error(
-          `Failed to install "${packageName}". Ensure npm/pnpm/yarn is available.`,
-        );
+        console.error(`Failed to install "${packageName}". Ensure npm/pnpm/yarn is available.`);
         process.exitCode = 1;
         return;
       }
     }
   }
 
-  const diagnostics: Array<{ level: string; code: string; message: string }> =
-    [];
+  const diagnostics: Array<{ level: string; code: string; message: string }> = [];
   const manifest = resolvePluginPackage(packageName, cwd, diagnostics as never);
 
   if (!manifest) {
-    console.error(
-      `Plugin "${packageName}" has no valid plugin.json or code-inlay metadata.`,
-    );
+    console.error(`Plugin "${packageName}" has no valid plugin.json or code-inlay metadata.`);
     process.exitCode = 1;
     return;
   }
 
   if (!checkPluginCompatibility(manifest, diagnostics as never)) {
-    console.error(
-      `Plugin "${packageName}" is incompatible with current compiler version.`,
-    );
+    console.error(`Plugin "${packageName}" is incompatible with current compiler version.`);
     for (const d of diagnostics) {
       console.error(`  - ${d.message}`);
     }
@@ -91,14 +84,10 @@ async function pluginAdd(args: string[], cwd: string): Promise<void> {
 
   savePluginLock([manifest], cwd);
 
-  console.log(
-    `Plugin "${packageName}@${manifest.version}" installed successfully.`,
-  );
+  console.log(`Plugin "${packageName}@${manifest.version}" installed successfully.`);
   console.log(`Type: ${manifest.type}`);
   console.log(`Add to backend.config.ts:`);
-  console.log(
-    `  import ${manifest.name.replace(/[^a-zA-Z0-9_$]/g, "_")} from "${packageName}";`,
-  );
+  console.log(`  import ${manifest.name.replace(/[^a-zA-Z0-9_$]/g, "_")} from "${packageName}";`);
   console.log(`  plugins: [${manifest.name.replace(/[^a-zA-Z0-9_$]/g, "_")}]`);
 }
 
@@ -150,9 +139,7 @@ async function pluginList(cwd: string): Promise<void> {
   console.log("Installed plugins:");
   for (const plugin of plugins) {
     const compat = plugin.manifestHash ? "[verified]" : "[unverified]";
-    console.log(
-      `  ${plugin.name}@${plugin.version} (${plugin.type}) ${compat}`,
-    );
+    console.log(`  ${plugin.name}@${plugin.version} (${plugin.type}) ${compat}`);
   }
 }
 
@@ -178,13 +165,8 @@ async function pluginUpdate(cwd: string): Promise<void> {
       // ignore
     }
 
-    const diagnostics: Array<{ level: string; code: string; message: string }> =
-      [];
-    const manifest = resolvePluginPackage(
-      plugin.name,
-      cwd,
-      diagnostics as never,
-    );
+    const diagnostics: Array<{ level: string; code: string; message: string }> = [];
+    const manifest = resolvePluginPackage(plugin.name, cwd, diagnostics as never);
     if (manifest) {
       updatedPlugins.push({
         name: manifest.name,

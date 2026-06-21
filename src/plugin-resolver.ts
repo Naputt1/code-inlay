@@ -1,10 +1,6 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { resolve, dirname } from "node:path";
-import type {
-  PluginPackage,
-  PluginCompatibility,
-  Diagnostic,
-} from "./types.js";
+import { resolve } from "node:path";
+import type { PluginPackage, PluginCompatibility, Diagnostic } from "./types.js";
 import { AST_VERSION, COMPILER_VERSION } from "./types.js";
 import { stableHash } from "./hash.js";
 
@@ -25,18 +21,8 @@ export function resolvePluginPackage(
   cwd: string,
   diagnostics: Diagnostic[],
 ): PluginPackage | undefined {
-  const pluginJsonPath = resolve(
-    cwd,
-    "node_modules",
-    packageName,
-    "plugin.json",
-  );
-  const packageJsonPath = resolve(
-    cwd,
-    "node_modules",
-    packageName,
-    "package.json",
-  );
+  const pluginJsonPath = resolve(cwd, "node_modules", packageName, "plugin.json");
+  const packageJsonPath = resolve(cwd, "node_modules", packageName, "package.json");
 
   if (!existsSync(pluginJsonPath) && !existsSync(packageJsonPath)) {
     diagnostics.push({
@@ -57,9 +43,7 @@ export function resolvePluginPackage(
 
     const packageRaw = readFileSync(packageJsonPath, "utf8");
     const packageJson = JSON.parse(packageRaw);
-    const pluginMeta = packageJson["code-inlay"] as
-      | Record<string, unknown>
-      | undefined;
+    const pluginMeta = packageJson["code-inlay"] as Record<string, unknown> | undefined;
 
     if (!pluginMeta) {
       diagnostics.push({
@@ -140,17 +124,12 @@ export function savePluginLock(plugins: PluginPackage[], cwd: string): void {
     })),
   };
 
-  writeFileSync(
-    resolve(dir, "plugins.lock.json"),
-    JSON.stringify(lock, null, 2),
-  );
+  writeFileSync(resolve(dir, "plugins.lock.json"), JSON.stringify(lock, null, 2));
 }
 
 export function readPluginLock(
   cwd: string,
-):
-  | Array<{ name: string; version: string; type: string; manifestHash: string }>
-  | undefined {
+): Array<{ name: string; version: string; type: string; manifestHash: string }> | undefined {
   const lockPath = resolve(cwd, ".backend-gen", "plugins.lock.json");
   if (!existsSync(lockPath)) return undefined;
   try {

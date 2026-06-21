@@ -33,12 +33,8 @@ function generateMarkdownDocs(ast: AppAst): string {
     lines.push(`|--------|------|---------|-------|----------|`);
 
     for (const route of module.routes) {
-      const inputType = route.input
-        ? `\`${routeTypeName(route, "Request")}\``
-        : "-";
-      const responseType = route.response
-        ? `\`${routeTypeName(route, "Response")}\``
-        : "-";
+      const inputType = route.input ? `\`${routeTypeName(route, "Request")}\`` : "-";
+      const responseType = route.response ? `\`${routeTypeName(route, "Response")}\`` : "-";
       lines.push(
         `| ${route.method} | \`${route.fullPath}\` | \`${route.handlerName}\` | ${inputType} | ${responseType} |`,
       );
@@ -71,9 +67,7 @@ function generateMarkdownDocs(ast: AppAst): string {
         lines.push(`#### Response Body`);
         lines.push(``);
         lines.push("```json");
-        lines.push(
-          JSON.stringify(zodToJsonSchemaSample(route.response), null, 2),
-        );
+        lines.push(JSON.stringify(zodToJsonSchemaSample(route.response), null, 2));
         lines.push("```");
       }
 
@@ -86,10 +80,7 @@ function generateMarkdownDocs(ast: AppAst): string {
   return lines.join("\n");
 }
 
-function generateMermaidDoc(
-  ast: AppAst,
-  architecture: ArchitectureAst,
-): string {
+function generateMermaidDoc(ast: AppAst, architecture: ArchitectureAst): string {
   const lines: string[] = [];
 
   lines.push("```mermaid");
@@ -132,9 +123,7 @@ function routeTypeName(route: RouteAst, suffix: string): string {
 
 function zodToJsonSchemaSample(schema: unknown): unknown {
   if (!schema || typeof schema !== "object") return null;
-  const def = (schema as Record<string, unknown>)._def as
-    | Record<string, unknown>
-    | undefined;
+  const def = (schema as Record<string, unknown>)._def as Record<string, unknown> | undefined;
   if (!def) return null;
   const typeName = def.typeName as string | undefined;
 

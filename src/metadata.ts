@@ -1,11 +1,4 @@
-import type {
-  AppAst,
-  ArchitectureAst,
-  Diagnostic,
-  GeneratedFilePatch,
-  GeneratedRegion,
-  RouteAst,
-} from "./types.js";
+import type { AppAst, ArchitectureAst, Diagnostic, GeneratedFilePatch, RouteAst } from "./types.js";
 import { pascalCase } from "./naming.js";
 import { stableHash } from "./hash.js";
 
@@ -75,10 +68,7 @@ function generateRouteInfo(route: RouteAst): string {
   return `{ID: "${route.id}", Method: "${route.method}", Path: "${route.fullPath}", Handler: "${route.handlerName}", Module: "${route.moduleName}"${route.input ? `, Input: "${pascalCase(route.id)}${pascalCase(route.moduleName)}Request"` : ""}${route.response ? `, Response: "${pascalCase(route.id)}${pascalCase(route.moduleName)}Response"` : ""}}`;
 }
 
-function generateRegistryGo(
-  ast: AppAst,
-  moduleInfos: Map<string, string[]>,
-): string {
+function generateRegistryGo(ast: AppAst, moduleInfos: Map<string, string[]>): string {
   const lines: string[] = [];
 
   lines.push(`package metadata`);
@@ -146,9 +136,7 @@ function generateSchemaReflection(route: RouteAst): string {
 function generateSchemaMap(schema: unknown): string {
   if (!schema || typeof schema !== "object") return "map[string]any{}";
 
-  const def = (schema as Record<string, unknown>)._def as
-    | Record<string, unknown>
-    | undefined;
+  const def = (schema as Record<string, unknown>)._def as Record<string, unknown> | undefined;
   if (!def) return "map[string]any{}";
 
   const typeName = def.typeName as string | undefined;
@@ -170,8 +158,7 @@ function generateSchemaMap(schema: unknown): string {
       return `map[string]any{"type": "object", "properties": map[string]any{${props.join(", ")}}}`;
     }
     case "ZodArray": {
-      const element =
-        ((def as Record<string, unknown>).type as unknown) ?? undefined;
+      const element = ((def as Record<string, unknown>).type as unknown) ?? undefined;
       return `map[string]any{"type": "array", "items": ${generateSchemaMap(element)}}`;
     }
     default:

@@ -25,7 +25,9 @@ function isZodNullable(schema: SchemaLike): schema is SchemaLike & { unwrap(): S
   return typeName(schema) === "ZodNullable";
 }
 
-function isZodObject(schema: SchemaLike): schema is SchemaLike & { shape: Record<string, SchemaLike> } {
+function isZodObject(
+  schema: SchemaLike,
+): schema is SchemaLike & { shape: Record<string, SchemaLike> } {
   return typeName(schema) === "ZodObject";
 }
 
@@ -213,7 +215,9 @@ function schemaToGoType(schema: SchemaLike, diagnostics: Diagnostic[]): string {
   if (isZodString(unwrapped) || isZodEnum(unwrapped)) {
     type = "string";
   } else if (isZodNumber(unwrapped)) {
-    const checks = ((unwrapped as unknown as Record<string, unknown>)._def as Record<string, unknown>)?.checks as Array<{ kind: string }> | undefined;
+    const checks = (
+      (unwrapped as unknown as Record<string, unknown>)._def as Record<string, unknown>
+    )?.checks as Array<{ kind: string }> | undefined;
     const isInt = checks?.some((c: { kind: string }) => c.kind === "int");
     type = isInt ? "int64" : "float64";
   } else if (isZodBoolean(unwrapped)) {

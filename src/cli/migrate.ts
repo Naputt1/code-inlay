@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { compile } from "../compiler.js";
 import { readCache } from "../cache.js";
@@ -22,16 +22,13 @@ export async function migrateCommand(parsed: ParsedArgs): Promise<void> {
     dryRun: true,
   });
 
-  const changed = result.changedFiles;
-  const diffs = result.diffs;
-
   if (!cache) {
     console.log("No previous cache found. Run `backend-gen generate` first.");
     return;
   }
 
   const oldUsecaseFiles = new Map<string, string[]>();
-  for (const [stableHash, region] of Object.entries(cache.regions)) {
+  for (const [, region] of Object.entries(cache.regions)) {
     if (region.groupKey) {
       const list = oldUsecaseFiles.get(region.file) ?? [];
       list.push(`${region.id} (group: ${region.groupKey})`);
@@ -56,14 +53,14 @@ export async function migrateCommand(parsed: ParsedArgs): Promise<void> {
   const removedFiles: string[] = [];
   const movedRegions: Array<{ regionId: string; from: string; to: string }> = [];
 
-  for (const [file, regions] of newUsecaseFiles) {
+  for (const [file] of newUsecaseFiles) {
     if (!oldUsecaseFiles.has(file)) {
       addedFiles.push(file);
       migrationNeeded = true;
     }
   }
 
-  for (const [file, regions] of oldUsecaseFiles) {
+  for (const [file] of oldUsecaseFiles) {
     if (!newUsecaseFiles.has(file)) {
       removedFiles.push(file);
       migrationNeeded = true;

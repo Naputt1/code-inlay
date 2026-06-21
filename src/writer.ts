@@ -23,7 +23,11 @@ export function snapshotFiles(patches: GeneratedFilePatch[], cwd: string): FileS
     });
 }
 
-export function restoreFromSnapshot(snapshots: FileSnapshot[], cwd: string, excludePaths: Set<string>): void {
+export function restoreFromSnapshot(
+  snapshots: FileSnapshot[],
+  cwd: string,
+  excludePaths: Set<string>,
+): void {
   for (const snapshot of snapshots) {
     if (excludePaths.has(snapshot.path)) continue;
     const absolutePath = resolve(cwd, snapshot.path);
@@ -87,7 +91,8 @@ export function validateBeforeWrite(
   return valid;
 }
 
-const orphanPattern = /^([ \t]*)\/\/ @gen:start ([a-zA-Z0-9._-]+)(?: hash:(\S+))?(?: owner:(\S+))?[ \t]*$/gm;
+const orphanPattern =
+  /^([ \t]*)\/\/ @gen:start ([a-zA-Z0-9._-]+)(?: hash:(\S+))?(?: owner:(\S+))?[ \t]*$/gm;
 
 export function removeOrphanedRegions(
   fileText: string,
@@ -117,7 +122,9 @@ export function removeOrphanedRegions(
   }
 
   for (const start of starts) {
-    const end = ends.find((candidate) => candidate.id === start.id && candidate.index > start.index);
+    const end = ends.find(
+      (candidate) => candidate.id === start.id && candidate.index > start.index,
+    );
     if (!end) continue;
     orphans.push({ id: start.id, start: start.index, end: end.lineEnd });
     diagnostics.push({
@@ -245,6 +252,7 @@ function writeAtomic(absolutePath: string, content: string, diagnostics: Diagnos
     try {
       if (existsSync(tmpPath)) renameSync(tmpPath, absolutePath + ".gen.failed");
     } catch {
+      // ignore
     }
   }
 }
@@ -275,7 +283,8 @@ function derivePackage(filePath: string): string {
   return dir.split(/[\\/]/).pop() ?? "main";
 }
 
-const startPattern = /^([ \t]*)\/\/ @gen:start ([a-zA-Z0-9._-]+)(?: hash:(\S+))?(?: owner:(\S+))?[ \t]*$/gm;
+const startPattern =
+  /^([ \t]*)\/\/ @gen:start ([a-zA-Z0-9._-]+)(?: hash:(\S+))?(?: owner:(\S+))?[ \t]*$/gm;
 const endPattern = /^([ \t]*)\/\/ @gen:end ([a-zA-Z0-9._-]+)(?: hash:(\S+))?[ \t]*$/gm;
 
 type RegionMatch = {
@@ -382,7 +391,9 @@ function parseRegionMarkers(
   const seen = new Set<string>();
 
   for (const start of starts) {
-    const end = ends.find((candidate) => candidate.id === start.id && candidate.index > start.index);
+    const end = ends.find(
+      (candidate) => candidate.id === start.id && candidate.index > start.index,
+    );
     if (!end) {
       diagnostics.push({
         level: "error",
@@ -498,7 +509,8 @@ function extractRegionContent(fileText: string, regionId: string): string {
 
   const startMatch = fileText.match(startPat);
   const endMatch = fileText.match(endPat);
-    if (!startMatch || !endMatch || startMatch.index === undefined || endMatch.index === undefined) return "";
+  if (!startMatch || !endMatch || startMatch.index === undefined || endMatch.index === undefined)
+    return "";
 
   const startLineEnd = lineEndIndex(fileText, startMatch.index);
   return fileText.slice(startLineEnd, endMatch.index);

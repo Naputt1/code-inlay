@@ -1,9 +1,4 @@
-import type {
-  AppAst,
-  ArchitectureAst,
-  DependencyGraph,
-  GeneratedFilePatch,
-} from "./types.js";
+import type { AppAst, ArchitectureAst, DependencyGraph, GeneratedFilePatch } from "./types.js";
 import { buildDependencyGraph } from "./cache.js";
 
 export type GraphFormat = "tree" | "mermaid" | "json";

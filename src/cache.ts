@@ -7,7 +7,6 @@ import type {
   DependencyGraph,
   DependencyNode,
   GenerationAst,
-  RouteAst,
 } from "./types.js";
 import { stableHash } from "./hash.js";
 

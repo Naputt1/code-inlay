@@ -1,9 +1,6 @@
 import type {
   AdapterPlugin,
   AdapterTarget,
-  AppAst,
-  ArchitectureAst,
-  BuiltInAdapterName,
   Diagnostic,
   GeneratedRegion,
   RouteAst,

@@ -103,13 +103,9 @@ export function generateCode(
             stableHash: `${handlerFile}:imports`,
             owner: "code-inlay",
             language: "go",
-            content: [
-              `import (`,
-              `\t"net/http"`,
-              ``,
-              `\t"github.com/gin-gonic/gin"`,
-              `)`,
-            ].join("\n"),
+            content: [`import (`, `\t"net/http"`, ``, `\t"github.com/gin-gonic/gin"`, `)`].join(
+              "\n",
+            ),
           });
         }
         add(handlerFile, {
@@ -183,9 +179,11 @@ export function generateCode(
       const modPkg = module.name;
       const handlerType = `${pascalCase(modPkg)}Handler`;
       const handlerVar = `${lowerIdent(modPkg)}Handler`;
-      const layerKinds = new Set(architecture.routes
-        .filter((r) => r.route.moduleName === modPkg)
-        .flatMap((r) => r.layers.map((l) => l.kind)));
+      const layerKinds = new Set(
+        architecture.routes
+          .filter((r) => r.route.moduleName === modPkg)
+          .flatMap((r) => r.layers.map((l) => l.kind)),
+      );
 
       if (layerKinds.has("handler") || layerKinds.has("usecase")) {
         if (moduleInfo) {
@@ -204,7 +202,10 @@ export function generateCode(
       }
     }
 
-    const mwParams = [...mwNames].sort().map((n) => `${mwToParamName(n)} gin.HandlerFunc`).join(", ");
+    const mwParams = [...mwNames]
+      .sort()
+      .map((n) => `${mwToParamName(n)} gin.HandlerFunc`)
+      .join(", ");
     const params = mwParams ? `api *gin.RouterGroup, ${mwParams}` : `api *gin.RouterGroup`;
 
     const body: string[] = [];
@@ -252,10 +253,10 @@ export function generateCode(
     for (const [prefix, lines] of groups) {
       const gv = groupVar(prefix);
       const gMw = groupMwByPrefix.get(prefix);
-      const gMwArgs = gMw && gMw.size > 0
-        ? [...gMw].sort().map(mwToParamName).join(", ")
-        : "";
-      const groupDecl = gMwArgs ? `${gv} := api.Group("${prefix}", ${gMwArgs})` : `${gv} := api.Group("${prefix}")`;
+      const gMwArgs = gMw && gMw.size > 0 ? [...gMw].sort().map(mwToParamName).join(", ") : "";
+      const groupDecl = gMwArgs
+        ? `${gv} := api.Group("${prefix}", ${gMwArgs})`
+        : `${gv} := api.Group("${prefix}")`;
       body.push(`\t${groupDecl}`);
       body.push(`\t{`);
       for (const rl of lines) {
@@ -290,10 +291,13 @@ export function generateCode(
   }
 
   if (moduleInfo) {
-    const adapters = resolveAdapters(ast.adapters.refs.map((ref) => {
-      if (typeof ref === "string") return { name: ref, transport: ref === "gin" ? "http" : ref };
-      return { name: ref.name, transport: ref.transport ?? "http" };
-    }), diagnostics);
+    const adapters = resolveAdapters(
+      ast.adapters.refs.map((ref) => {
+        if (typeof ref === "string") return { name: ref, transport: ref === "gin" ? "http" : ref };
+        return { name: ref.name, transport: ref.transport ?? "http" };
+      }),
+      diagnostics,
+    );
 
     for (const adapter of adapters) {
       const serverPatch = generateServer(ast, architecture, moduleInfo, adapter);
@@ -310,10 +314,12 @@ export function generateCode(
   return {
     files: [...files.entries()]
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([path, regions]): GeneratedFilePatch => ({
-        path,
-        regions: regions.sort((a, b) => a.id.localeCompare(b.id)),
-      })),
+      .map(
+        ([path, regions]): GeneratedFilePatch => ({
+          path,
+          regions: regions.sort((a, b) => a.id.localeCompare(b.id)),
+        }),
+      ),
   };
 }
 

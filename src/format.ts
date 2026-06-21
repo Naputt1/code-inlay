@@ -27,7 +27,11 @@ export function formatFile(absolutePath: string, diagnostics: Diagnostic[]): voi
   }
 }
 
-export function formatGoSnippet(content: string, diagnostics: Diagnostic[], regionId: string): string {
+export function formatGoSnippet(
+  content: string,
+  diagnostics: Diagnostic[],
+  regionId: string,
+): string {
   const trimmed = content.trimEnd();
   if (!trimmed) return "";
 
@@ -76,9 +80,7 @@ function unwrapSnippet(source: string, mode: SnippetMode): string {
     return withoutPackage;
   }
 
-  const body = withoutPackage
-    .replace(/^func generated\(\) \{\n/, "")
-    .replace(/\n\}\s*$/, "");
+  const body = withoutPackage.replace(/^func generated\(\) \{\n/, "").replace(/\n\}\s*$/, "");
   return body
     .split("\n")
     .map((line) => line.replace(/^\t/, ""))

@@ -117,8 +117,7 @@ export function createPluginRegistry(
           architectures: plugin.architectures?.map((item) => item.name).sort(),
           adapters: plugin.adapters?.map((item) => item.name).sort(),
         })),
-        ...(app.targets?.map((t) => ({ name: t.name, version: t.version })) ??
-          []),
+        ...(app.targets?.map((t) => ({ name: t.name, version: t.version })) ?? []),
       ],
       16,
     ),
@@ -142,9 +141,7 @@ export async function runTransformerStage(
     .filter((entry) => entry.hook.stage === stage)
     .sort((a, b) => {
       const order = (a.hook.order ?? 0) - (b.hook.order ?? 0);
-      return order !== 0
-        ? order
-        : a.transformer.name.localeCompare(b.transformer.name);
+      return order !== 0 ? order : a.transformer.name.localeCompare(b.transformer.name);
     });
 
   for (const { transformer, hook } of hooks) {
@@ -169,9 +166,7 @@ export async function runValidators(
   registry: PluginRegistry,
   diagnostics: Diagnostic[],
 ): Promise<void> {
-  for (const validator of registry.validators.sort((a, b) =>
-    a.name.localeCompare(b.name),
-  )) {
+  for (const validator of registry.validators.sort((a, b) => a.name.localeCompare(b.name))) {
     const plugin: BackendCompilerPlugin = {
       name: validator.name,
       version: validator.version,
@@ -189,9 +184,7 @@ export async function runTargets(
   cwd: string,
   options: CompileSettings,
 ): Promise<GeneratedFilePatch[]> {
-  const enabledTargets = (options.targets ?? []).filter(
-    (t) => t !== "go-server",
-  );
+  const enabledTargets = (options.targets ?? []).filter((t) => t !== "go-server");
   const patches: GeneratedFilePatch[] = [];
   const seenPaths = new Map<string, GeneratedFilePatch>();
 
@@ -241,11 +234,7 @@ export async function runTargets(
   return patches.sort((a, b) => a.path.localeCompare(b.path));
 }
 
-function applyAstPatches(
-  ast: AppAst,
-  patches: AstPatch[],
-  diagnostics: Diagnostic[],
-): AppAst {
+function applyAstPatches(ast: AppAst, patches: AstPatch[], diagnostics: Diagnostic[]): AppAst {
   let next = ast;
   for (const patch of patches) {
     if (patch.op === "replaceAst") {

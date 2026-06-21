@@ -1,15 +1,12 @@
-import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, dirname } from "node:path";
-import { z } from "zod";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   compile,
   defineApp,
   defineModule,
   defineRoute,
-  defineRouter,
-  applyArchitecture,
   buildDependencyGraph,
   readCache,
   writeCache,
@@ -19,8 +16,6 @@ import {
   upgradeLegacyMarkers,
   atomicWritePatches,
   validateBeforeWrite,
-  snapshotFiles,
-  restoreFromSnapshot,
 } from "../src/index.js";
 import type { CompilerCache, GeneratedFilePatch } from "../src/index.js";
 
@@ -115,15 +110,19 @@ describe("Phase 2: Region v2", () => {
       "",
     ].join("\n");
 
-    const result = injectContent(fileText, [
-      {
-        id: "test.region",
-        content: "type Foo struct{}",
-        stableHash: "abc123",
-        owner: "gin",
-        language: "go",
-      },
-    ], []);
+    const result = injectContent(
+      fileText,
+      [
+        {
+          id: "test.region",
+          content: "type Foo struct{}",
+          stableHash: "abc123",
+          owner: "gin",
+          language: "go",
+        },
+      ],
+      [],
+    );
 
     expect(result).toContain("// @gen:start test.region hash:abc123 owner:gin");
     expect(result).toContain("// @gen:end test.region hash:abc123");
@@ -180,15 +179,11 @@ describe("Phase 2: Region v2", () => {
   });
 
   it("upgrades legacy v1 markers when region is empty", () => {
-    const fileText = [
-      "// @gen:start test.region",
-      "// @gen:end test.region",
-    ].join("\n");
+    const fileText = ["// @gen:start test.region", "// @gen:end test.region"].join("\n");
 
-    const result = upgradeLegacyMarkers(
-      fileText,
-      [{ id: "test.region", stableHash: "abc123", owner: "gin" }],
-    );
+    const result = upgradeLegacyMarkers(fileText, [
+      { id: "test.region", stableHash: "abc123", owner: "gin" },
+    ]);
 
     expect(result).toContain("hash:abc123");
     expect(result).toContain("owner:gin");
@@ -220,22 +215,21 @@ describe("Phase 2: Atomic Write + Rollback", () => {
     mkdirSync(join(cwd, "internal/user"), { recursive: true });
     writeFileSync(
       join(cwd, "internal/user/types.go"),
-      [
-        "package user",
-        "",
-        "// @gen:start test.region",
-        "// @gen:end test.region",
-      ].join("\n"),
+      ["package user", "", "// @gen:start test.region", "// @gen:end test.region"].join("\n"),
     );
 
-    const patches: GeneratedFilePatch[] = [{
-      path: "internal/user/types.go",
-      regions: [{
-        id: "test.region",
-        content: "type Foo struct{}",
-        language: "go",
-      }],
-    }];
+    const patches: GeneratedFilePatch[] = [
+      {
+        path: "internal/user/types.go",
+        regions: [
+          {
+            id: "test.region",
+            content: "type Foo struct{}",
+            language: "go",
+          },
+        ],
+      },
+    ];
 
     const result = atomicWritePatches(patches, cwd, "skeleton", []);
 
@@ -247,14 +241,18 @@ describe("Phase 2: Atomic Write + Rollback", () => {
   it("creates skeleton files with markers-only option", () => {
     const cwd = join(tmpdir(), `backend-gen-phase2-mk-${Date.now()}`);
 
-    const patches: GeneratedFilePatch[] = [{
-      path: "internal/user/types.go",
-      regions: [{
-        id: "test.region",
-        content: "type Foo struct{}",
-        language: "go",
-      }],
-    }];
+    const patches: GeneratedFilePatch[] = [
+      {
+        path: "internal/user/types.go",
+        regions: [
+          {
+            id: "test.region",
+            content: "type Foo struct{}",
+            language: "go",
+          },
+        ],
+      },
+    ];
 
     const result = atomicWritePatches(patches, cwd, "markers-only", []);
 
@@ -267,14 +265,18 @@ describe("Phase 2: Atomic Write + Rollback", () => {
   it("skips missing files when fileCreation is disabled", () => {
     const cwd = join(tmpdir(), `backend-gen-phase2-sk-${Date.now()}`);
 
-    const patches: GeneratedFilePatch[] = [{
-      path: "internal/user/types.go",
-      regions: [{
-        id: "test.region",
-        content: "type Foo struct{}",
-        language: "go",
-      }],
-    }];
+    const patches: GeneratedFilePatch[] = [
+      {
+        path: "internal/user/types.go",
+        regions: [
+          {
+            id: "test.region",
+            content: "type Foo struct{}",
+            language: "go",
+          },
+        ],
+      },
+    ];
 
     const diagnostics: any[] = [];
     const result = atomicWritePatches(patches, cwd, "disabled", diagnostics);
@@ -286,17 +288,28 @@ describe("Phase 2: Atomic Write + Rollback", () => {
   it("restores files from snapshot on failure", () => {
     const cwd = join(tmpdir(), `backend-gen-phase2-rollback-${Date.now()}`);
     mkdirSync(join(cwd, "internal/user"), { recursive: true });
-    const originalContent = ["package user", "", "// @gen:start r1", "original", "// @gen:end r1", ""].join("\n");
+    const originalContent = [
+      "package user",
+      "",
+      "// @gen:start r1",
+      "original",
+      "// @gen:end r1",
+      "",
+    ].join("\n");
     writeFileSync(join(cwd, "internal/user/types.go"), originalContent);
 
-    const patches: GeneratedFilePatch[] = [{
-      path: "internal/user/types.go",
-      regions: [{
-        id: "r1",
-        content: "type Foo struct{}",
-        language: "go",
-      }],
-    }];
+    const patches: GeneratedFilePatch[] = [
+      {
+        path: "internal/user/types.go",
+        regions: [
+          {
+            id: "r1",
+            content: "type Foo struct{}",
+            language: "go",
+          },
+        ],
+      },
+    ];
 
     const result = atomicWritePatches(patches, cwd, "skeleton", []);
 
@@ -322,11 +335,9 @@ describe("Phase 2: Cache + Dependency Graph", () => {
     });
 
     const result = await compile({ app, dryRun: true });
-    const graph = result.dependencyGraph ?? buildDependencyGraph(
-      result.ast!,
-      result.architecture!,
-      result.generation,
-    );
+    const graph =
+      result.dependencyGraph ??
+      buildDependencyGraph(result.ast!, result.architecture!, result.generation);
 
     const kinds = new Set(Object.values(graph.nodes).map((n) => n.kind));
     expect(kinds.has("app")).toBe(true);
@@ -371,13 +382,15 @@ describe("Phase 2: Cache + Dependency Graph", () => {
 
 describe("Phase 2: Pre-write Validation", () => {
   it("rejects duplicate region IDs in one file", () => {
-    const patches: GeneratedFilePatch[] = [{
-      path: "test.go",
-      regions: [
-        { id: "dup", content: "a", language: "go" },
-        { id: "dup", content: "b", language: "go" },
-      ],
-    }];
+    const patches: GeneratedFilePatch[] = [
+      {
+        path: "test.go",
+        regions: [
+          { id: "dup", content: "a", language: "go" },
+          { id: "dup", content: "b", language: "go" },
+        ],
+      },
+    ];
 
     const diagnostics: any[] = [];
     const valid = validateBeforeWrite(patches, diagnostics);
@@ -387,13 +400,15 @@ describe("Phase 2: Pre-write Validation", () => {
   });
 
   it("rejects duplicate stable hashes", () => {
-    const patches: GeneratedFilePatch[] = [{
-      path: "test.go",
-      regions: [
-        { id: "a", content: "x", stableHash: "same", language: "go" },
-        { id: "b", content: "y", stableHash: "same", language: "go" },
-      ],
-    }];
+    const patches: GeneratedFilePatch[] = [
+      {
+        path: "test.go",
+        regions: [
+          { id: "a", content: "x", stableHash: "same", language: "go" },
+          { id: "b", content: "y", stableHash: "same", language: "go" },
+        ],
+      },
+    ];
 
     const diagnostics: any[] = [];
     const valid = validateBeforeWrite(patches, diagnostics);

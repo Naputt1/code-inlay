@@ -34,10 +34,7 @@ export function applyPatches(input: {
       const skeleton = [
         `package ${pkg}`,
         "",
-        ...patch.regions.flatMap((r) => [
-          `// @gen:start ${r.id}`,
-          `// @gen:end ${r.id}`,
-        ]),
+        ...patch.regions.flatMap((r) => [`// @gen:start ${r.id}`, `// @gen:end ${r.id}`]),
         "",
       ].join("\n");
       mkdirSync(dirname(absolutePath), { recursive: true });
@@ -138,7 +135,9 @@ export function parseRegions(fileText: string, diagnostics: Diagnostic[], file?:
   const seen = new Set<string>();
 
   for (const start of starts) {
-    const end = ends.find((candidate) => candidate.id === start.id && candidate.index > start.index);
+    const end = ends.find(
+      (candidate) => candidate.id === start.id && candidate.index > start.index,
+    );
     if (!end) {
       diagnostics.push({
         level: "error",
@@ -232,7 +231,8 @@ function extractRegionContent(fileText: string, regionId: string): string {
 
   const startMatch = fileText.match(startPat);
   const endMatch = fileText.match(endPat);
-  if (!startMatch || !endMatch || startMatch.index === undefined || endMatch.index === undefined) return "";
+  if (!startMatch || !endMatch || startMatch.index === undefined || endMatch.index === undefined)
+    return "";
 
   const startLineEnd = lineEndIndex(fileText, startMatch.index);
   return fileText.slice(startLineEnd, endMatch.index);
@@ -242,7 +242,7 @@ function simpleHash(content: string): string {
   let hash = 0;
   for (let i = 0; i < content.length; i++) {
     const char = content.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
+    hash = (hash << 5) - hash + char;
     hash |= 0;
   }
   return hash.toString(36);

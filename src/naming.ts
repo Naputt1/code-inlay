@@ -68,10 +68,7 @@ export function resolveUsecaseOrg(
   return { strategy: "merged" };
 }
 
-export function resolveUsecaseGroupKey(
-  route: RouteAst,
-  org: UsecaseOrganization,
-): string {
+export function resolveUsecaseGroupKey(route: RouteAst, org: UsecaseOrganization): string {
   if (route.usecaseGroup) return route.usecaseGroup;
 
   if (org.strategy === "merged") return "default";
@@ -123,10 +120,7 @@ function resolveHandlerGroup(route: RouteAst): string {
   return parts[0].toLowerCase();
 }
 
-export function fileForUsecaseGroup(
-  moduleName: string,
-  groupKey: string,
-): string {
+export function fileForUsecaseGroup(moduleName: string, groupKey: string): string {
   if (groupKey === "default" || groupKey === moduleName) {
     return `internal/${moduleName}/usecase.go`;
   }
@@ -134,20 +128,14 @@ export function fileForUsecaseGroup(
   return `internal/${moduleName}/${safeKey}_usecase.go`;
 }
 
-export function regionIdForUsecase(
-  route: RouteAst,
-  groupKey: string,
-): string {
+export function regionIdForUsecase(route: RouteAst, groupKey: string): string {
   if (groupKey === "default") {
     return defaultRegionId(route, "usecase");
   }
   return `${route.moduleName}.${groupKey}.${route.id}.usecase`;
 }
 
-export function regionIdForUsecaseImports(
-  moduleName: string,
-  groupKey: string,
-): string {
+export function regionIdForUsecaseImports(moduleName: string, groupKey: string): string {
   if (groupKey === "default") {
     return `${moduleName}.0usecase.imports`;
   }

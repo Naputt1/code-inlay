@@ -15,6 +15,9 @@
   },
   "scripts": {
     "build": "tsup src/index.ts src/cli.ts --format esm --dts --clean --splitting false",
+    "lint": "eslint .",
+    "format": "prettier --check .",
+    "format:fix": "prettier --write .",
     "test": "vitest run",
     "generate": "node dist/cli.js generate --config backend.config.ts --cwd test-project",
     "typecheck": "tsc --noEmit"
@@ -24,9 +27,14 @@
     "zod": "^3.25.67"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/node": "^24.0.3",
+    "eslint": "^10.5.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.8.4",
     "tsup": "^8.5.0",
     "typescript": "^5.8.3",
+    "typescript-eslint": "^8.61.1",
     "vitest": "^3.2.4"
   }
 }

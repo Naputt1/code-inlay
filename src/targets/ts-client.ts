@@ -17,8 +17,7 @@ export const tsClientTarget: CodeTarget = {
     const patches: GeneratedFilePatch[] = [];
     const { ast, options } = ctx;
 
-    const clientDir =
-      (options.targetOptions?.["ts-client"]?.outputDir as string) ?? "clients";
+    const clientDir = (options.targetOptions?.["ts-client"]?.outputDir as string) ?? "clients";
 
     const typesRegions: GeneratedRegion[] = [];
 
@@ -99,9 +98,7 @@ function routeTypeName(route: RouteAst, suffix: string): string {
 
 function zodToTypeScript(schema: unknown): string {
   if (!schema || typeof schema !== "object") return "unknown";
-  const def = (schema as Record<string, unknown>)._def as
-    | Record<string, unknown>
-    | undefined;
+  const def = (schema as Record<string, unknown>)._def as Record<string, unknown> | undefined;
   if (!def) return "unknown";
   const typeName = def.typeName as string | undefined;
 
@@ -118,8 +115,7 @@ function zodToTypeScript(schema: unknown): string {
       return "string";
     }
     case "ZodArray": {
-      const element =
-        ((def as Record<string, unknown>).type as unknown) ?? undefined;
+      const element = ((def as Record<string, unknown>).type as unknown) ?? undefined;
       return `${zodToTypeScript(element)}[]`;
     }
     case "ZodObject": {
@@ -135,13 +131,11 @@ function zodToTypeScript(schema: unknown): string {
       return `{\n${fields.join(";\n")}\n}`;
     }
     case "ZodOptional": {
-      const inner =
-        ((def as Record<string, unknown>).innerType as unknown) ?? undefined;
+      const inner = ((def as Record<string, unknown>).innerType as unknown) ?? undefined;
       return `${zodToTypeScript(inner)} | undefined`;
     }
     case "ZodNullable": {
-      const inner2 =
-        ((def as Record<string, unknown>).innerType as unknown) ?? undefined;
+      const inner2 = ((def as Record<string, unknown>).innerType as unknown) ?? undefined;
       return `${zodToTypeScript(inner2)} | null`;
     }
     default:
@@ -150,29 +144,21 @@ function zodToTypeScript(schema: unknown): string {
 }
 
 function generateObjectInterface(name: string, schema: unknown): string {
-  if (!schema || typeof schema !== "object")
-    return `export type ${name} = unknown;`;
-  const def = (schema as Record<string, unknown>)._def as
-    | Record<string, unknown>
-    | undefined;
+  if (!schema || typeof schema !== "object") return `export type ${name} = unknown;`;
+  const def = (schema as Record<string, unknown>)._def as Record<string, unknown> | undefined;
   if (!def) return `export type ${name} = unknown;`;
   const shapeFn = def.shape as (() => Record<string, unknown>) | undefined;
   if (!shapeFn) return `export type ${name} = Record<string, unknown>;`;
   const shape = shapeFn();
   const fields = Object.entries(shape).map(([key, val]) => {
-    const fieldDef = (val as Record<string, unknown>)._def as
-      | Record<string, unknown>
-      | undefined;
+    const fieldDef = (val as Record<string, unknown>)._def as Record<string, unknown> | undefined;
     const isOptional = fieldDef?.typeName === "ZodOptional";
     return `  ${key}${isOptional ? "?" : ""}: ${zodToTypeScript(val)};`;
   });
   return `export interface ${name} {\n${fields.join("\n")}\n}`;
 }
 
-function generateTypesForRoute(
-  route: RouteAst,
-  moduleName: string,
-): GeneratedRegion[] {
+function generateTypesForRoute(route: RouteAst, moduleName: string): GeneratedRegion[] {
   const regions: GeneratedRegion[] = [];
 
   if (route.input) {
@@ -204,7 +190,9 @@ function generateTypesForRoute(
 
 function collectQueryFields(route: RouteAst, pathParams: string[]): string[] {
   if (!route.input) return [];
-  const def = (route.input as unknown as Record<string, unknown>)._def as Record<string, unknown> | undefined;
+  const def = (route.input as unknown as Record<string, unknown>)._def as
+    | Record<string, unknown>
+    | undefined;
   const shapeFn = def?.shape as (() => Record<string, unknown>) | undefined;
   if (!shapeFn) return [];
   return Object.keys(shapeFn()).filter((k) => !pathParams.includes(k));
@@ -223,16 +211,10 @@ function extractPathParams(path: string): string[] {
 function generateClientMethod(route: RouteAst): string {
   const fnName = pascalCase(route.id);
   const resType = route.response ? routeTypeName(route, "Response") : "void";
-  const hasBody =
-    route.method === "POST" ||
-    route.method === "PUT" ||
-    route.method === "PATCH";
+  const hasBody = route.method === "POST" || route.method === "PUT" || route.method === "PATCH";
 
   const pathParams = extractPathParams(route.fullPath);
-  const pathTemplate = route.fullPath.replace(
-    /:([a-zA-Z_][a-zA-Z0-9_]*)/g,
-    "${params.$1}",
-  );
+  const pathTemplate = route.fullPath.replace(/:([a-zA-Z_][a-zA-Z0-9_]*)/g, "${params.$1}");
 
   const body: string[] = [];
 
@@ -250,16 +232,22 @@ function generateClientMethod(route: RouteAst): string {
       if (queryFields.length > 0) {
         body.push(`  const query = Object.entries(params)`);
         body.push(`    .filter(([k]) => ${JSON.stringify(queryFields)}.includes(k))`);
-        body.push(`    .map(([k, v]) => \`\${encodeURIComponent(k)}=\${encodeURIComponent(String(v))}\`)`);
+        body.push(
+          `    .map(([k, v]) => \`\${encodeURIComponent(k)}=\${encodeURIComponent(String(v))}\`)`,
+        );
         body.push(`    .join("&");`);
         body.push(`  const url = query ? \`${pathTemplate}?\${query}\` : \`${pathTemplate}\`;`);
       } else {
         body.push(`  const url = \`${pathTemplate}\`;`);
       }
-      body.push(`  return this.request<${resType}>(url, { method: "${route.method}", ...options });`);
+      body.push(
+        `  return this.request<${resType}>(url, { method: "${route.method}", ...options });`,
+      );
     }
   } else if (pathParams.length > 0) {
-    body.push(`async ${fnName}(params: { ${pathParams.map(p => `${p}: string`).join("; ")} }, options?: RequestInit): Promise<${resType}> {`);
+    body.push(
+      `async ${fnName}(params: { ${pathParams.map((p) => `${p}: string`).join("; ")} }, options?: RequestInit): Promise<${resType}> {`,
+    );
     body.push(`  const url = \`${pathTemplate}\`;`);
     body.push(`  return this.request<${resType}>(url, { method: "${route.method}", ...options });`);
   } else {
@@ -342,9 +330,7 @@ function generateModuleClient(module: ModuleAst): string {
   return lines.join("\n");
 }
 
-function generateIndexContent(
-  modules: { name: string; className: string }[],
-): string {
+function generateIndexContent(modules: { name: string; className: string }[]): string {
   if (modules.length === 0) {
     return [
       `export { BaseApiClient } from "./base.js";`,

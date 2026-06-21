@@ -65,7 +65,13 @@ describe("compiler", () => {
     );
     writeFileSync(
       join(cwd, "internal/user/repo.go"),
-      ["package user", "", "// @gen:start user.create.repository", "// @gen:end user.create.repository", ""].join("\n"),
+      [
+        "package user",
+        "",
+        "// @gen:start user.create.repository",
+        "// @gen:end user.create.repository",
+        "",
+      ].join("\n"),
     );
     writeFileSync(
       join(cwd, "internal/user/usecase.go"),
@@ -161,14 +167,21 @@ describe("compiler", () => {
           name: "user",
           routes: [
             defineRoute({ id: "create", method: "POST", path: "/users", handler: "CreateUser" }),
-            defineRoute({ id: "delete", method: "DELETE", path: "/users/:id", handler: "DeleteUser" }),
+            defineRoute({
+              id: "delete",
+              method: "DELETE",
+              path: "/users/:id",
+              handler: "DeleteUser",
+            }),
           ],
         }),
       ],
     });
 
     const result = await compile({ app, module: "user", route: "delete", dryRun: true });
-    const regionIds = result.generation.files.flatMap((file) => file.regions.map((region) => region.id));
+    const regionIds = result.generation.files.flatMap((file) =>
+      file.regions.map((region) => region.id),
+    );
 
     expect(regionIds.every((id) => !id.includes("user.create"))).toBe(true);
   });

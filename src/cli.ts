@@ -30,9 +30,10 @@ async function main(): Promise<void> {
       return docsCommand(parsed);
     case "init":
       return initCommand(parsed);
-    default:
+    default: {
       const { printHelp } = await import("./cli/index.js");
       printHelp();
+    }
   }
 }
 

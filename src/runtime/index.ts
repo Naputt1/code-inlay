@@ -85,9 +85,7 @@ function generateRuntimeTypes(): GeneratedFilePatch {
   };
 }
 
-function generateMiddlewareChain(
-  middlewareNames: string[],
-): GeneratedFilePatch {
+function generateMiddlewareChain(middlewareNames: string[]): GeneratedFilePatch {
   const middlewareCode = [
     `package runtime`,
     ``,
@@ -120,10 +118,7 @@ function generateMiddlewareChain(
   };
 }
 
-function generateMainWrapper(
-  ast: AppAst,
-  middlewareNames: string[],
-): GeneratedFilePatch {
+function generateMainWrapper(ast: AppAst, middlewareNames: string[]): GeneratedFilePatch {
   const content: string[] = [
     `// Auto-generated runtime main wrapper`,
     `package main`,

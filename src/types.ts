@@ -137,11 +137,7 @@ export type RouterDefinition = {
 
 export type ArchitectureRef = BuiltInArchitectureName | ArchitecturePlugin;
 export type AdapterRef = BuiltInAdapterName | AdapterPlugin;
-export type BuiltInArchitectureName =
-  | "clean"
-  | "minimal"
-  | "atomic"
-  | "layered";
+export type BuiltInArchitectureName = "clean" | "minimal" | "atomic" | "layered";
 export type BuiltInAdapterName = "gin";
 
 export type AppDefinition = {
@@ -246,8 +242,7 @@ export type RepositoryAst = AstNodeBase<"Repository"> & {
 
 export type AdapterTargetAst = AstNodeBase<"AdapterTarget"> & AdapterTarget;
 
-export type GeneratedRegionAst = AstNodeBase<"GeneratedRegion"> &
-  GeneratedRegion;
+export type GeneratedRegionAst = AstNodeBase<"GeneratedRegion"> & GeneratedRegion;
 
 export type ArchitectureAst = {
   nodes: Array<HandlerAst | ServiceAst | RepositoryAst | GeneratedLayer>;

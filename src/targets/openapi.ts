@@ -14,12 +14,10 @@ export const openapiTarget: CodeTarget = {
       paths: Record<string, unknown>;
       components: { schemas: Record<string, unknown> };
     } = {
-      openapi:
-        (options.targetOptions?.["openapi"]?.version as string) ?? "3.1.0",
+      openapi: (options.targetOptions?.["openapi"]?.version as string) ?? "3.1.0",
       info: {
         title: (options.targetOptions?.["openapi"]?.title as string) ?? "API",
-        version:
-          (options.targetOptions?.["openapi"]?.apiVersion as string) ?? "1.0.0",
+        version: (options.targetOptions?.["openapi"]?.apiVersion as string) ?? "1.0.0",
       },
       paths: {},
       components: {
@@ -92,8 +90,7 @@ export const openapiTarget: CodeTarget = {
       content,
     };
 
-    const outputDir =
-      (options.targetOptions?.["openapi"]?.outputDir as string) ?? "docs";
+    const outputDir = (options.targetOptions?.["openapi"]?.outputDir as string) ?? "docs";
     return [
       {
         path: `${outputDir}/openapi.json`,
@@ -103,11 +100,7 @@ export const openapiTarget: CodeTarget = {
   },
 };
 
-function getOrCreate(
-  obj: Record<string, unknown>,
-  key: string,
-  fallback: unknown,
-): unknown {
+function getOrCreate(obj: Record<string, unknown>, key: string, fallback: unknown): unknown {
   if (!(key in obj)) {
     obj[key] = fallback;
   }
@@ -116,9 +109,7 @@ function getOrCreate(
 
 function zodToJsonSchema(schema: unknown): Record<string, unknown> {
   if (!schema || typeof schema !== "object") return {};
-  const def = (schema as Record<string, unknown>)._def as
-    | Record<string, unknown>
-    | undefined;
+  const def = (schema as Record<string, unknown>)._def as Record<string, unknown> | undefined;
   if (!def) return {};
   const typeName = def.typeName as string | undefined;
 
@@ -134,8 +125,7 @@ function zodToJsonSchema(schema: unknown): Record<string, unknown> {
       return { type: "string", enum: values ?? [] };
     }
     case "ZodArray": {
-      const element =
-        ((def as Record<string, unknown>).type as unknown) ?? undefined;
+      const element = ((def as Record<string, unknown>).type as unknown) ?? undefined;
       return { type: "array", items: zodToJsonSchema(element) };
     }
     case "ZodObject": {
@@ -159,13 +149,11 @@ function zodToJsonSchema(schema: unknown): Record<string, unknown> {
       };
     }
     case "ZodOptional": {
-      const inner =
-        ((def as Record<string, unknown>).innerType as unknown) ?? undefined;
+      const inner = ((def as Record<string, unknown>).innerType as unknown) ?? undefined;
       return zodToJsonSchema(inner);
     }
     case "ZodNullable": {
-      const inner2 =
-        ((def as Record<string, unknown>).innerType as unknown) ?? undefined;
+      const inner2 = ((def as Record<string, unknown>).innerType as unknown) ?? undefined;
       const base = zodToJsonSchema(inner2);
       return { ...base, nullable: true };
     }
@@ -176,18 +164,14 @@ function zodToJsonSchema(schema: unknown): Record<string, unknown> {
 
 function zodToQueryParams(schema: unknown): Array<Record<string, unknown>> {
   if (!schema || typeof schema !== "object") return [];
-  const def = (schema as Record<string, unknown>)._def as
-    | Record<string, unknown>
-    | undefined;
+  const def = (schema as Record<string, unknown>)._def as Record<string, unknown> | undefined;
   if (!def) return [];
   const shapeFn = def.shape as (() => Record<string, unknown>) | undefined;
   if (!shapeFn) return [];
 
   const params: Array<Record<string, unknown>> = [];
   for (const [key, val] of Object.entries(shapeFn())) {
-    const fieldDef = (val as Record<string, unknown>)._def as
-      | Record<string, unknown>
-      | undefined;
+    const fieldDef = (val as Record<string, unknown>)._def as Record<string, unknown> | undefined;
     const isOptional = fieldDef?.typeName === "ZodOptional";
     const jsonSchema = zodToJsonSchema(val);
     params.push({

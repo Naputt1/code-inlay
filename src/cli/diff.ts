@@ -50,7 +50,5 @@ export async function diffCommand(parsed: ParsedArgs): Promise<void> {
 
 function renderDiff(before: string, after: string): string {
   if (before === after) return "";
-  return ["@@ before", before.trimEnd(), "@@ after", after.trimEnd()].join(
-    "\n",
-  );
+  return ["@@ before", before.trimEnd(), "@@ after", after.trimEnd()].join("\n");
 }

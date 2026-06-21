@@ -45,11 +45,7 @@ export async function inspectCommand(parsed: ParsedArgs): Promise<void> {
   }
 }
 
-async function inspectAst(
-  configFile: string,
-  cwd: string,
-  format: string,
-): Promise<void> {
+async function inspectAst(configFile: string, cwd: string, format: string): Promise<void> {
   const result = await compile({ configFile, cwd, dryRun: true });
 
   if (!result.ast || !result.architecture) {
@@ -69,12 +65,7 @@ async function inspectAst(
   }
 
   console.log(
-    renderGraph(
-      result.ast,
-      result.architecture,
-      result.generation,
-      format as GraphFormat,
-    ),
+    renderGraph(result.ast, result.architecture, result.generation, format as GraphFormat),
   );
 }
 
@@ -99,8 +90,7 @@ async function inspectRoute(
 
   const routeParts = routeId.split(".");
   const moduleName = routeParts.length > 1 ? routeParts[0] : undefined;
-  const routeName =
-    routeParts.length > 1 ? routeParts.slice(1).join(".") : routeId;
+  const routeName = routeParts.length > 1 ? routeParts.slice(1).join(".") : routeId;
 
   for (const module of result.ast.modules) {
     if (moduleName && module.name !== moduleName) continue;
@@ -125,9 +115,7 @@ async function inspectRoute(
             .flatMap((f) => f.regions)
             .find((r) => r.id === layer.regionId);
           const driftStatus = drift?.stableHash ? "[cached]" : "[new]";
-          console.log(
-            `    ${layer.kind}: ${layer.file} #${layer.regionId} ${driftStatus}`,
-          );
+          console.log(`    ${layer.kind}: ${layer.file} #${layer.regionId} ${driftStatus}`);
         }
       }
 
@@ -137,9 +125,7 @@ async function inspectRoute(
       if (regions.length > 0) {
         console.log(`  Generated Regions:`);
         for (const region of regions) {
-          console.log(
-            `    ${region.id} (${region.language}) [${region.owner ?? "unknown"}]`,
-          );
+          console.log(`    ${region.id} (${region.language}) [${region.owner ?? "unknown"}]`);
         }
       }
 
@@ -151,11 +137,7 @@ async function inspectRoute(
   process.exitCode = 1;
 }
 
-async function inspectGraph(
-  configFile: string,
-  cwd: string,
-  format: string,
-): Promise<void> {
+async function inspectGraph(configFile: string, cwd: string, format: string): Promise<void> {
   const result = await compile({ configFile, cwd, dryRun: true });
 
   if (!result.ast || !result.architecture) {
@@ -165,18 +147,12 @@ async function inspectGraph(
   }
 
   console.log(
-    renderGraph(
-      result.ast,
-      result.architecture,
-      result.generation,
-      format as GraphFormat,
-    ),
+    renderGraph(result.ast, result.architecture, result.generation, format as GraphFormat),
   );
 }
 
 async function inspectPlugins(configFile: string, cwd: string): Promise<void> {
-  const { compile: compileInternal, printDiagnostics } =
-    await import("../compiler.js");
+  const { compile: compileInternal, printDiagnostics } = await import("../compiler.js");
   const result = await compileInternal({ configFile, cwd, dryRun: true });
 
   printDiagnostics(result.diagnostics);
@@ -197,8 +173,7 @@ async function inspectPlugins(configFile: string, cwd: string): Promise<void> {
     return;
   }
 
-  const diagnostics: Array<{ level: string; code: string; message: string }> =
-    [];
+  const diagnostics: Array<{ level: string; code: string; message: string }> = [];
   const registry = createPluginRegistry(appDef, diagnostics as never);
 
   console.log(`Plugins: ${registry.plugins.length}`);
@@ -207,13 +182,10 @@ async function inspectPlugins(configFile: string, cwd: string): Promise<void> {
     const adapterCount = plugin.adapters?.length ?? 0;
     const transformerCount = plugin.transformers?.length ?? 0;
     const validatorCount = plugin.validators?.length ?? 0;
-    console.log(
-      `  ${plugin.name}@${plugin.version} (apiVersion: ${plugin.apiVersion})`,
-    );
+    console.log(`  ${plugin.name}@${plugin.version} (apiVersion: ${plugin.apiVersion})`);
     if (archCount > 0) console.log(`    Architectures: ${archCount}`);
     if (adapterCount > 0) console.log(`    Adapters: ${adapterCount}`);
-    if (transformerCount > 0)
-      console.log(`    Transformers: ${transformerCount}`);
+    if (transformerCount > 0) console.log(`    Transformers: ${transformerCount}`);
     if (validatorCount > 0) console.log(`    Validators: ${validatorCount}`);
   }
 
@@ -234,9 +206,7 @@ async function inspectRegions(configFile: string, cwd: string): Promise<void> {
   for (const file of result.generation.files) {
     console.log(`File: ${file.path} (${file.regions.length} regions)`);
     for (const region of file.regions) {
-      const status = region.stableHash
-        ? `[cached: ${region.stableHash.slice(0, 8)}]`
-        : "[new]";
+      const status = region.stableHash ? `[cached: ${region.stableHash.slice(0, 8)}]` : "[new]";
       console.log(
         `  ${region.id} ${status} owner:${region.owner ?? "unknown"} lang:${region.language}`,
       );
@@ -244,15 +214,10 @@ async function inspectRegions(configFile: string, cwd: string): Promise<void> {
     }
   }
 
-  console.log(
-    `\nTotal: ${result.generation.files.length} files, ${totalRegions} regions`,
-  );
+  console.log(`\nTotal: ${result.generation.files.length} files, ${totalRegions} regions`);
 }
 
-async function loadAppConfig(
-  configFile: string,
-  cwd: string,
-): Promise<AppDefinition | undefined> {
+async function loadAppConfig(configFile: string, cwd: string): Promise<AppDefinition | undefined> {
   const { pathToFileURL } = await import("node:url");
   const { resolve } = await import("node:path");
 
@@ -261,17 +226,13 @@ async function loadAppConfig(
     const { register } = await import("tsx/esm/api");
     const unregister = register();
     try {
-      const module = await import(
-        `${pathToFileURL(absolutePath).href}?t=${Date.now()}`
-      );
+      const module = await import(`${pathToFileURL(absolutePath).href}?t=${Date.now()}`);
       return module.default as AppDefinition | undefined;
     } finally {
       unregister();
     }
   }
 
-  const module = await import(
-    `${pathToFileURL(absolutePath).href}?t=${Date.now()}`
-  );
+  const module = await import(`${pathToFileURL(absolutePath).href}?t=${Date.now()}`);
   return module.default as AppDefinition | undefined;
 }

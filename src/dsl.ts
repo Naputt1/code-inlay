@@ -54,10 +54,7 @@ type DefineRouteBase = {
   metadata?: Record<string, unknown>;
 };
 
-export function defineRoute<
-  TInput extends SchemaLike,
-  TResponse extends SchemaLike,
->(
+export function defineRoute<TInput extends SchemaLike, TResponse extends SchemaLike>(
   input: DefineRouteBase & { input: TInput; response: TResponse },
 ): RouteDefinition<TInput, TResponse>;
 
@@ -76,9 +73,7 @@ export function defineRoute(
 export function defineRoute<
   TInput extends SchemaLike | undefined = undefined,
   TResponse extends SchemaLike | undefined = undefined,
->(
-  input: DefineRouteInput<TInput, TResponse>,
-): RouteDefinition<TInput, TResponse> {
+>(input: DefineRouteInput<TInput, TResponse>): RouteDefinition<TInput, TResponse> {
   return {
     kind: "RouteDefinition",
     id: input.id,
@@ -96,10 +91,7 @@ export function defineRoute<
   };
 }
 
-export function defineMiddleware(input: {
-  name: string;
-  handler?: string;
-}): MiddlewareDefinition {
+export function defineMiddleware(input: { name: string; handler?: string }): MiddlewareDefinition {
   return {
     kind: "MiddlewareDefinition",
     name: input.name,
@@ -209,9 +201,7 @@ function joinPath(prefix: string, path: string): string {
   return `${a}${b}` || "/";
 }
 
-export function defineArchitecture(
-  plugin: ArchitecturePlugin,
-): ArchitecturePlugin {
+export function defineArchitecture(plugin: ArchitecturePlugin): ArchitecturePlugin {
   return plugin;
 }
 

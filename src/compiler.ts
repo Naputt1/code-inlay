@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, writeFileSync, readdirSync, statSync } from "node:fs";
 import { pathToFileURL } from "node:url";
-import { resolve, dirname } from "node:path";
+import { resolve } from "node:path";
 import { watch } from "node:fs";
 import type {
   AppDefinition,
@@ -15,12 +15,7 @@ import { generateCode } from "./codegen.js";
 import { applyPatches, detectDrift } from "./region.js";
 import { formatGoSnippet } from "./format.js";
 import { checkGoEnvironment } from "./env.js";
-import {
-  createPluginRegistry,
-  runTransformerStage,
-  runTargets,
-  runValidators,
-} from "./plugins.js";
+import { createPluginRegistry, runTransformerStage, runTargets, runValidators } from "./plugins.js";
 import {
   buildDependencyGraph,
   readCache,
@@ -33,8 +28,7 @@ import { atomicWritePatches, removeOrphanedRegions, validateBeforeWrite } from "
 export async function compile(options: CompileOptions): Promise<CompileResult> {
   const cwd = options.cwd ?? process.cwd();
   const diagnostics: Diagnostic[] = [];
-  const app =
-    options.app ?? (await loadConfig(options.configFile, cwd, diagnostics));
+  const app = options.app ?? (await loadConfig(options.configFile, cwd, diagnostics));
 
   if (!app) {
     return emptyResult(diagnostics);
@@ -55,8 +49,7 @@ export async function compile(options: CompileOptions): Promise<CompileResult> {
 
   let moduleInfo: ReturnType<typeof checkGoEnvironment>;
   if (options.configFile !== undefined) {
-    const adapterName =
-      typeof ast.router.adapter === "string" ? ast.router.adapter : undefined;
+    const adapterName = typeof ast.router.adapter === "string" ? ast.router.adapter : undefined;
     moduleInfo = checkGoEnvironment(cwd, diagnostics, adapterName);
   }
 
@@ -120,8 +113,7 @@ export async function compile(options: CompileOptions): Promise<CompileResult> {
             { [region.stableHash]: cache.regions[region.stableHash] },
             diagnostics,
             file.path,
-            options.forceRegions ??
-              (options.forceRegion ? [options.forceRegion] : undefined),
+            options.forceRegions ?? (options.forceRegion ? [options.forceRegion] : undefined),
           );
         }
       }
@@ -159,12 +151,7 @@ export async function compile(options: CompileOptions): Promise<CompileResult> {
 
   const oldCache = readCache(cwd);
 
-  const injected = atomicWritePatches(
-    generation.files,
-    cwd,
-    app.options.fileCreation,
-    diagnostics,
-  );
+  const injected = atomicWritePatches(generation.files, cwd, app.options.fileCreation, diagnostics);
 
   const currentPatchFiles = new Set(generation.files.map((f) => f.path));
   const currentRegionIds = new Set(generation.files.flatMap((f) => f.regions.map((r) => r.id)));
@@ -185,7 +172,11 @@ export async function compile(options: CompileOptions): Promise<CompileResult> {
             const st = statSync(abs);
             if (st.isDirectory()) {
               scanDir(abs);
-            } else if (st.isFile() && entry.endsWith(".go") && !currentPatchFiles.has(abs.replace(resolve(cwd), "").replace(/^\//, ""))) {
+            } else if (
+              st.isFile() &&
+              entry.endsWith(".go") &&
+              !currentPatchFiles.has(abs.replace(resolve(cwd), "").replace(/^\//, ""))
+            ) {
               const relPath = abs.replace(resolve(cwd) + "/", "");
               if (currentPatchFiles.has(relPath)) continue;
               const content = readFileSync(abs, "utf8");
@@ -259,9 +250,7 @@ export async function compile(options: CompileOptions): Promise<CompileResult> {
   };
 }
 
-export async function compileIncremental(
-  options: CompileOptions,
-): Promise<CompileResult> {
+export async function compileIncremental(options: CompileOptions): Promise<CompileResult> {
   const cwd = options.cwd ?? process.cwd();
   const diagnostics: Diagnostic[] = [];
 
@@ -269,11 +258,7 @@ export async function compileIncremental(
 
   if (cache && validateCache(cache, "0.2.0", "2.0", "")) {
     if (options.changedFiles && options.changedFiles.length > 0) {
-      const invalidated = invalidateChanged(
-        cache,
-        cache.dependencyGraph,
-        options.changedFiles,
-      );
+      const invalidated = invalidateChanged(cache, cache.dependencyGraph, options.changedFiles);
       if (invalidated.size === 0 && !options.watch) {
         return {
           generation: { files: [] },
@@ -308,9 +293,7 @@ export async function compileWithWatch(options: CompileOptions): Promise<void> {
     }
   };
 
-  const configPath = options.configFile
-    ? resolve(cwd, options.configFile)
-    : undefined;
+  const configPath = options.configFile ? resolve(cwd, options.configFile) : undefined;
 
   const debouncedRun = () => {
     if (debounceTimer) clearTimeout(debounceTimer);
@@ -350,18 +333,14 @@ async function loadConfig(
       const { register } = await import("tsx/esm/api");
       const unregister = register();
       try {
-        const module = await import(
-          `${pathToFileURL(absolutePath).href}?t=${Date.now()}`
-        );
+        const module = await import(`${pathToFileURL(absolutePath).href}?t=${Date.now()}`);
         return readDefaultApp(module, configFile, diagnostics);
       } finally {
         unregister();
       }
     }
 
-    const module = await import(
-      `${pathToFileURL(absolutePath).href}?t=${Date.now()}`
-    );
+    const module = await import(`${pathToFileURL(absolutePath).href}?t=${Date.now()}`);
     return readDefaultApp(module, configFile, diagnostics);
   } catch (error) {
     diagnostics.push({
@@ -390,8 +369,7 @@ function readDefaultApp(
     diagnostics.push({
       level: "error",
       code: "invalid-config-export",
-      message:
-        "Config file must default export a value returned by defineApp().",
+      message: "Config file must default export a value returned by defineApp().",
       file: configFile,
     });
   }
@@ -412,18 +390,18 @@ function isAppDefinition(value: unknown): value is AppDefinition {
   );
 }
 
-function filterAst<
-  T extends { modules: { name: string; routes: { id: string }[] }[] },
->(ast: T, moduleName?: string, routeId?: string): T {
+function filterAst<T extends { modules: { name: string; routes: { id: string }[] }[] }>(
+  ast: T,
+  moduleName?: string,
+  routeId?: string,
+): T {
   return {
     ...ast,
     modules: ast.modules
       .filter((module) => !moduleName || module.name === moduleName)
       .map((module) => ({
         ...module,
-        routes: module.routes.filter(
-          (route) => !routeId || route.id === routeId,
-        ),
+        routes: module.routes.filter((route) => !routeId || route.id === routeId),
       })),
   };
 }
@@ -446,8 +424,6 @@ export function printDiagnostics(diagnostics: Diagnostic[]): void {
     const prefix = diagnostic.level === "error" ? "error" : "warning";
     const location = diagnostic.file ? ` ${diagnostic.file}` : "";
     const region = diagnostic.regionId ? ` [${diagnostic.regionId}]` : "";
-    console.error(
-      `${prefix} ${diagnostic.code}${location}${region}: ${diagnostic.message}`,
-    );
+    console.error(`${prefix} ${diagnostic.code}${location}${region}: ${diagnostic.message}`);
   }
 }
