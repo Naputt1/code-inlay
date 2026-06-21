@@ -158,6 +158,134 @@ describe("compiler", () => {
     expect(handler).toContain("func (h *UserHandler) CreateUser(c *gin.Context)");
   });
 
+  it("uses ShouldBindQuery for GET routes with input", async () => {
+    const app = defineApp({
+      architecture: "clean",
+      router: defineRouter({ adapter: "gin" }),
+      modules: [
+        defineModule({
+          name: "user",
+          routes: [
+            defineRoute({
+              id: "list",
+              method: "GET",
+              path: "/users",
+              input: z.object({ page: z.number().optional(), limit: z.number().optional() }),
+              response: z.object({ items: z.array(z.object({ id: z.string() })) }),
+              handler: "ListUsers",
+            }),
+          ],
+        }),
+      ],
+    });
+
+    const result = await compile({ app, dryRun: true });
+    expect(result.diagnostics.filter((d) => d.level === "error")).toEqual([]);
+
+    const handlerRegion = result.generation.files
+      .flatMap((f) => f.regions)
+      .find((r) => r.id === "user.list.handler");
+    expect(handlerRegion).toBeDefined();
+    expect(handlerRegion!.content).toContain("ShouldBindQuery");
+    expect(handlerRegion!.content).not.toContain("ShouldBindJSON");
+  });
+
+  it("uses ShouldBindQuery for DELETE routes with input", async () => {
+    const app = defineApp({
+      architecture: "clean",
+      router: defineRouter({ adapter: "gin" }),
+      modules: [
+        defineModule({
+          name: "user",
+          routes: [
+            defineRoute({
+              id: "remove",
+              method: "DELETE",
+              path: "/users/:id",
+              input: z.object({ reason: z.string().optional() }),
+              handler: "RemoveUser",
+            }),
+          ],
+        }),
+      ],
+    });
+
+    const result = await compile({ app, dryRun: true });
+    expect(result.diagnostics.filter((d) => d.level === "error")).toEqual([]);
+
+    const handlerRegion = result.generation.files
+      .flatMap((f) => f.regions)
+      .find((r) => r.id === "user.remove.handler");
+    expect(handlerRegion).toBeDefined();
+    expect(handlerRegion!.content).toContain("ShouldBindQuery");
+    expect(handlerRegion!.content).not.toContain("ShouldBindJSON");
+  });
+
+  it("uses ShouldBindJSON for POST routes with input", async () => {
+    const app = defineApp({
+      architecture: "clean",
+      router: defineRouter({ adapter: "gin" }),
+      modules: [
+        defineModule({
+          name: "user",
+          routes: [
+            defineRoute({
+              id: "create",
+              method: "POST",
+              path: "/users",
+              input: z.object({ name: z.string() }),
+              response: z.object({ id: z.string() }),
+              handler: "CreateUser",
+            }),
+          ],
+        }),
+      ],
+    });
+
+    const result = await compile({ app, dryRun: true });
+    expect(result.diagnostics.filter((d) => d.level === "error")).toEqual([]);
+
+    const handlerRegion = result.generation.files
+      .flatMap((f) => f.regions)
+      .find((r) => r.id === "user.create.handler");
+    expect(handlerRegion).toBeDefined();
+    expect(handlerRegion!.content).toContain("ShouldBindJSON");
+    expect(handlerRegion!.content).not.toContain("ShouldBindQuery");
+  });
+
+  it("generates form tags on struct fields for query binding", async () => {
+    const app = defineApp({
+      architecture: "clean",
+      router: defineRouter({ adapter: "gin" }),
+      modules: [
+        defineModule({
+          name: "user",
+          routes: [
+            defineRoute({
+              id: "list",
+              method: "GET",
+              path: "/users",
+              input: z.object({ page: z.number(), q: z.string().optional() }),
+              handler: "ListUsers",
+            }),
+          ],
+        }),
+      ],
+    });
+
+    const result = await compile({ app, dryRun: true });
+    expect(result.diagnostics.filter((d) => d.level === "error")).toEqual([]);
+
+    const typesRegion = result.generation.files
+      .flatMap((f) => f.regions)
+      .find((r) => r.id === "user.list.types");
+    expect(typesRegion).toBeDefined();
+    expect(typesRegion!.content).toContain(`form:"page"`);
+    expect(typesRegion!.content).toContain(`form:"q"`);
+    expect(typesRegion!.content).toContain(`json:"page"`);
+    expect(typesRegion!.content).toContain(`json:"q,omitempty"`);
+  });
+
   it("filters partial generation by module and route", async () => {
     const app = defineApp({
       architecture: "clean",

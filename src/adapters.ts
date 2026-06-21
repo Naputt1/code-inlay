@@ -84,8 +84,13 @@ export function generateGinHandler(
   const body: string[] = [];
 
   if (route.input) {
+    const isQuery = route.method === "GET" || route.method === "DELETE";
     body.push(`var input ${reqType}`);
-    body.push(`if err := c.ShouldBindJSON(&input); err != nil {`);
+    if (isQuery) {
+      body.push(`if err := c.ShouldBindQuery(&input); err != nil {`);
+    } else {
+      body.push(`if err := c.ShouldBindJSON(&input); err != nil {`);
+    }
     body.push(`\tc.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})`);
     body.push(`\treturn`);
     body.push(`}`);

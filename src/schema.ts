@@ -244,7 +244,7 @@ function renderStruct(goStruct: GoStruct): string {
   const fields = goStruct.fields
     .map((field) => {
       const omitempty = field.optional ? ",omitempty" : "";
-      return `\t${field.name} ${field.type} \`json:"${field.jsonName}${omitempty}"\``;
+      return `\t${field.name} ${field.type} \`json:"${field.jsonName}${omitempty}" form:"${field.jsonName}"\``;
     })
     .join("\n");
 
