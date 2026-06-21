@@ -1,4 +1,4 @@
-export { z } from "zod";
+export { z } from "./zod-extras.js";
 export * from "./types.js";
 export * from "./dsl.js";
 export * from "./compiler.js";

@@ -214,8 +214,7 @@ function schemaToGoType(schema: SchemaLike, diagnostics: Diagnostic[]): string {
     const checks = (
       (unwrapped as unknown as Record<string, unknown>)._def as Record<string, unknown>
     )?.checks as Array<{ kind: string }> | undefined;
-    const isInt = checks?.some((c: { kind: string }) => c.kind === "int");
-    type = isInt ? "int64" : "float64";
+    type = numberType(checks);
   } else if (isZodBoolean(unwrapped)) {
     type = "bool";
   } else if (isZodArray(unwrapped)) {
@@ -250,6 +249,19 @@ function renderStruct(goStruct: GoStruct): string {
     .join("\n");
 
   return `type ${goStruct.name} struct {\n${fields}\n}`;
+}
+
+function numberType(
+  checks: Array<{ kind: string }> | undefined,
+): string {
+  if (!checks) return "float64";
+  const has = (kind: string) => checks.some((c) => c.kind === kind);
+  if (has("float32")) return "float32";
+  if (has("float64")) return "float64";
+  if (has("int32")) return "int32";
+  if (has("int64")) return "int64";
+  if (has("int")) return "int64";
+  return "float64";
 }
 
 function unwrap(schema: SchemaLike): SchemaLike {
