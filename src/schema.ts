@@ -1,5 +1,5 @@
 import type { Diagnostic, RouteAst, SchemaLike } from "./types.js";
-import { pascalCase, routeTypeName } from "./naming.js";
+import { extractPathParams, pascalCase, routeTypeName } from "./naming.js";
 
 export type GoField = {
   name: string;
@@ -144,7 +144,32 @@ export function generateRouteTypes(route: RouteAst, diagnostics: Diagnostic[]): 
 
   if (route.input) {
     const input = processSchema(routeTypeName(route, "Request"), route.input);
-    if (input) structs.push(input);
+    if (input) {
+      const pathParams = extractPathParams(route.path);
+      for (const param of pathParams) {
+        const fieldName = pascalCase(param);
+        if (!input.fields.find((f) => f.name === fieldName)) {
+          input.fields.push({
+            name: fieldName,
+            type: "string",
+            jsonName: param,
+            optional: false,
+          });
+        }
+      }
+      input.fields.sort((a, b) => a.name.localeCompare(b.name));
+      structs.push(input);
+    }
+  } else if (extractPathParams(route.path).length > 0) {
+    const pathParams = extractPathParams(route.path);
+    const fields: GoField[] = pathParams.map((param) => ({
+      name: pascalCase(param),
+      type: "string",
+      jsonName: param,
+      optional: false,
+    }));
+    fields.sort((a, b) => a.name.localeCompare(b.name));
+    structs.push({ name: routeTypeName(route, "Request"), fields });
   }
 
   if (route.response) {
@@ -167,7 +192,10 @@ export function generateRouteTypes(route: RouteAst, diagnostics: Diagnostic[]): 
 }
 
 export function requestType(route: RouteAst): string {
-  return route.input ? routeTypeName(route, "Request") : "struct{}";
+  if (route.input || extractPathParams(route.path).length > 0) {
+    return routeTypeName(route, "Request");
+  }
+  return "struct{}";
 }
 
 export function responseType(route: RouteAst): string {

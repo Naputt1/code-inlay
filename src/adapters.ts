@@ -5,7 +5,13 @@ import type {
   GeneratedRegion,
   RouteAst,
 } from "./types.js";
-import { defaultFileForLayer, defaultRegionId, lowerIdent, pascalCase } from "./naming.js";
+import {
+  defaultFileForLayer,
+  defaultRegionId,
+  extractPathParams,
+  lowerIdent,
+  pascalCase,
+} from "./naming.js";
 import { requestType, responseType } from "./schema.js";
 
 export const ginAdapter: AdapterPlugin = {
@@ -53,6 +59,18 @@ export function resolveAdapters(
   return adapters;
 }
 
+function fieldInInputSchema(route: RouteAst, fieldName: string): boolean {
+  const input = route.input;
+  if (!input || typeof input !== "object") return false;
+  const def = (input as unknown as Record<string, unknown>)._def as
+    | Record<string, unknown>
+    | undefined;
+  if (!def) return false;
+  const shapeFn = def.shape as (() => Record<string, unknown>) | undefined;
+  if (!shapeFn) return false;
+  return fieldName in shapeFn();
+}
+
 export function generateGinHandler(
   route: RouteAst,
   diagnostics: Diagnostic[],
@@ -62,6 +80,7 @@ export function generateGinHandler(
   const usecaseField = `${route.handlerName}Usecase`;
   const reqType = requestType(route);
   const resType = responseType(route);
+  const pathParams = extractPathParams(route.path);
   const body: string[] = [];
 
   if (route.input) {
@@ -70,6 +89,15 @@ export function generateGinHandler(
     body.push(`\tc.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})`);
     body.push(`\treturn`);
     body.push(`}`);
+    for (const param of pathParams) {
+      const fieldName = pascalCase(param);
+      if (!fieldInInputSchema(route, param)) {
+        body.push(`input.${fieldName} = c.Param("${param}")`);
+      }
+    }
+  } else if (pathParams.length > 0) {
+    const fields = pathParams.map((p) => `${pascalCase(p)}: c.Param("${p}")`).join(", ");
+    body.push(`input := ${reqType}{${fields}}`);
   } else {
     body.push(`input := struct{}{}`);
   }

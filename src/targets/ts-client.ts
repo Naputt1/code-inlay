@@ -5,7 +5,7 @@ import type {
   ModuleAst,
   RouteAst,
 } from "../types.js";
-import { pascalCase } from "../naming.js";
+import { extractPathParams, pascalCase } from "../naming.js";
 import { contentHash } from "../hash.js";
 
 export const tsClientTarget: CodeTarget = {
@@ -196,16 +196,6 @@ function collectQueryFields(route: RouteAst, pathParams: string[]): string[] {
   const shapeFn = def?.shape as (() => Record<string, unknown>) | undefined;
   if (!shapeFn) return [];
   return Object.keys(shapeFn()).filter((k) => !pathParams.includes(k));
-}
-
-function extractPathParams(path: string): string[] {
-  const params: string[] = [];
-  const re = /:([a-zA-Z_][a-zA-Z0-9_]*)/g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(path)) !== null) {
-    params.push(m[1]);
-  }
-  return params;
 }
 
 function generateClientMethod(route: RouteAst): string {

@@ -120,6 +120,16 @@ function resolveHandlerGroup(route: RouteAst): string {
   return parts[0].toLowerCase();
 }
 
+export function extractPathParams(path: string): string[] {
+  const params: string[] = [];
+  const re = /:([a-zA-Z_][a-zA-Z0-9_]*)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(path)) !== null) {
+    params.push(m[1]);
+  }
+  return params;
+}
+
 export function fileForUsecaseGroup(moduleName: string, groupKey: string): string {
   if (groupKey === "default" || groupKey === moduleName) {
     return `internal/${moduleName}/usecase.go`;
