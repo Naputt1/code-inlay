@@ -277,13 +277,196 @@ describe("compiler", () => {
     expect(typesRegion!.content).toContain(`form:"q"`);
     expect(typesRegion!.content).toContain(`json:"page"`);
     expect(typesRegion!.content).toContain(`json:"q,omitempty"`);
-    expect(typesRegion!.content).toContain(`binding:"required"`);
+    expect(typesRegion!.content).toContain(`validate:"required"`);
     expect(
       typesRegion!.content
         .split("\n")
         .find((l) => l.includes("Q "))
-        ?.includes(`binding:"required"`),
+        ?.includes(`validate:"required"`),
     ).toBe(false);
+  });
+
+  it("generates validate tags for string min/max", async () => {
+    const app = defineApp({
+      architecture: "clean",
+      router: defineRouter({ adapter: "gin" }),
+      modules: [
+        defineModule({
+          name: "user",
+          routes: [
+            defineRoute({
+              id: "create",
+              method: "POST",
+              path: "/users",
+              body: z.object({ name: z.string().min(3).max(100) }),
+              handler: "CreateUser",
+            }),
+          ],
+        }),
+      ],
+    });
+
+    const result = await compile({ app, dryRun: true });
+    expect(result.diagnostics.filter((d) => d.level === "error")).toEqual([]);
+
+    const typesRegion = result.generation.files
+      .flatMap((f) => f.regions)
+      .find((r) => r.id === "user.create.types");
+    expect(typesRegion).toBeDefined();
+    expect(typesRegion!.content).toContain(`validate:"required,min=3,max=100"`);
+  });
+
+  it("generates validate tags for string email", async () => {
+    const app = defineApp({
+      architecture: "clean",
+      router: defineRouter({ adapter: "gin" }),
+      modules: [
+        defineModule({
+          name: "user",
+          routes: [
+            defineRoute({
+              id: "create",
+              method: "POST",
+              path: "/users",
+              body: z.object({ email: z.string().email() }),
+              handler: "CreateUser",
+            }),
+          ],
+        }),
+      ],
+    });
+
+    const result = await compile({ app, dryRun: true });
+    expect(result.diagnostics.filter((d) => d.level === "error")).toEqual([]);
+
+    const typesRegion = result.generation.files
+      .flatMap((f) => f.regions)
+      .find((r) => r.id === "user.create.types");
+    expect(typesRegion).toBeDefined();
+    expect(typesRegion!.content).toContain(`validate:"required,email"`);
+  });
+
+  it("generates validate tags for number positive", async () => {
+    const app = defineApp({
+      architecture: "clean",
+      router: defineRouter({ adapter: "gin" }),
+      modules: [
+        defineModule({
+          name: "user",
+          routes: [
+            defineRoute({
+              id: "create",
+              method: "POST",
+              path: "/users",
+              body: z.object({ age: z.number().positive() }),
+              handler: "CreateUser",
+            }),
+          ],
+        }),
+      ],
+    });
+
+    const result = await compile({ app, dryRun: true });
+    expect(result.diagnostics.filter((d) => d.level === "error")).toEqual([]);
+
+    const typesRegion = result.generation.files
+      .flatMap((f) => f.regions)
+      .find((r) => r.id === "user.create.types");
+    expect(typesRegion).toBeDefined();
+    expect(typesRegion!.content).toContain(`validate:"required,gt=0"`);
+  });
+
+  it("generates validate tags for enum oneof", async () => {
+    const app = defineApp({
+      architecture: "clean",
+      router: defineRouter({ adapter: "gin" }),
+      modules: [
+        defineModule({
+          name: "user",
+          routes: [
+            defineRoute({
+              id: "create",
+              method: "POST",
+              path: "/users",
+              body: z.object({ role: z.enum(["admin", "user", "moderator"]) }),
+              handler: "CreateUser",
+            }),
+          ],
+        }),
+      ],
+    });
+
+    const result = await compile({ app, dryRun: true });
+    expect(result.diagnostics.filter((d) => d.level === "error")).toEqual([]);
+
+    const typesRegion = result.generation.files
+      .flatMap((f) => f.regions)
+      .find((r) => r.id === "user.create.types");
+    expect(typesRegion).toBeDefined();
+    expect(typesRegion!.content).toContain(`validate:"required,oneof=admin user moderator"`);
+  });
+
+  it("generates validate tags for optional fields with validators", async () => {
+    const app = defineApp({
+      architecture: "clean",
+      router: defineRouter({ adapter: "gin" }),
+      modules: [
+        defineModule({
+          name: "user",
+          routes: [
+            defineRoute({
+              id: "create",
+              method: "POST",
+              path: "/users",
+              body: z.object({ email: z.string().email().optional() }),
+              handler: "CreateUser",
+            }),
+          ],
+        }),
+      ],
+    });
+
+    const result = await compile({ app, dryRun: true });
+    expect(result.diagnostics.filter((d) => d.level === "error")).toEqual([]);
+
+    const typesRegion = result.generation.files
+      .flatMap((f) => f.regions)
+      .find((r) => r.id === "user.create.types");
+    expect(typesRegion).toBeDefined();
+    expect(typesRegion!.content).toContain(`validate:"email"`);
+    expect(typesRegion!.content).not.toContain(`validate:"required,email"`);
+  });
+
+  it("response structs have no validate tags", async () => {
+    const app = defineApp({
+      architecture: "clean",
+      router: defineRouter({ adapter: "gin" }),
+      modules: [
+        defineModule({
+          name: "user",
+          routes: [
+            defineRoute({
+              id: "get",
+              method: "GET",
+              path: "/users/:id",
+              response: z.object({ id: z.string(), name: z.string().min(3) }),
+              handler: "GetUser",
+            }),
+          ],
+        }),
+      ],
+    });
+
+    const result = await compile({ app, dryRun: true });
+    expect(result.diagnostics.filter((d) => d.level === "error")).toEqual([]);
+
+    const typesRegion = result.generation.files
+      .flatMap((f) => f.regions)
+      .find((r) => r.id === "user.get.types");
+    expect(typesRegion).toBeDefined();
+
+    const responseBlock = typesRegion!.content.split("type GetUserResponse")[1] ?? "";
+    expect(responseBlock).not.toContain(`validate`);
   });
 
   it("handles POST routes with both query and body schemas", async () => {

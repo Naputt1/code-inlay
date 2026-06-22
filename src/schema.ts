@@ -6,6 +6,7 @@ export type GoField = {
   type: string;
   jsonName: string;
   optional: boolean;
+  validations?: string[];
 };
 
 export type GoStruct = {
@@ -51,6 +52,61 @@ function isZodArray(schema: SchemaLike): schema is SchemaLike & { element: Schem
   return typeName(schema) === "ZodArray";
 }
 
+function extractValidations(schema: SchemaLike): string[] {
+  const validations: string[] = [];
+  const inner = unwrap(schema);
+
+  if (isZodString(inner)) {
+    const checks = (
+      (inner as unknown as Record<string, unknown>)._def as Record<string, unknown>
+    )?.checks as Array<{ kind: string; value?: unknown; regex?: RegExp }> | undefined;
+    if (checks) {
+      for (const check of checks) {
+        if (check.kind === "min") validations.push(`min=${check.value}`);
+        else if (check.kind === "max") validations.push(`max=${check.value}`);
+        else if (check.kind === "length") validations.push(`len=${check.value}`);
+        else if (check.kind === "email") validations.push("email");
+        else if (check.kind === "url") validations.push("url");
+        else if (check.kind === "regex") validations.push(`regex=${check.regex?.source ?? ""}`);
+      }
+    }
+  } else if (isZodNumber(inner)) {
+    const checks = (
+      (inner as unknown as Record<string, unknown>)._def as Record<string, unknown>
+    )?.checks as Array<{ kind: string; value?: unknown; inclusive?: boolean }> | undefined;
+    if (checks) {
+      for (const check of checks) {
+        if (check.kind === "min") {
+          if (check.inclusive === false) validations.push(`gt=${check.value}`);
+          else validations.push(`min=${check.value}`);
+        } else if (check.kind === "max") {
+          if (check.inclusive === false) validations.push(`lt=${check.value}`);
+          else validations.push(`max=${check.value}`);
+        }
+      }
+    }
+  } else if (isZodEnum(inner)) {
+    const values = (
+      (inner as unknown as Record<string, unknown>)._def as Record<string, unknown>
+    )?.values as string[] | undefined;
+    if (values && values.length > 0) {
+      validations.push(`oneof=${values.join(" ")}`);
+    }
+  } else if (isZodArray(inner)) {
+    const checks = (
+      (inner as unknown as Record<string, unknown>)._def as Record<string, unknown>
+    )?.checks as Array<{ kind: string; value?: unknown }> | undefined;
+    if (checks) {
+      for (const check of checks) {
+        if (check.kind === "min") validations.push(`min=${check.value}`);
+        else if (check.kind === "max") validations.push(`max=${check.value}`);
+      }
+    }
+  }
+
+  return validations;
+}
+
 export function generateRouteTypes(route: RouteAst, diagnostics: Diagnostic[]): string {
   const structs: GoStruct[] = [];
   const subStructs = new Map<string, GoStruct>();
@@ -74,6 +130,7 @@ export function generateRouteTypes(route: RouteAst, diagnostics: Diagnostic[]): 
             type: childName,
             jsonName: fieldName,
             optional,
+            validations: extractValidations(fieldSchema),
           };
         }
         if (isZodArray(inner)) {
@@ -86,6 +143,7 @@ export function generateRouteTypes(route: RouteAst, diagnostics: Diagnostic[]): 
               type: `[]${childName}`,
               jsonName: fieldName,
               optional,
+              validations: extractValidations(fieldSchema),
             };
           }
         }
@@ -94,6 +152,7 @@ export function generateRouteTypes(route: RouteAst, diagnostics: Diagnostic[]): 
           type: schemaToGoType(fieldSchema, diagnostics),
           jsonName: fieldName,
           optional,
+          validations: extractValidations(fieldSchema),
         };
       });
     subStructs.set(name, { name, fields });
@@ -117,6 +176,7 @@ export function generateRouteTypes(route: RouteAst, diagnostics: Diagnostic[]): 
             type: childName,
             jsonName: fieldName,
             optional,
+            validations: extractValidations(fieldSchema),
           };
         }
         if (isZodArray(inner)) {
@@ -129,6 +189,7 @@ export function generateRouteTypes(route: RouteAst, diagnostics: Diagnostic[]): 
               type: `[]${childName}`,
               jsonName: fieldName,
               optional,
+              validations: extractValidations(fieldSchema),
             };
           }
         }
@@ -137,6 +198,7 @@ export function generateRouteTypes(route: RouteAst, diagnostics: Diagnostic[]): 
           type: schemaToGoType(fieldSchema, diagnostics),
           jsonName: fieldName,
           optional,
+          validations: extractValidations(fieldSchema),
         };
       });
     return { name: prefix, fields };
@@ -277,10 +339,15 @@ function renderStruct(goStruct: GoStruct, responseContext: boolean = false): str
   const fields = goStruct.fields
     .map((field) => {
       const omitempty = field.optional ? ",omitempty" : "";
-      const binding = !responseContext && !field.optional ? ` binding:"required"` : "";
+      const validateParts: string[] = [];
+      if (!responseContext) {
+        if (!field.optional) validateParts.push("required");
+        if (field.validations) validateParts.push(...field.validations);
+      }
+      const validateTag = validateParts.length > 0 ? ` validate:"${validateParts.join(",")}"` : "";
       const tag = responseContext
         ? `json:"${field.jsonName}${omitempty}"`
-        : `json:"${field.jsonName}${omitempty}" form:"${field.jsonName}"${binding}`;
+        : `json:"${field.jsonName}${omitempty}" form:"${field.jsonName}"${validateTag}`;
       return `\t${field.name} ${field.type} \`${tag}\``;
     })
     .join("\n");
