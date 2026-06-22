@@ -1,4 +1,4 @@
-# Backend Gen
+# Code Inlay
 
 **TypeScript-defined Go backend code generator.**
 
@@ -7,14 +7,19 @@ Write your API routes with Zod schemas in a single `backend.config.ts` file, and
 ## How it works
 
 ```
-backend.config.ts  ──►  backend-gen generate  ──►  Go server (cmd/server/main.go)
-                                                      internal/*/handler.go
-                                                      internal/*/usecase.go
-                                                      internal/*/repo.go
-                                                      internal/http/routes.go
-                                                      runtime/
-                                                      OpenAPI spec
-                                                      TypeScript client
+backend.config.ts  ──►  backend-gen generate
+                          │
+                          ├── Go server
+                          │     cmd/server/main.go
+                          │     internal/*/handler.go
+                          │     internal/*/usecase.go
+                          │     internal/*/repo.go
+                          │     internal/http/routes.go
+                          │     runtime/
+                          │
+                          ├── OpenAPI spec
+                          │
+                          └── TypeScript client
 ```
 
 ## Features

@@ -2,11 +2,11 @@ import { defineConfig } from "vitepress";
 
 export default defineConfig({
   base: "/code-inlay/",
-  title: "Backend Gen",
+  title: "Code Inlay",
   description: "TypeScript-powered Go backend code generator",
   cleanUrls: true,
-  socialLinks: [{ icon: "github", link: "https://github.com/code-inlay/backend-gen" }],
   themeConfig: {
+    socialLinks: [{ icon: "github", link: "https://github.com/Naputt1/code-inlay" }],
     nav: [
       { text: "Guide", link: "/guide/getting-started" },
       { text: "CLI", link: "/cli/" },
