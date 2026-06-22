@@ -59,9 +59,9 @@ You can combine architectures per-module:
 ```ts
 defineModule({
   name: "ticket",
-  architecture: "clean",  // Only this module uses clean architecture
+  architecture: "clean", // Only this module uses clean architecture
   routes: ticketRoutes,
-})
+});
 ```
 
 ## Custom architecture

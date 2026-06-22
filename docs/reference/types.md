@@ -53,7 +53,7 @@ type AppDefinition = {
 
 ```ts
 type CompileSettings = {
-  fileCreation: FileCreationMode;       // "disabled" | "markers-only" | "skeleton"
+  fileCreation: FileCreationMode; // "disabled" | "markers-only" | "skeleton"
   usecaseOrganization?: UsecaseOrganization;
   targets?: string[];
   targetOptions?: Record<string, Record<string, unknown>>;

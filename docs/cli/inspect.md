@@ -8,18 +8,18 @@ backend-gen inspect <subcommand> [id] [options]
 
 ## Subcommands
 
-| Subcommand | Description |
-|---|---|
-| `ast` | Show the full AST |
-| `route <id>` | Show a specific route's AST |
-| `graph` | Show the plugin pipeline graph |
-| `plugins` | List all registered plugins |
-| `regions` | List all generated regions |
+| Subcommand   | Description                    |
+| ------------ | ------------------------------ |
+| `ast`        | Show the full AST              |
+| `route <id>` | Show a specific route's AST    |
+| `graph`      | Show the plugin pipeline graph |
+| `plugins`    | List all registered plugins    |
+| `regions`    | List all generated regions     |
 
 ## Options
 
-| Option | Description |
-|---|---|
+| Option                           | Description                     |
+| -------------------------------- | ------------------------------- |
 | `--format <tree\|json\|mermaid>` | Output format (default: `tree`) |
 
 ## Examples

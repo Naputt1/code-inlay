@@ -8,9 +8,9 @@ The testing system can generate mock interfaces, test scaffolds, and contract te
 export default defineApp({
   options: {
     testing: {
-      mocks: true,       // Generate mock implementations
-      scaffolds: true,   // Generate test scaffolding
-      contracts: true,   // Generate contract tests
+      mocks: true, // Generate mock implementations
+      scaffolds: true, // Generate test scaffolding
+      contracts: true, // Generate contract tests
     },
   },
 });

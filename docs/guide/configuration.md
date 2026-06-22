@@ -10,15 +10,15 @@ export default defineApp({
 
 ## defineApp
 
-| Option | Type | Default | Description |
-|---|---|---|---|
-| `architecture` | `ArchitectureRef` | `"clean"` | Architecture plugin |
-| `router` | `RouterDefinition` | — | Router adapter + prefix |
-| `modules` | `ModuleDefinition[]` | — | API modules |
-| `transformers` | `AstTransformer[]` | `[]` | AST transformers |
-| `plugins` | `BackendCompilerPlugin[]` | `[]` | External plugins |
-| `targets` | `CodeTarget[]` | `[]` | Additional output targets |
-| `options` | `CompileSettings` | — | Compiler options |
+| Option         | Type                      | Default   | Description               |
+| -------------- | ------------------------- | --------- | ------------------------- |
+| `architecture` | `ArchitectureRef`         | `"clean"` | Architecture plugin       |
+| `router`       | `RouterDefinition`        | —         | Router adapter + prefix   |
+| `modules`      | `ModuleDefinition[]`      | —         | API modules               |
+| `transformers` | `AstTransformer[]`        | `[]`      | AST transformers          |
+| `plugins`      | `BackendCompilerPlugin[]` | `[]`      | External plugins          |
+| `targets`      | `CodeTarget[]`            | `[]`      | Additional output targets |
+| `options`      | `CompileSettings`         | —         | Compiler options          |
 
 ### options
 

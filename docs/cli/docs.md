@@ -8,10 +8,10 @@ backend-gen docs <format>
 
 ## Formats
 
-| Format | Description |
-|---|---|
+| Format     | Description            |
+| ---------- | ---------------------- |
 | `markdown` | Markdown documentation |
-| `mermaid` | Mermaid ERD diagram |
+| `mermaid`  | Mermaid ERD diagram    |
 
 ## Example
 

@@ -66,7 +66,7 @@ const group = defineRouteGroup({
       id: "publicInfo",
       method: "GET",
       path: "/info",
-      middleware: [],           // Override: no middleware
+      middleware: [], // Override: no middleware
       handler: "PublicInfo",
     }),
     defineRoute({

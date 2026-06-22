@@ -9,9 +9,9 @@ export default defineApp({
   options: {
     runtime: {
       enabled: true,
-      di: "wire",               // Dependency injection style
-      tracing: "otel",          // OpenTelemetry
-      logger: "zerolog",        // Structured logging
+      di: "wire", // Dependency injection style
+      tracing: "otel", // OpenTelemetry
+      logger: "zerolog", // Structured logging
     },
   },
 });
@@ -19,12 +19,12 @@ export default defineApp({
 
 ## DI options
 
-| Option | Description |
-|---|---|
-| `manual` | Manually wired dependencies |
-| `wire` | Google Wire (codegen-based DI) |
-| `google-wire` | Same as `wire` |
-| `uber-fx` | Uber Fx (runtime DI) |
+| Option        | Description                    |
+| ------------- | ------------------------------ |
+| `manual`      | Manually wired dependencies    |
+| `wire`        | Google Wire (codegen-based DI) |
+| `google-wire` | Same as `wire`                 |
+| `uber-fx`     | Uber Fx (runtime DI)           |
 
 ## Generated runtime
 

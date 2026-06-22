@@ -8,11 +8,11 @@ backend-gen plugin <subcommand> [name]
 
 ## Subcommands
 
-| Subcommand | Description |
-|---|---|
-| `add <package>` | Install and register a plugin |
-| `remove <name>` | Remove a plugin |
-| `list` | List all registered plugins |
+| Subcommand      | Description                           |
+| --------------- | ------------------------------------- |
+| `add <package>` | Install and register a plugin         |
+| `remove <name>` | Remove a plugin                       |
+| `list`          | List all registered plugins           |
 | `update <name>` | Update a plugin to the latest version |
 
 ## Examples

@@ -57,9 +57,8 @@ function extractValidations(schema: SchemaLike): string[] {
   const inner = unwrap(schema);
 
   if (isZodString(inner)) {
-    const checks = (
-      (inner as unknown as Record<string, unknown>)._def as Record<string, unknown>
-    )?.checks as Array<{ kind: string; value?: unknown; regex?: RegExp }> | undefined;
+    const checks = ((inner as unknown as Record<string, unknown>)._def as Record<string, unknown>)
+      ?.checks as Array<{ kind: string; value?: unknown; regex?: RegExp }> | undefined;
     if (checks) {
       for (const check of checks) {
         if (check.kind === "min") validations.push(`min=${check.value}`);
@@ -71,9 +70,8 @@ function extractValidations(schema: SchemaLike): string[] {
       }
     }
   } else if (isZodNumber(inner)) {
-    const checks = (
-      (inner as unknown as Record<string, unknown>)._def as Record<string, unknown>
-    )?.checks as Array<{ kind: string; value?: unknown; inclusive?: boolean }> | undefined;
+    const checks = ((inner as unknown as Record<string, unknown>)._def as Record<string, unknown>)
+      ?.checks as Array<{ kind: string; value?: unknown; inclusive?: boolean }> | undefined;
     if (checks) {
       for (const check of checks) {
         if (check.kind === "min") {
@@ -86,16 +84,14 @@ function extractValidations(schema: SchemaLike): string[] {
       }
     }
   } else if (isZodEnum(inner)) {
-    const values = (
-      (inner as unknown as Record<string, unknown>)._def as Record<string, unknown>
-    )?.values as string[] | undefined;
+    const values = ((inner as unknown as Record<string, unknown>)._def as Record<string, unknown>)
+      ?.values as string[] | undefined;
     if (values && values.length > 0) {
       validations.push(`oneof=${values.join(" ")}`);
     }
   } else if (isZodArray(inner)) {
-    const checks = (
-      (inner as unknown as Record<string, unknown>)._def as Record<string, unknown>
-    )?.checks as Array<{ kind: string; value?: unknown }> | undefined;
+    const checks = ((inner as unknown as Record<string, unknown>)._def as Record<string, unknown>)
+      ?.checks as Array<{ kind: string; value?: unknown }> | undefined;
     if (checks) {
       for (const check of checks) {
         if (check.kind === "min") validations.push(`min=${check.value}`);

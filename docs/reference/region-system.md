@@ -45,8 +45,8 @@ Each region stores a content hash. If the content inside markers has been manual
 
 ## File creation modes
 
-| Mode | Behavior |
-|---|---|
-| `skeleton` | Create missing files with empty markers |
-| `markers-only` | Only write into existing markers |
-| `disabled` | Don't create or modify files |
+| Mode           | Behavior                                |
+| -------------- | --------------------------------------- |
+| `skeleton`     | Create missing files with empty markers |
+| `markers-only` | Only write into existing markers        |
+| `disabled`     | Don't create or modify files            |

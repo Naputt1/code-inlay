@@ -8,8 +8,8 @@ The metadata system generates runtime-accessible information about your API rout
 export default defineApp({
   metadata: {
     enabled: true,
-    routeRegistry: true,     // Generate route registry
-    schemaReflection: false,  // Generate schema introspection
+    routeRegistry: true, // Generate route registry
+    schemaReflection: false, // Generate schema introspection
   },
 });
 ```

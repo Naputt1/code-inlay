@@ -32,18 +32,18 @@ Control how use cases are organized within a module:
 defineModule({
   name: "staff",
   usecaseOrganization: {
-    strategy: "grouped",        // "merged" | "single" | "grouped"
-    groupBy: "operation",       // "path" | "operation" | "handler" | "module"
+    strategy: "grouped", // "merged" | "single" | "grouped"
+    groupBy: "operation", // "path" | "operation" | "handler" | "module"
   },
   routes: staffRoutes,
-})
+});
 ```
 
-| Strategy | Behavior |
-|---|---|
-| `merged` | All routes share a single use case file |
-| `single` | Each route gets its own use case interface |
-| `grouped` | Routes are grouped by `groupBy` strategy |
+| Strategy  | Behavior                                   |
+| --------- | ------------------------------------------ |
+| `merged`  | All routes share a single use case file    |
+| `single`  | Each route gets its own use case interface |
+| `grouped` | Routes are grouped by `groupBy` strategy   |
 
 ## Module-level configuration
 
@@ -52,8 +52,8 @@ Modules can override the app-level architecture and adapters:
 ```ts
 defineModule({
   name: "ticket",
-  architecture: "clean",       // Override app-level architecture
+  architecture: "clean", // Override app-level architecture
   adapters: [{ name: "gin", transport: "http" }],
   routes: ticketRoutes,
-})
+});
 ```

@@ -14,7 +14,7 @@ Same as [generate](/cli/generate).
 
 ## Exit codes
 
-| Code | Meaning |
-|---|---|
-| `0` | No changes needed |
-| `1` | Changes detected or compilation error |
+| Code | Meaning                               |
+| ---- | ------------------------------------- |
+| `0`  | No changes needed                     |
+| `1`  | Changes detected or compilation error |

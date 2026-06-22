@@ -16,14 +16,14 @@ This is the primary command. It:
 
 ## Options
 
-| Option | Description |
-|---|---|
-| `--config <path>` | Config file path (default: `backend.config.ts`) |
-| `--cwd <path>` | Working directory |
-| `--module <name>` | Generate only for a specific module |
-| `--route <id>` | Generate only for a specific route |
-| `--force-region <id>` | Override drift protection |
-| `--dry-run` | Compile without writing |
+| Option                | Description                                     |
+| --------------------- | ----------------------------------------------- |
+| `--config <path>`     | Config file path (default: `backend.config.ts`) |
+| `--cwd <path>`        | Working directory                               |
+| `--module <name>`     | Generate only for a specific module             |
+| `--route <id>`        | Generate only for a specific route              |
+| `--force-region <id>` | Override drift protection                       |
+| `--dry-run`           | Compile without writing                         |
 
 ## Examples
 

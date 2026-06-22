@@ -4,11 +4,11 @@ Targets generate additional output formats alongside the Go server.
 
 ## Built-in targets
 
-| Target | Description |
-|---|---|
+| Target      | Description                              |
+| ----------- | ---------------------------------------- |
 | `go-server` | Go server code (default, always enabled) |
-| `ts-client` | TypeScript API client |
-| `openapi` | OpenAPI 3.0 specification |
+| `ts-client` | TypeScript API client                    |
+| `openapi`   | OpenAPI 3.0 specification                |
 
 ## Configuration
 

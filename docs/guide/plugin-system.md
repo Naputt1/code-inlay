@@ -4,13 +4,13 @@ The plugin system allows extending the code generator with custom architectures,
 
 ## Plugin types
 
-| Type | Interface | Purpose |
-|---|---|---|
-| Architecture | `ArchitecturePlugin` | Custom code structure |
-| Adapter | `AdapterPlugin` | Custom HTTP/router framework |
-| Transformer | `AstTransformer` | Modify the AST before codegen |
-| Validator | `ValidatorPlugin` | Validate the AST |
-| Target | `CodeTarget` | Additional output formats |
+| Type         | Interface            | Purpose                       |
+| ------------ | -------------------- | ----------------------------- |
+| Architecture | `ArchitecturePlugin` | Custom code structure         |
+| Adapter      | `AdapterPlugin`      | Custom HTTP/router framework  |
+| Transformer  | `AstTransformer`     | Modify the AST before codegen |
+| Validator    | `ValidatorPlugin`    | Validate the AST              |
+| Target       | `CodeTarget`         | Additional output formats     |
 
 ## Pipeline stages
 

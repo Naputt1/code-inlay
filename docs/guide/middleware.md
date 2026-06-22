@@ -30,7 +30,7 @@ defineRoute({
   id: "publicInfo",
   method: "GET",
   path: "/info",
-  middleware: [],  // override — no middleware
+  middleware: [], // override — no middleware
   handler: "PublicInfo",
 });
 
@@ -39,7 +39,7 @@ defineRoute({
   id: "delete",
   method: "DELETE",
   path: "/:id",
-  middleware: [jwtIsAdmin],  // additional middleware appended
+  middleware: [jwtIsAdmin], // additional middleware appended
   handler: "Delete",
 });
 ```

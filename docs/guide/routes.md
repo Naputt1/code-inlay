@@ -78,17 +78,17 @@ Both `ShouldBindQuery` and `ShouldBindJSON` are used, and the request struct mer
 
 ## Route options
 
-| Option | Type | Description |
-|---|---|---|
-| `id` | `string` | Unique route identifier |
-| `method` | `"GET" \| "POST" \| "PUT" \| "PATCH" \| "DELETE"` | HTTP method |
-| `path` | `string` | URL path with optional `:param` segments |
-| `handler` | `string` | Handler function name |
-| `query` | `ZodObject` | Query parameter schema (GET/DELETE only) |
-| `body` | `ZodObject` | Request body schema (POST/PUT/PATCH only) |
-| `response` | `ZodObject` | Response schema |
-| `middleware` | `MiddlewareDefinition[]` | Route-level middleware |
-| `usecaseGroup` | `string` | Override usecase grouping |
+| Option         | Type                                              | Description                               |
+| -------------- | ------------------------------------------------- | ----------------------------------------- |
+| `id`           | `string`                                          | Unique route identifier                   |
+| `method`       | `"GET" \| "POST" \| "PUT" \| "PATCH" \| "DELETE"` | HTTP method                               |
+| `path`         | `string`                                          | URL path with optional `:param` segments  |
+| `handler`      | `string`                                          | Handler function name                     |
+| `query`        | `ZodObject`                                       | Query parameter schema (GET/DELETE only)  |
+| `body`         | `ZodObject`                                       | Request body schema (POST/PUT/PATCH only) |
+| `response`     | `ZodObject`                                       | Response schema                           |
+| `middleware`   | `MiddlewareDefinition[]`                          | Route-level middleware                    |
+| `usecaseGroup` | `string`                                          | Override usecase grouping                 |
 
 ## Generated types
 

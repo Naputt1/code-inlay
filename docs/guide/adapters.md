@@ -17,12 +17,12 @@ export default defineApp({
 
 The adapter chooses the correct binding method based on the route definition:
 
-| Route has | Binding method |
-|---|---|
-| `query` only | `c.ShouldBindQuery(&input)` |
-| `body` only | `c.ShouldBindJSON(&input)` |
-| Both `query` + `body` | `c.ShouldBindQuery(&query)` + `c.ShouldBindJSON(&requestBody)` |
-| Neither (path params only) | `c.Param("id")` |
+| Route has                  | Binding method                                                 |
+| -------------------------- | -------------------------------------------------------------- |
+| `query` only               | `c.ShouldBindQuery(&input)`                                    |
+| `body` only                | `c.ShouldBindJSON(&input)`                                     |
+| Both `query` + `body`      | `c.ShouldBindQuery(&query)` + `c.ShouldBindJSON(&requestBody)` |
+| Neither (path params only) | `c.Param("id")`                                                |
 
 ### Validation
 
@@ -53,14 +53,20 @@ const myAdapter = defineAdapter({
   name: "echo",
   transport: "http",
   generateRoute(ctx) {
-    return [{
-      id: defaultRegionId(ctx.route, "route"),
-      language: "go",
-      content: `e.${methodName(ctx.route.method)}("${ctx.route.path}", handler.${ctx.route.handlerName})`,
-    }];
+    return [
+      {
+        id: defaultRegionId(ctx.route, "route"),
+        language: "go",
+        content: `e.${methodName(ctx.route.method)}("${ctx.route.path}", handler.${ctx.route.handlerName})`,
+      },
+    ];
   },
-  generateMiddleware(ctx) { return []; },
-  generateServer(ctx) { return []; },
+  generateMiddleware(ctx) {
+    return [];
+  },
+  generateServer(ctx) {
+    return [];
+  },
 });
 
 export default defineApp({
