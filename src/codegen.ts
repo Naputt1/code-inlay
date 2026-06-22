@@ -17,6 +17,7 @@ import {
   regionIdForUsecaseImports,
   resolveUsecaseGroupKey,
   resolveUsecaseOrg,
+  snakeCase,
 } from "./naming.js";
 import { generateRouteTypes, requestType, responseType } from "./schema.js";
 import { generateGinHandler, resolveAdapters } from "./adapters.js";
@@ -129,7 +130,7 @@ export function generateCode(
 
         const routeGroup = (route.metadata?._group as string) ?? "";
         const groupMwNames = new Set((route.metadata?._groupMw as string[]) ?? []);
-        const routeMwVars = routeMws.filter((n) => !groupMwNames.has(n)).map(mwToParamName);
+        const routeMwVars = routeMws.filter((n) => !groupMwNames.has(n)).map((n) => `middleware.${n}`);
         let line = region.content;
         if (routeMwVars.length > 0) {
           const lastComma = region.content.lastIndexOf(", ");
@@ -168,15 +169,10 @@ export function generateCode(
     });
   }
 
-  // Track all middleware names across all modules for the combined entry point
-  const allMwNames = new Set<string>();
   const moduleNamesInOrder: string[] = [];
 
   for (const [routeFile, routeLines] of routeLinesByFile) {
     const mwNames = middlewareByFile.get(routeFile) ?? new Set();
-    for (const mw of mwNames) {
-      allMwNames.add(mw);
-    }
 
     const moduleName = routeFile.replace(/^.*internal\/http\/(.+)_routes\.go$/, "$1");
     moduleNamesInOrder.push(moduleName);
@@ -212,15 +208,14 @@ export function generateCode(
       }
     }
 
-    const mwParams = [...mwNames]
-      .sort()
-      .map((n) => `${mwToParamName(n)} gin.HandlerFunc`)
-      .join(", ");
-    const funcParams = mwParams ? `api *gin.RouterGroup, ${mwParams}` : `api *gin.RouterGroup`;
+    const funcParams = `api *gin.RouterGroup`;
 
     const body: string[] = [];
     body.push(`import (`);
     body.push(`\t"github.com/gin-gonic/gin"`);
+    if (mwNames.size > 0 && moduleInfo) {
+      body.push(`\t"${moduleInfo.modulePath}/internal/middleware"`);
+    }
     for (const imp of moduleImports.sort()) {
       body.push(`\t${imp}`);
     }
@@ -262,7 +257,7 @@ export function generateCode(
     for (const [prefix, lines] of groups) {
       const gv = groupVar(prefix);
       const gMw = groupMwByPrefix.get(prefix);
-      const gMwArgs = gMw && gMw.size > 0 ? [...gMw].sort().map(mwToParamName).join(", ") : "";
+      const gMwArgs = gMw && gMw.size > 0 ? [...gMw].sort().map((n) => `middleware.${n}`).join(", ") : "";
       const groupDecl = gMwArgs
         ? `${gv} := api.Group("${prefix}", ${gMwArgs})`
         : `${gv} := api.Group("${prefix}")`;
@@ -297,26 +292,15 @@ export function generateCode(
 
   // Generate combined routes.go that calls each per-module function
   if (routeLinesByFile.size > 0) {
-    const allMwParams = [...allMwNames]
-      .sort()
-      .map((n) => `${mwToParamName(n)} gin.HandlerFunc`)
-      .join(", ");
-    const combinedParams = allMwParams
-      ? `api *gin.RouterGroup, ${allMwParams}`
-      : `api *gin.RouterGroup`;
-
     const combinedBody: string[] = [];
     combinedBody.push(`import (`);
     combinedBody.push(`\t"github.com/gin-gonic/gin"`);
     combinedBody.push(`)`);
     combinedBody.push(``);
-    combinedBody.push(`func RegisterRoutes(${combinedParams}) {`);
+    combinedBody.push(`func RegisterRoutes(api *gin.RouterGroup) {`);
     for (const modName of moduleNamesInOrder) {
       const funcName = `register${pascalCase(modName)}Routes`;
-      const modMwNames = middlewareByFile.get(fileForModuleRoutes(modName)) ?? new Set();
-      const modMwArgs = [...modMwNames].sort().map(mwToParamName).join(", ");
-      const callArgs = modMwArgs ? `api, ${modMwArgs}` : "api";
-      combinedBody.push(`\t${funcName}(${callArgs})`);
+      combinedBody.push(`\t${funcName}(api)`);
     }
     combinedBody.push(`}`);
 
@@ -331,6 +315,12 @@ export function generateCode(
 
   for (const { file, regionId, content } of generateHandlerStructs(architecture)) {
     add(file, { id: regionId, language: "go", content });
+  }
+
+  for (const patch of generateMiddlewareFiles(ast)) {
+    for (const region of patch.regions) {
+      add(patch.path, region);
+    }
   }
 
   if (moduleInfo) {
@@ -473,7 +463,54 @@ function collectMiddlewareNames(route: RouteAst, ast: AppAst): string[] {
   return [...names];
 }
 
-function mwToParamName(name: string): string {
-  if (!name) return "";
-  return name.charAt(0).toLowerCase() + name.slice(1);
+function collectAllMiddlewareInfo(ast: AppAst): Array<{ name: string; handler?: string }> {
+  const seen = new Set<string>();
+  const result: Array<{ name: string; handler?: string }> = [];
+  for (const mod of ast.modules) {
+    for (const mw of mod.middleware) {
+      if (!seen.has(mw.name)) {
+        seen.add(mw.name);
+        result.push({ name: mw.name, handler: mw.handler });
+      }
+    }
+    for (const route of mod.routes) {
+      for (const mw of route.middleware) {
+        if (!seen.has(mw.name)) {
+          seen.add(mw.name);
+          result.push({ name: mw.name, handler: mw.handler });
+        }
+      }
+    }
+  }
+  return result.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function generateMiddlewareFiles(ast: AppAst): GeneratedFilePatch[] {
+  const mws = collectAllMiddlewareInfo(ast);
+  return mws.map((mw) => {
+    const fileName = snakeCase(mw.name);
+    const funcName = mw.handler ?? mw.name;
+    const content = [
+      `import "github.com/gin-gonic/gin"`,
+      ``,
+      `func ${funcName}(c *gin.Context) {`,
+      `\t// TODO: implement ${funcName}`,
+      `\tc.Next()`,
+      `}`,
+      ``,
+    ].join("\n");
+
+    return {
+      path: `internal/middleware/${fileName}.go`,
+      regions: [
+        {
+          id: `middleware.${mw.name}`,
+          stableHash: `middleware:${mw.name}`,
+          owner: "code-inlay",
+          language: "go",
+          content,
+        },
+      ],
+    };
+  });
 }

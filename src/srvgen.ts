@@ -4,26 +4,6 @@ import type { GoModuleInfo } from "./env.js";
 export const serverFilePath = "cmd/server/main.go";
 export const serverMainRegionId = "server.main";
 
-function collectAllMiddleware(ast: AppAst): string[] {
-  const names = new Set<string>();
-  for (const mod of ast.modules) {
-    for (const mw of mod.middleware) {
-      names.add(mw.name);
-    }
-    for (const route of mod.routes) {
-      for (const mw of route.middleware) {
-        names.add(mw.name);
-      }
-    }
-  }
-  return [...names].sort();
-}
-
-function mwToParamName(name: string): string {
-  if (!name) return "";
-  return name.charAt(0).toLowerCase() + name.slice(1);
-}
-
 export function generateServer(
   ast: AppAst,
   architecture: ArchitectureAst,
@@ -39,10 +19,6 @@ export function generateServer(
   const routesPkg = "genroutes";
   imports.push(`genroutes "${moduleInfo.modulePath}/internal/http"`);
 
-  const mwNames = collectAllMiddleware(ast);
-  const mwArgs = mwNames.map((n) => `nil /* TODO: ${mwToParamName(n)} */`).join(", ");
-  const callArgs = mwArgs ? `api, ${mwArgs}` : "api";
-
   const content: string[] = [];
   content.push(`import (`);
   for (const imp of [...new Set(imports)].sort()) {
@@ -53,7 +29,7 @@ export function generateServer(
   content.push("func main() {");
   content.push(`\tr := gin.Default()`);
   content.push(`\tapi := r.Group("${ast.router.prefix}")`);
-  content.push(`\t${routesPkg}.RegisterRoutes(${callArgs})`);
+  content.push(`\t${routesPkg}.RegisterRoutes(api)`);
   content.push(`\tif err := r.Run(); err != nil {`);
   content.push(`\t\tpanic(err)`);
   content.push(`\t}`);
