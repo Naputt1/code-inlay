@@ -13,6 +13,7 @@ import type {
   MiddlewareDefinition,
   ModuleDefinition,
   PluginPackage,
+  ResponseFormat,
   RouteDefinition,
   RouterAdapter,
   RouterDefinition,
@@ -22,7 +23,6 @@ import type {
   AdapterSelection,
   UsecaseOrganization,
 } from "./types.js";
-
 export type DefineRouteInput<
   TQuery extends SchemaLike | undefined,
   TBody extends SchemaLike | undefined,
@@ -33,6 +33,7 @@ export type DefineRouteInput<
   architecture?: ArchitectureRef | ArchitectureRef[] | ArchitectureSelection;
   adapter?: AdapterRef | AdapterRef[] | AdapterSelection;
   adapters?: AdapterRef[] | AdapterSelection;
+  responseFormat?: ResponseFormat;
   response?: TResponse;
   handler: string;
   usecaseGroup?: string;
@@ -57,6 +58,7 @@ export function defineRoute<
     architecture: input.architecture,
     adapter: input.adapter,
     adapters: input.adapters,
+    responseFormat: input.responseFormat,
     query: input.query,
     body: input.body,
     response: input.response,
@@ -80,6 +82,7 @@ export function defineModule(input: {
   architecture?: ArchitectureRef | ArchitectureRef[] | ArchitectureSelection;
   adapters?: AdapterRef[] | AdapterSelection;
   usecaseOrganization?: UsecaseOrganization;
+  responseFormat?: ResponseFormat;
   routes?: RouteDefinition<
     SchemaLike | undefined,
     SchemaLike | undefined,
@@ -93,6 +96,7 @@ export function defineModule(input: {
     architecture: input.architecture,
     adapters: input.adapters,
     usecaseOrganization: input.usecaseOrganization,
+    responseFormat: input.responseFormat,
     routes: input.routes ?? [],
     middleware: input.middleware ?? [],
   };
@@ -138,6 +142,7 @@ export function defineApp(input: {
     options: {
       fileCreation: input.options?.fileCreation ?? "skeleton",
       usecaseOrganization: input.options?.usecaseOrganization,
+      responseFormat: input.options?.responseFormat,
       targets: input.options?.targets ?? ["go-server"],
       targetOptions: input.options?.targetOptions,
       runtime: input.runtime ?? { enabled: false },
@@ -185,6 +190,13 @@ function joinPath(prefix: string, path: string): string {
   const a = prefix.replace(/\/+$/, "");
   const b = path.startsWith("/") ? path : `/${path}`;
   return `${a}${b}` || "/";
+}
+
+export function defineResponseFormat(input: { wrapper: SchemaLike }): ResponseFormat {
+  return {
+    kind: "ResponseFormat",
+    wrapper: input.wrapper,
+  };
 }
 
 export function defineArchitecture(plugin: ArchitecturePlugin): ArchitecturePlugin {

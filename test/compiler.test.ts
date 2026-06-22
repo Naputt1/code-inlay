@@ -47,8 +47,8 @@ describe("compiler", () => {
       [
         "package user",
         "",
-        "// @gen:start user.create.domain",
-        "// @gen:end user.create.domain",
+        "// @gen:start user.domain",
+        "// @gen:end user.domain",
         "",
         "// @gen:start user.create.types",
         "// @gen:end user.create.types",

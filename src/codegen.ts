@@ -19,7 +19,7 @@ import {
   resolveUsecaseOrg,
   snakeCase,
 } from "./naming.js";
-import { generateRouteTypes, requestType, responseType } from "./schema.js";
+import { generateEntityStructs, generateRouteTypes, requestType, responseType } from "./schema.js";
 import { generateGinHandler, resolveAdapters } from "./adapters.js";
 import { generateServer, serverFilePath } from "./srvgen.js";
 export function generateCode(
@@ -44,13 +44,17 @@ export function generateCode(
   const handlerImportsAdded = new Set<string>();
   const usecaseFileInfo = new Map<string, { moduleName: string; groupKey: string }>();
 
+  const domainRoutesByModule = new Map<string, RouteAst[]>();
+
   for (const expansion of architecture.routes) {
     const route = expansion.route;
 
     for (const layer of expansion.layers) {
       if (layer.kind === "domain") {
-        if (domainModules.has(route.moduleName)) continue;
         domainModules.add(route.moduleName);
+        const routes = domainRoutesByModule.get(route.moduleName) ?? [];
+        routes.push(route);
+        domainRoutesByModule.set(route.moduleName, routes);
       }
       if (layer.kind === "repository") {
         if (repositoryModules.has(route.moduleName)) continue;
@@ -130,7 +134,9 @@ export function generateCode(
 
         const routeGroup = (route.metadata?._group as string) ?? "";
         const groupMwNames = new Set((route.metadata?._groupMw as string[]) ?? []);
-        const routeMwVars = routeMws.filter((n) => !groupMwNames.has(n)).map((n) => `middleware.${n}`);
+        const routeMwVars = routeMws
+          .filter((n) => !groupMwNames.has(n))
+          .map((n) => `middleware.${n}`);
         let line = region.content;
         if (routeMwVars.length > 0) {
           const lastComma = region.content.lastIndexOf(", ");
@@ -142,6 +148,19 @@ export function generateCode(
         routeLinesByFile.set(routeFile, lines);
       }
     }
+  }
+
+  for (const [moduleName, routes] of domainRoutesByModule) {
+    const domainFile = `internal/${moduleName}/types.go`;
+    const regionId = `${moduleName}.domain`;
+    const domainContent = generateDomain(moduleName, routes, diagnostics);
+    add(domainFile, {
+      id: regionId,
+      stableHash: `${regionId}:${moduleName}:${routes.length}routes`,
+      owner: "code-inlay",
+      language: "go",
+      content: domainContent,
+    });
   }
 
   const groupMwByPrefix = new Map<string, Set<string>>();
@@ -257,7 +276,13 @@ export function generateCode(
     for (const [prefix, lines] of groups) {
       const gv = groupVar(prefix);
       const gMw = groupMwByPrefix.get(prefix);
-      const gMwArgs = gMw && gMw.size > 0 ? [...gMw].sort().map((n) => `middleware.${n}`).join(", ") : "";
+      const gMwArgs =
+        gMw && gMw.size > 0
+          ? [...gMw]
+              .sort()
+              .map((n) => `middleware.${n}`)
+              .join(", ")
+          : "";
       const groupDecl = gMwArgs
         ? `${gv} := api.Group("${prefix}", ${gMwArgs})`
         : `${gv} := api.Group("${prefix}")`;
@@ -363,9 +388,9 @@ function generateLayerContent(
 ): string | undefined {
   switch (layer) {
     case "types":
-      return generateRouteTypes(route, diagnostics);
+      return generateRouteTypes(route, diagnostics, route.responseFormat);
     case "domain":
-      return generateDomain(route);
+      return undefined; // handled per module in aggregateDomainContent
     case "repository":
       return generateRepository(route);
     case "usecase":
@@ -383,8 +408,16 @@ function generateLayerContent(
   }
 }
 
-function generateDomain(route: RouteAst): string {
-  return `type ${pascalCase(route.moduleName)}ID string`;
+function generateDomain(moduleName: string, routes: RouteAst[], diagnostics: Diagnostic[]): string {
+  const parts: string[] = [`type ${pascalCase(moduleName)}ID string`];
+
+  const routesWithEntity = routes.filter((r) => r.response && r.responseFormat);
+  if (routesWithEntity.length > 0) {
+    const entityContent = generateEntityStructs(moduleName, routesWithEntity, diagnostics);
+    if (entityContent) parts.push(entityContent);
+  }
+
+  return parts.join("\n\n");
 }
 
 function generateRepository(route: RouteAst): string {

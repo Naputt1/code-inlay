@@ -1,4 +1,4 @@
-import type { Diagnostic, RouteAst, SchemaLike } from "./types.js";
+import type { Diagnostic, ResponseFormat, RouteAst, SchemaLike } from "./types.js";
 import { extractPathParams, pascalCase, routeTypeName } from "./naming.js";
 
 export type GoField = {
@@ -52,6 +52,10 @@ function isZodArray(schema: SchemaLike): schema is SchemaLike & { element: Schem
   return typeName(schema) === "ZodArray";
 }
 
+function isZodEntity(schema: SchemaLike): boolean {
+  return typeName(schema) === "ZodEntity";
+}
+
 function extractValidations(schema: SchemaLike): string[] {
   const validations: string[] = [];
   const inner = unwrap(schema);
@@ -103,14 +107,21 @@ function extractValidations(schema: SchemaLike): string[] {
   return validations;
 }
 
-export function generateRouteTypes(route: RouteAst, diagnostics: Diagnostic[]): string {
+export function generateRouteTypes(
+  route: RouteAst,
+  diagnostics: Diagnostic[],
+  responseFormat?: ResponseFormat,
+): string {
   const structs: GoStruct[] = [];
   const subStructs = new Map<string, GoStruct>();
 
   const registerSub = (name: string, schema: SchemaLike) => {
     if (subStructs.has(name)) return;
     const unwrapped = unwrap(schema);
-    if (!isZodObject(unwrapped)) return;
+    if (!isZodObject(unwrapped)) {
+      if (isZodEntity(unwrapped)) subStructs.set(name, { name, fields: [] });
+      return;
+    }
     const shape = unwrapped.shape;
     const fields = Object.keys(shape)
       .sort()
@@ -118,29 +129,33 @@ export function generateRouteTypes(route: RouteAst, diagnostics: Diagnostic[]): 
         const fieldSchema = shape[fieldName] as SchemaLike;
         const optional = isZodOptional(fieldSchema);
         const inner = unwrap(fieldSchema);
-        if (isZodObject(inner)) {
+        if (isZodObject(inner) || isZodEntity(inner)) {
           const childName = `${name}${pascalCase(fieldName)}`;
           registerSub(childName, inner);
-          return {
-            name: pascalCase(fieldName),
-            type: childName,
-            jsonName: fieldName,
-            optional,
-            validations: extractValidations(fieldSchema),
-          };
-        }
-        if (isZodArray(inner)) {
-          const elem = unwrap(inner.element);
-          if (isZodObject(elem)) {
-            const childName = `${name}${pascalCase(fieldName)}Item`;
-            registerSub(childName, elem);
+          if (subStructs.has(childName)) {
             return {
               name: pascalCase(fieldName),
-              type: `[]${childName}`,
+              type: childName,
               jsonName: fieldName,
               optional,
               validations: extractValidations(fieldSchema),
             };
+          }
+        }
+        if (isZodArray(inner)) {
+          const elem = unwrap(inner.element);
+          if (isZodObject(elem) || isZodEntity(elem)) {
+            const childName = `${name}${pascalCase(fieldName)}Item`;
+            registerSub(childName, elem);
+            if (subStructs.has(childName)) {
+              return {
+                name: pascalCase(fieldName),
+                type: `[]${childName}`,
+                jsonName: fieldName,
+                optional,
+                validations: extractValidations(fieldSchema),
+              };
+            }
           }
         }
         return {
@@ -164,29 +179,35 @@ export function generateRouteTypes(route: RouteAst, diagnostics: Diagnostic[]): 
         const fieldSchema = shape[fieldName] as SchemaLike;
         const optional = isZodOptional(fieldSchema);
         const inner = unwrap(fieldSchema);
-        if (isZodObject(inner)) {
+        if (isZodObject(inner) || isZodEntity(inner)) {
           const childName = `${prefix}${pascalCase(fieldName)}`;
           registerSub(childName, inner);
-          return {
-            name: pascalCase(fieldName),
-            type: childName,
-            jsonName: fieldName,
-            optional,
-            validations: extractValidations(fieldSchema),
-          };
-        }
-        if (isZodArray(inner)) {
-          const elem = unwrap(inner.element);
-          if (isZodObject(elem)) {
-            const childName = `${prefix}${pascalCase(fieldName)}Item`;
-            registerSub(childName, elem);
+          if (subStructs.has(childName)) {
             return {
               name: pascalCase(fieldName),
-              type: `[]${childName}`,
+              type: childName,
               jsonName: fieldName,
               optional,
               validations: extractValidations(fieldSchema),
             };
+          }
+          // Fall through: entity marker without entity schema
+        }
+        if (isZodArray(inner)) {
+          const elem = unwrap(inner.element);
+          if (isZodObject(elem) || isZodEntity(elem)) {
+            const childName = `${prefix}${pascalCase(fieldName)}Item`;
+            registerSub(childName, elem);
+            if (subStructs.has(childName)) {
+              return {
+                name: pascalCase(fieldName),
+                type: `[]${childName}`,
+                jsonName: fieldName,
+                optional,
+                validations: extractValidations(fieldSchema),
+              };
+            }
+            // Fall through: entity marker without entity schema
           }
         }
         return {
@@ -262,8 +283,15 @@ export function generateRouteTypes(route: RouteAst, diagnostics: Diagnostic[]): 
   }
 
   const responseStructName = routeTypeName(route, "Response");
-  if (route.response) {
-    const response = processSchema(responseStructName, route.response);
+  const responseSchema = route.response
+    ? responseFormat
+      ? mergeEntityIntoWrapper(responseFormat.wrapper, route.response)
+      : route.response
+    : responseFormat
+      ? responseFormat.wrapper
+      : undefined;
+  if (responseSchema) {
+    const response = processSchema(responseStructName, responseSchema);
     if (response) structs.push(response);
   } else {
     structs.push({ name: responseStructName, fields: [] });
@@ -280,6 +308,179 @@ export function generateRouteTypes(route: RouteAst, diagnostics: Diagnostic[]): 
       renderStruct(s, s.name === responseStructName || s.name.startsWith(responseStructName)),
     )
     .join("\n\n");
+}
+
+export function generateEntityStructs(
+  moduleName: string,
+  routes: RouteAst[],
+  diagnostics: Diagnostic[],
+): string {
+  const subStructs = new Map<string, GoStruct>();
+  const entities: GoStruct[] = [];
+
+  const toFingerprint = (s: SchemaLike): string => {
+    const u = unwrap(s);
+    if (isZodObject(u)) {
+      return `{${Object.keys(u.shape).sort().map(k => {
+        const fs = u.shape[k] as SchemaLike;
+        return `${k}:${schemaToGoType(fs, diagnostics)}`;
+      }).join(",")}}`;
+    }
+    return "";
+  };
+
+  const toEntityFields = (schema: SchemaLike): GoField[] | undefined => {
+    const u = unwrap(schema);
+    if (!isZodObject(u)) return undefined;
+    return Object.keys(u.shape).sort().map((fieldName) => {
+      const fieldSchema = u.shape[fieldName] as SchemaLike;
+      const optional = isZodOptional(fieldSchema);
+      const inner = unwrap(fieldSchema);
+      if (isZodObject(inner)) {
+        const childName = `${pascalCase(moduleName)}${pascalCase(fieldName)}`;
+        registerEntitySub(childName, inner, subStructs, diagnostics, moduleName);
+        return { name: pascalCase(fieldName), type: childName, jsonName: fieldName, optional };
+      }
+      if (isZodArray(inner)) {
+        const elem = unwrap(inner.element);
+        if (isZodObject(elem)) {
+          const childName = `${pascalCase(moduleName)}${pascalCase(fieldName)}Item`;
+          registerEntitySub(childName, elem, subStructs, diagnostics, moduleName);
+          return { name: pascalCase(fieldName), type: `[]${childName}`, jsonName: fieldName, optional };
+        }
+      }
+      return {
+        name: pascalCase(fieldName),
+        type: schemaToGoType(fieldSchema, diagnostics),
+        jsonName: fieldName,
+        optional,
+      };
+    });
+  };
+
+  const seenFingerprints = new Set<string>();
+  const usedNames = new Set<string>();
+
+  for (const route of routes) {
+    if (!route.response || !route.responseFormat) continue;
+    const entitySchema = extractEntitySchema(route.response);
+    if (!entitySchema) continue;
+    const fp = toFingerprint(entitySchema);
+    if (seenFingerprints.has(fp)) continue;
+    seenFingerprints.add(fp);
+
+    const fields = toEntityFields(entitySchema);
+    if (!fields) continue;
+
+    const base = pascalCase(route.moduleName);
+    const context = extractEntityContext(route.id);
+    let entityName = context ? base + pascalCase(context) : base;
+    if (usedNames.has(entityName)) entityName = base + pascalCase(route.id);
+    if (usedNames.has(entityName)) {
+      let n = 2;
+      while (usedNames.has(`${entityName}${n}`)) n++;
+      entityName = `${entityName}${n}`;
+    }
+    usedNames.add(entityName);
+
+    entities.push({ name: entityName, fields });
+  }
+
+  const rendered = entities
+    .map((s) => renderEntityStruct(s))
+    .join("\n\n");
+
+  const subRendered = [...subStructs.values()]
+    .map((s) => renderEntityStruct(s))
+    .join("\n\n");
+
+  return [rendered, subRendered].filter(Boolean).join("\n\n");
+}
+
+function registerEntitySub(
+  name: string,
+  schema: SchemaLike,
+  subStructs: Map<string, GoStruct>,
+  diagnostics: Diagnostic[],
+  moduleName: string,
+): void {
+  if (subStructs.has(name)) return;
+  const unwrapped = unwrap(schema);
+  if (!isZodObject(unwrapped)) return;
+  const shape = unwrapped.shape;
+  const fields = Object.keys(shape).sort().map((fieldName) => {
+    const fieldSchema = shape[fieldName] as SchemaLike;
+    const optional = isZodOptional(fieldSchema);
+    const inner = unwrap(fieldSchema);
+    if (isZodObject(inner)) {
+      const childName = `${name}${pascalCase(fieldName)}`;
+      registerEntitySub(childName, inner, subStructs, diagnostics, moduleName);
+      return { name: pascalCase(fieldName), type: childName, jsonName: fieldName, optional };
+    }
+    if (isZodArray(inner)) {
+      const elem = unwrap(inner.element);
+      if (isZodObject(elem)) {
+        const childName = `${name}${pascalCase(fieldName)}Item`;
+        registerEntitySub(childName, elem, subStructs, diagnostics, moduleName);
+        return { name: pascalCase(fieldName), type: `[]${childName}`, jsonName: fieldName, optional };
+      }
+    }
+    return {
+      name: pascalCase(fieldName),
+      type: schemaToGoType(fieldSchema, diagnostics),
+      jsonName: fieldName,
+      optional,
+    };
+  });
+  subStructs.set(name, { name, fields });
+}
+
+function extractEntitySchema(schema: SchemaLike): SchemaLike | undefined {
+  const u = unwrap(schema);
+  if (isZodObject(u)) return u;
+  if (isZodArray(u)) {
+    const elem = unwrap(u.element);
+    if (isZodObject(elem)) return elem;
+  }
+  return undefined;
+}
+
+function extractEntityContext(routeId: string): string {
+  const verbs = ["list", "get", "create", "update", "delete", "set", "edit", "new",
+    "adminlist", "adminget", "admincreate", "adminupdate", "admindelete", "adminset",
+    "admin"];
+  const lower = routeId.toLowerCase();
+  for (const verb of verbs) {
+    if (lower.endsWith(verb)) {
+      const stripped = routeId.slice(0, -verb.length);
+      if (stripped) return stripped;
+    }
+  }
+  return "";
+}
+
+function mergeEntityIntoWrapper(
+  wrapperSchema: SchemaLike,
+  entitySchema: SchemaLike,
+): SchemaLike {
+  return replaceEntity(wrapperSchema, entitySchema);
+}
+
+function replaceEntity(schema: SchemaLike, entitySchema: SchemaLike): SchemaLike {
+  const inner = unwrap(schema);
+  if (isZodEntity(inner)) return entitySchema;
+  if (isZodObject(inner)) {
+    const shape = inner.shape;
+    const newShape: Record<string, SchemaLike> = {};
+    for (const key of Object.keys(shape)) {
+      newShape[key] = replaceEntity(shape[key], entitySchema);
+    }
+    return { ...inner, shape: newShape } as unknown as SchemaLike;
+  }
+  if (isZodArray(inner)) {
+    return { ...inner, element: replaceEntity(inner.element, entitySchema) } as unknown as SchemaLike;
+  }
+  return schema;
 }
 
 export function requestType(route: RouteAst): string {
@@ -312,6 +513,8 @@ function schemaToGoType(schema: SchemaLike, diagnostics: Diagnostic[]): string {
     type = `[]${schemaToGoType(unwrapped.element, diagnostics)}`;
   } else if (isZodObject(unwrapped)) {
     type = "any";
+  } else if (isZodEntity(unwrapped)) {
+    type = "any";
   } else {
     type = "any";
     diagnostics.push({
@@ -325,6 +528,19 @@ function schemaToGoType(schema: SchemaLike, diagnostics: Diagnostic[]): string {
     return `*${type}`;
   }
   return type;
+}
+
+function renderEntityStruct(goStruct: GoStruct): string {
+  if (goStruct.fields.length === 0) {
+    return `type ${goStruct.name} struct{}`;
+  }
+  const fields = goStruct.fields
+    .map((field) => {
+      const omitempty = field.optional ? ",omitempty" : "";
+      return `\t${field.name} ${field.type} \`json:"${field.jsonName}${omitempty}"\``;
+    })
+    .join("\n");
+  return `type ${goStruct.name} struct {\n${fields}\n}`;
 }
 
 function renderStruct(goStruct: GoStruct, responseContext: boolean = false): string {

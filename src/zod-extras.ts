@@ -1,4 +1,4 @@
-import { z as zod, type ZodNumber } from "zod";
+import { z as zod, type ZodNumber, type ZodTypeAny } from "zod";
 
 function int32(): ZodNumber {
   const s = zod.number().int();
@@ -22,6 +22,12 @@ function float64(): ZodNumber {
   return zod.number();
 }
 
-const extras = { int32, int64, float32, float64 };
+function entity(): ZodTypeAny {
+  const s = zod.any();
+  (s._def as unknown as Record<string, unknown>).typeName = "ZodEntity";
+  return s;
+}
+
+const extras = { int32, int64, float32, float64, entity };
 
 export const z: typeof zod & typeof extras = Object.assign(Object.create(zod), extras);

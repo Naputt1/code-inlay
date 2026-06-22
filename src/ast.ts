@@ -9,6 +9,7 @@ import type {
   Diagnostic,
   MiddlewareAst,
   ModuleAst,
+  ResponseFormat,
   RouteAst,
 } from "./types.js";
 import { joinPath } from "./naming.js";
@@ -25,6 +26,7 @@ export function buildAst(app: AppDefinition, diagnostics: Diagnostic[]): AppAst 
     app.architectures ?? app.architecture ?? "clean",
   );
   const appAdapters = normalizeAdapterSelection(app.adapters ?? [router.adapter]);
+  const appResponseFormat = app.options.responseFormat;
 
   const ast: AppAst = {
     kind: "App",
@@ -54,6 +56,10 @@ export function buildAst(app: AppDefinition, diagnostics: Diagnostic[]): AppAst 
       const moduleAdapters = module.adapters
         ? resolveAdapterSelection(appAdapters, normalizeAdapterSelection(module.adapters))
         : undefined;
+      const moduleResponseFormat = resolveResponseFormat(
+        module.responseFormat,
+        appResponseFormat,
+      );
 
       return {
         kind: "Module",
@@ -65,6 +71,7 @@ export function buildAst(app: AppDefinition, diagnostics: Diagnostic[]): AppAst 
         architecture: moduleArchitecture,
         adapters: moduleAdapters,
         usecaseOrganization: module.usecaseOrganization,
+        responseFormat: moduleResponseFormat,
         middleware: module.middleware.map((middleware) =>
           toMiddlewareAst(middleware, `module:${module.name}`),
         ),
@@ -81,6 +88,10 @@ export function buildAst(app: AppDefinition, diagnostics: Diagnostic[]): AppAst 
             : (moduleAdapters ?? appAdapters);
           const resolvedArchitectureSelection =
             routeArchitecture ?? moduleArchitecture ?? appArchitecture;
+          const routeResponseFormat = resolveResponseFormat(
+            route.responseFormat,
+            moduleResponseFormat,
+          );
 
           return {
             kind: "Route",
@@ -97,6 +108,7 @@ export function buildAst(app: AppDefinition, diagnostics: Diagnostic[]): AppAst 
             adapters: routeAdapters,
             resolvedArchitectures: resolvedArchitectureSelection.refs,
             resolvedAdapters: selectionToTargets(resolvedAdapterSelection),
+            responseFormat: routeResponseFormat,
             query: route.query,
             body: route.body,
             response: route.response,
@@ -256,6 +268,13 @@ function validateAst(ast: AppAst, diagnostics: Diagnostic[]): void {
       }
     }
   }
+}
+
+function resolveResponseFormat(
+  child?: ResponseFormat,
+  parent?: ResponseFormat,
+): ResponseFormat | undefined {
+  return child ?? parent;
 }
 
 function isIdentifierSegment(value: string): boolean {

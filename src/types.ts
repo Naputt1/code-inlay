@@ -82,9 +82,15 @@ export type UsecaseOrganization = {
   groupBy?: UsecaseGroupBy;
 };
 
+export type ResponseFormat = {
+  kind: "ResponseFormat";
+  wrapper: SchemaLike;
+};
+
 export type CompileSettings = {
   fileCreation: FileCreationMode;
   usecaseOrganization?: UsecaseOrganization;
+  responseFormat?: ResponseFormat;
   targets?: string[];
   targetOptions?: Record<string, Record<string, unknown>>;
   runtime?: RuntimeConfig;
@@ -105,6 +111,7 @@ export type RouteDefinition<
   architecture?: ArchitectureRef | ArchitectureRef[] | ArchitectureSelection;
   adapter?: AdapterRef | AdapterRef[] | AdapterSelection;
   adapters?: AdapterRef[] | AdapterSelection;
+  responseFormat?: ResponseFormat;
   query?: TQuery;
   body?: TBody;
   response?: TResponse;
@@ -126,6 +133,7 @@ export type ModuleDefinition = {
   architecture?: ArchitectureRef | ArchitectureRef[] | ArchitectureSelection;
   adapters?: AdapterRef[] | AdapterSelection;
   usecaseOrganization?: UsecaseOrganization;
+  responseFormat?: ResponseFormat;
   routes: RouteDefinition<SchemaLike | undefined, SchemaLike | undefined, SchemaLike | undefined>[];
   middleware: MiddlewareDefinition[];
 };
@@ -187,6 +195,7 @@ export type ModuleAst = AstNodeBase<"Module"> & {
   architecture?: ArchitectureSelection;
   adapters?: AdapterSelection;
   usecaseOrganization?: UsecaseOrganization;
+  responseFormat?: ResponseFormat;
   routes: RouteAst[];
   middleware: MiddlewareAst[];
 };
@@ -201,6 +210,7 @@ export type RouteAst = AstNodeBase<"Route"> & {
   adapters?: AdapterSelection;
   resolvedArchitectures: ArchitectureRef[];
   resolvedAdapters: AdapterTarget[];
+  responseFormat?: ResponseFormat;
   query?: SchemaLike;
   body?: SchemaLike;
   response?: SchemaLike;
