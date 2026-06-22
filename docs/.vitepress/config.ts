@@ -1,6 +1,7 @@
 import { defineConfig } from "vitepress";
 
 export default defineConfig({
+  base: "/code-inlay/",
   title: "Backend Gen",
   description: "TypeScript-powered Go backend code generator",
   cleanUrls: true,

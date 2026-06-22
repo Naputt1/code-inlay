@@ -3,7 +3,16 @@ import tseslint from "typescript-eslint";
 import prettier from "eslint-config-prettier";
 
 export default tseslint.config(
-  { ignores: ["dist/", "node_modules/", ".pnpm-store/", "sample-project/", "docs/.vitepress/cache/", "docs/.vitepress/dist/"] },
+  {
+    ignores: [
+      "dist/",
+      "node_modules/",
+      ".pnpm-store/",
+      "sample-project/",
+      "docs/.vitepress/cache/",
+      "docs/.vitepress/dist/",
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   prettier,
