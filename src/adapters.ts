@@ -158,7 +158,12 @@ export function generateGinHandler(
   body.push(`\tc.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})`);
   body.push(`\treturn`);
   body.push(`}`);
-  body.push(`c.JSON(http.StatusOK, output)`);
+  if (route.method === "DELETE") {
+    body.push(`_ = output`);
+    body.push(`c.Status(http.StatusNoContent)`);
+  } else {
+    body.push(`c.JSON(http.StatusOK, output)`);
+  }
 
   return {
     id: defaultRegionId(route, "handler"),
