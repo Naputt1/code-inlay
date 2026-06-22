@@ -32,7 +32,10 @@ export type PluginRegistry = {
   manifestHash: string;
 };
 
-export function createPluginRegistry(app: AppDefinition, diagnostics: Diagnostic[]): PluginRegistry {
+export function createPluginRegistry(
+  app: AppDefinition,
+  diagnostics: Diagnostic[],
+): PluginRegistry {
   const builtInPlugin: BackendCompilerPlugin = {
     name: "@backend-gen/builtin",
     version: "0.3.0",

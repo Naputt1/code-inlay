@@ -80,7 +80,11 @@ export function defineModule(input: {
   architecture?: ArchitectureRef | ArchitectureRef[] | ArchitectureSelection;
   adapters?: AdapterRef[] | AdapterSelection;
   usecaseOrganization?: UsecaseOrganization;
-  routes?: RouteDefinition<SchemaLike | undefined, SchemaLike | undefined, SchemaLike | undefined>[];
+  routes?: RouteDefinition<
+    SchemaLike | undefined,
+    SchemaLike | undefined,
+    SchemaLike | undefined
+  >[];
   middleware?: MiddlewareDefinition[];
 }): ModuleDefinition {
   return {
@@ -151,7 +155,13 @@ export function defineApp(input: {
   };
 }
 
-export function defineRouteGroup<TRoute extends RouteDefinition<SchemaLike | undefined, SchemaLike | undefined, SchemaLike | undefined>>(input: {
+export function defineRouteGroup<
+  TRoute extends RouteDefinition<
+    SchemaLike | undefined,
+    SchemaLike | undefined,
+    SchemaLike | undefined
+  >,
+>(input: {
   prefix: string;
   middleware?: MiddlewareDefinition[];
   architecture?: ArchitectureRef | ArchitectureRef[] | ArchitectureSelection;
