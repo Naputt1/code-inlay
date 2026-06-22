@@ -218,7 +218,9 @@ export function generateRouteTypes(route: RouteAst, diagnostics: Diagnostic[]): 
   }
 
   return structs
-    .map((s) => renderStruct(s, s.name === responseStructName || s.name.startsWith(responseStructName)))
+    .map((s) =>
+      renderStruct(s, s.name === responseStructName || s.name.startsWith(responseStructName)),
+    )
     .join("\n\n");
 }
 
@@ -275,9 +277,10 @@ function renderStruct(goStruct: GoStruct, responseContext: boolean = false): str
   const fields = goStruct.fields
     .map((field) => {
       const omitempty = field.optional ? ",omitempty" : "";
+      const binding = !responseContext && !field.optional ? ` binding:"required"` : "";
       const tag = responseContext
         ? `json:"${field.jsonName}${omitempty}"`
-        : `json:"${field.jsonName}${omitempty}" form:"${field.jsonName}"`;
+        : `json:"${field.jsonName}${omitempty}" form:"${field.jsonName}"${binding}`;
       return `\t${field.name} ${field.type} \`${tag}\``;
     })
     .join("\n");

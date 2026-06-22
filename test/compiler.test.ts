@@ -277,6 +277,13 @@ describe("compiler", () => {
     expect(typesRegion!.content).toContain(`form:"q"`);
     expect(typesRegion!.content).toContain(`json:"page"`);
     expect(typesRegion!.content).toContain(`json:"q,omitempty"`);
+    expect(typesRegion!.content).toContain(`binding:"required"`);
+    expect(
+      typesRegion!.content
+        .split("\n")
+        .find((l) => l.includes("Q "))
+        ?.includes(`binding:"required"`),
+    ).toBe(false);
   });
 
   it("handles POST routes with both query and body schemas", async () => {
