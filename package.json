@@ -19,7 +19,7 @@
     "format": "prettier --check .",
     "format:fix": "prettier --write .",
     "test": "vitest run",
-    "generate": "node dist/cli.js generate --config backend.config.ts --cwd test-project",
+    "generate": "node dist/cli.js generate --config backend.config.ts --cwd sample-project/maemoo",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

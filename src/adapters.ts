@@ -14,7 +14,7 @@ import {
   pascalCase,
   routeTypeName,
 } from "./naming.js";
-import { requestType, responseType } from "./schema.js";
+import { requestType } from "./schema.js";
 
 export const ginAdapter: AdapterPlugin = {
   name: "gin",
@@ -89,7 +89,6 @@ export function generateGinHandler(
   const receiverType = `*${pascalCase(route.moduleName)}Handler`;
   const usecaseField = `${route.handlerName}Usecase`;
   const reqType = requestType(route);
-  const resType = responseType(route);
   const pathParams = extractPathParams(route.path);
   const body: string[] = [];
 
@@ -169,8 +168,6 @@ export function generateGinHandler(
       `func (h ${receiverType}) ${route.handlerName}(c *gin.Context) {`,
       ...body.map((line) => (line.length > 0 ? `\t${line}` : "")),
       `}`,
-      "",
-      `var _ ${resType}`,
     ].join("\n"),
   };
 }

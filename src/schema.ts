@@ -203,14 +203,12 @@ export function generateRouteTypes(route: RouteAst, diagnostics: Diagnostic[]): 
     structs.push({ name: routeTypeName(route, "Request"), fields });
   }
 
+  const responseStructName = routeTypeName(route, "Response");
   if (route.response) {
-    const response = processSchema(routeTypeName(route, "Response"), route.response);
+    const response = processSchema(responseStructName, route.response);
     if (response) structs.push(response);
-  }
-
-  if (!route.response) {
-    const name = routeTypeName(route, "Response");
-    structs.push({ name, fields: [] });
+  } else {
+    structs.push({ name: responseStructName, fields: [] });
   }
 
   for (const sub of subStructs.values()) {
@@ -219,7 +217,9 @@ export function generateRouteTypes(route: RouteAst, diagnostics: Diagnostic[]): 
     }
   }
 
-  return structs.map(renderStruct).join("\n\n");
+  return structs
+    .map((s) => renderStruct(s, s.name === responseStructName || s.name.startsWith(responseStructName)))
+    .join("\n\n");
 }
 
 export function requestType(route: RouteAst): string {
@@ -267,7 +267,7 @@ function schemaToGoType(schema: SchemaLike, diagnostics: Diagnostic[]): string {
   return type;
 }
 
-function renderStruct(goStruct: GoStruct): string {
+function renderStruct(goStruct: GoStruct, responseContext: boolean = false): string {
   if (goStruct.fields.length === 0) {
     return `type ${goStruct.name} struct{}`;
   }
@@ -275,7 +275,10 @@ function renderStruct(goStruct: GoStruct): string {
   const fields = goStruct.fields
     .map((field) => {
       const omitempty = field.optional ? ",omitempty" : "";
-      return `\t${field.name} ${field.type} \`json:"${field.jsonName}${omitempty}" form:"${field.jsonName}"\``;
+      const tag = responseContext
+        ? `json:"${field.jsonName}${omitempty}"`
+        : `json:"${field.jsonName}${omitempty}" form:"${field.jsonName}"`;
+      return `\t${field.name} ${field.type} \`${tag}\``;
     })
     .join("\n");
 

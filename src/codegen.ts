@@ -422,6 +422,7 @@ type HandlerStructOutput = {
 
 function generateHandlerStructs(architecture: ArchitectureAst): HandlerStructOutput[] {
   const moduleFields = new Map<string, string[]>();
+  const moduleRespTypes = new Map<string, string[]>();
 
   for (const expansion of architecture.routes) {
     const route = expansion.route;
@@ -431,15 +432,27 @@ function generateHandlerStructs(architecture: ArchitectureAst): HandlerStructOut
     const fields = moduleFields.get(route.moduleName) ?? [];
     fields.push(`\t${route.handlerName}Usecase ${route.handlerName}Usecase`);
     moduleFields.set(route.moduleName, fields);
+
+    const respTypes = moduleRespTypes.get(route.moduleName) ?? [];
+    const rType = responseType(route);
+    if (rType !== "struct{}" && !respTypes.includes(rType)) {
+      respTypes.push(rType);
+    }
+    moduleRespTypes.set(route.moduleName, respTypes);
   }
 
   const result: HandlerStructOutput[] = [];
   for (const [moduleName, fields] of moduleFields) {
     const typeName = `${pascalCase(moduleName)}Handler`;
+    const respTypes = (moduleRespTypes.get(moduleName) ?? []).sort();
+    const checks = respTypes.map((t) => `var _ ${t}`).join("\n");
+    const content = checks
+      ? `type ${typeName} struct {\n${fields.join("\n")}\n}\n\n${checks}`
+      : `type ${typeName} struct {\n${fields.join("\n")}\n}`;
     result.push({
       file: `internal/${moduleName}/handler.go`,
       regionId: `${moduleName}.0handler.struct`,
-      content: `type ${typeName} struct {\n${fields.join("\n")}\n}`,
+      content,
     });
   }
 
