@@ -11,6 +11,7 @@ import type { GoModuleInfo } from "./env.js";
 import {
   defaultFileForLayer,
   defaultRegionId,
+  fileForModuleRoutes,
   lowerIdent,
   pascalCase,
   regionIdForUsecaseImports,
@@ -116,7 +117,7 @@ export function generateCode(
       const routeCtx = { diagnostics, route, architecture };
       const routeRegions = adapter.generateRoute?.(routeCtx) ?? [];
       for (const region of routeRegions) {
-        const routeFile = defaultFileForLayer(route, "route");
+        const routeFile = fileForModuleRoutes(route.moduleName);
         const lines = routeLinesByFile.get(routeFile) ?? [];
 
         const routeMws = collectMiddlewareNames(route, ast);
@@ -167,13 +168,25 @@ export function generateCode(
     });
   }
 
+  // Track all middleware names across all modules for the combined entry point
+  const allMwNames = new Set<string>();
+  const moduleNamesInOrder: string[] = [];
+
   for (const [routeFile, routeLines] of routeLinesByFile) {
+    const mwNames = middlewareByFile.get(routeFile) ?? new Set();
+    for (const mw of mwNames) {
+      allMwNames.add(mw);
+    }
+
+    const moduleName = routeFile.replace(/^.*internal\/http\/(.+)_routes\.go$/, "$1");
+    moduleNamesInOrder.push(moduleName);
+
     const moduleImports: string[] = [];
     const handlerInitLines: string[] = [];
-    const mwNames = middlewareByFile.get(routeFile) ?? new Set();
+    const mod = ast.modules.find((m) => m.name === moduleName);
 
-    for (const module of ast.modules) {
-      const modPkg = module.name;
+    if (mod) {
+      const modPkg = mod.name;
       const handlerType = `${pascalCase(modPkg)}Handler`;
       const handlerVar = `${lowerIdent(modPkg)}Handler`;
       const layerKinds = new Set(
@@ -203,19 +216,18 @@ export function generateCode(
       .sort()
       .map((n) => `${mwToParamName(n)} gin.HandlerFunc`)
       .join(", ");
-    const params = mwParams ? `api *gin.RouterGroup, ${mwParams}` : `api *gin.RouterGroup`;
+    const funcParams = mwParams ? `api *gin.RouterGroup, ${mwParams}` : `api *gin.RouterGroup`;
 
     const body: string[] = [];
-    if (moduleImports.length > 0 || moduleInfo || mwNames.size > 0) {
-      body.push(`import (`);
-      body.push(`\t"github.com/gin-gonic/gin"`);
-      for (const imp of moduleImports.sort()) {
-        body.push(`\t${imp}`);
-      }
-      body.push(`)`);
-      body.push(``);
+    body.push(`import (`);
+    body.push(`\t"github.com/gin-gonic/gin"`);
+    for (const imp of moduleImports.sort()) {
+      body.push(`\t${imp}`);
     }
-    body.push(`func RegisterRoutes(${params}) {`);
+    body.push(`)`);
+    body.push(``);
+    const funcName = `register${pascalCase(moduleName)}Routes`;
+    body.push(`func ${funcName}(${funcParams}) {`);
     body.push(...handlerInitLines);
     body.push(``);
     const groups = new Map<string, typeof routeLines>();
@@ -275,11 +287,45 @@ export function generateCode(
     body.push(`}`);
 
     add(routeFile, {
-      id: "routes.register",
+      id: `routes.register.${moduleName}`,
       stableHash: `${routeFile}:register`,
       owner: "code-inlay",
       language: "go",
       content: body.join("\n"),
+    });
+  }
+
+  // Generate combined routes.go that calls each per-module function
+  if (routeLinesByFile.size > 0) {
+    const allMwParams = [...allMwNames]
+      .sort()
+      .map((n) => `${mwToParamName(n)} gin.HandlerFunc`)
+      .join(", ");
+    const combinedParams = allMwParams
+      ? `api *gin.RouterGroup, ${allMwParams}`
+      : `api *gin.RouterGroup`;
+
+    const combinedBody: string[] = [];
+    combinedBody.push(`import (`);
+    combinedBody.push(`\t"github.com/gin-gonic/gin"`);
+    combinedBody.push(`)`);
+    combinedBody.push(``);
+    combinedBody.push(`func RegisterRoutes(${combinedParams}) {`);
+    for (const modName of moduleNamesInOrder) {
+      const funcName = `register${pascalCase(modName)}Routes`;
+      const modMwNames = middlewareByFile.get(fileForModuleRoutes(modName)) ?? new Set();
+      const modMwArgs = [...modMwNames].sort().map(mwToParamName).join(", ");
+      const callArgs = modMwArgs ? `api, ${modMwArgs}` : "api";
+      combinedBody.push(`\t${funcName}(${callArgs})`);
+    }
+    combinedBody.push(`}`);
+
+    add("internal/http/routes.go", {
+      id: "routes.register",
+      stableHash: `internal/http/routes.go:register`,
+      owner: "code-inlay",
+      language: "go",
+      content: combinedBody.join("\n"),
     });
   }
 

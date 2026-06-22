@@ -145,6 +145,10 @@ export function regionIdForUsecase(route: RouteAst, groupKey: string): string {
   return `${route.moduleName}.${groupKey}.${route.id}.usecase`;
 }
 
+export function fileForModuleRoutes(moduleName: string): string {
+  return `internal/http/${moduleName}_routes.go`;
+}
+
 export function regionIdForUsecaseImports(moduleName: string, groupKey: string): string {
   if (groupKey === "default") {
     return `${moduleName}.0usecase.imports`;

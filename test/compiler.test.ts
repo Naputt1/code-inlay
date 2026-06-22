@@ -139,6 +139,7 @@ describe("compiler", () => {
     expect(result.diagnostics.filter((diagnostic) => diagnostic.level === "error")).toEqual([]);
     expect(result.changedFiles.sort()).toEqual([
       "internal/http/routes.go",
+      "internal/http/user_routes.go",
       "internal/user/handler.go",
       "internal/user/repo.go",
       "internal/user/types.go",
