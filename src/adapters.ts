@@ -98,6 +98,7 @@ export function generateGinHandler(
   if (hasQuery && hasBody) {
     const queryType = routeTypeName(route, "Query");
     const bodyType = routeTypeName(route, "Body");
+    body.push(`var input ${reqType}`);
     body.push(`var query ${queryType}`);
     body.push(`if err := c.ShouldBindQuery(&query); err != nil {`);
     body.push(`\tc.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})`);
@@ -110,14 +111,12 @@ export function generateGinHandler(
     body.push(`}`);
     const queryFields = getSchemaFieldNames(route.query!);
     const bodyFields = getSchemaFieldNames(route.body!);
-    body.push(`input := ${reqType}{`);
     for (const f of queryFields) {
-      body.push(`\t${pascalCase(f)}: query.${pascalCase(f)},`);
+      body.push(`input.${pascalCase(f)} = query.${pascalCase(f)}`);
     }
     for (const f of bodyFields) {
-      body.push(`\t${pascalCase(f)}: requestBody.${pascalCase(f)},`);
+      body.push(`input.${pascalCase(f)} = requestBody.${pascalCase(f)}`);
     }
-    body.push(`}`);
     for (const param of pathParams) {
       body.push(`input.${pascalCase(param)} = c.Param("${param}")`);
     }
@@ -146,8 +145,10 @@ export function generateGinHandler(
       }
     }
   } else if (pathParams.length > 0) {
-    const fields = pathParams.map((p) => `${pascalCase(p)}: c.Param("${p}")`).join(", ");
-    body.push(`input := ${reqType}{${fields}}`);
+    body.push(`var input ${reqType}`);
+    for (const param of pathParams) {
+      body.push(`input.${pascalCase(param)} = c.Param("${param}")`);
+    }
   } else {
     body.push(`input := struct{}{}`);
   }
