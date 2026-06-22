@@ -94,8 +94,9 @@ export type CompileSettings = {
 };
 
 export type RouteDefinition<
-  TInput extends SchemaLike | undefined = SchemaLike | undefined,
-  TResponse extends SchemaLike | undefined = SchemaLike | undefined,
+  TQuery extends SchemaLike | undefined = undefined,
+  TBody extends SchemaLike | undefined = undefined,
+  TResponse extends SchemaLike | undefined = undefined,
 > = {
   kind: "RouteDefinition";
   id: string;
@@ -104,7 +105,8 @@ export type RouteDefinition<
   architecture?: ArchitectureRef | ArchitectureRef[] | ArchitectureSelection;
   adapter?: AdapterRef | AdapterRef[] | AdapterSelection;
   adapters?: AdapterRef[] | AdapterSelection;
-  input?: TInput;
+  query?: TQuery;
+  body?: TBody;
   response?: TResponse;
   handler: string;
   middleware: MiddlewareDefinition[];
@@ -124,7 +126,7 @@ export type ModuleDefinition = {
   architecture?: ArchitectureRef | ArchitectureRef[] | ArchitectureSelection;
   adapters?: AdapterRef[] | AdapterSelection;
   usecaseOrganization?: UsecaseOrganization;
-  routes: RouteDefinition[];
+  routes: RouteDefinition<SchemaLike | undefined, SchemaLike | undefined, SchemaLike | undefined>[];
   middleware: MiddlewareDefinition[];
 };
 
@@ -152,11 +154,6 @@ export type AppDefinition = {
   targets?: CodeTarget[];
   options: CompileSettings;
 };
-
-export type InferInput<T extends RouteDefinition> =
-  Extract<T["input"], SchemaLike> extends never
-    ? undefined
-    : z.infer<Extract<T["input"], SchemaLike>>;
 
 export type InferResponse<T extends RouteDefinition> =
   Extract<T["response"], SchemaLike> extends never
@@ -204,7 +201,8 @@ export type RouteAst = AstNodeBase<"Route"> & {
   adapters?: AdapterSelection;
   resolvedArchitectures: ArchitectureRef[];
   resolvedAdapters: AdapterTarget[];
-  input?: SchemaLike;
+  query?: SchemaLike;
+  body?: SchemaLike;
   response?: SchemaLike;
   middleware: MiddlewareAst[];
   usecaseGroup?: string;

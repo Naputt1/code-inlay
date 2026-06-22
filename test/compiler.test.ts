@@ -3,14 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
 import { describe, expect, it } from "vitest";
-import {
-  compile,
-  defineApp,
-  defineModule,
-  defineRoute,
-  defineRouter,
-  type InferInput,
-} from "../src/index.js";
+import { compile, defineApp, defineModule, defineRoute, defineRouter } from "../src/index.js";
 
 describe("compiler", () => {
   it("generates deterministic clean architecture patches", async () => {
@@ -18,12 +11,11 @@ describe("compiler", () => {
       id: "create",
       method: "POST",
       path: "/users",
-      input: z.object({ name: z.string(), active: z.boolean().optional() }),
+      body: z.object({ name: z.string(), active: z.boolean().optional() }),
       response: z.object({ id: z.string() }),
       handler: "CreateUser",
     });
-    type Input = InferInput<typeof route>;
-    const input: Input = { name: "Ada" };
+    const input = { name: "Ada" };
 
     const app = defineApp({
       architecture: "clean",
@@ -133,7 +125,7 @@ describe("compiler", () => {
               id: "create",
               method: "POST",
               path: "/users",
-              input: z.object({ name: z.string() }),
+              body: z.object({ name: z.string() }),
               handler: "CreateUser",
             }),
           ],
@@ -158,7 +150,7 @@ describe("compiler", () => {
     expect(handler).toContain("func (h *UserHandler) CreateUser(c *gin.Context)");
   });
 
-  it("uses ShouldBindQuery for GET routes with input", async () => {
+  it("uses ShouldBindQuery for GET routes with query schema", async () => {
     const app = defineApp({
       architecture: "clean",
       router: defineRouter({ adapter: "gin" }),
@@ -170,7 +162,7 @@ describe("compiler", () => {
               id: "list",
               method: "GET",
               path: "/users",
-              input: z.object({ page: z.number().optional(), limit: z.number().optional() }),
+              query: z.object({ page: z.number().optional(), limit: z.number().optional() }),
               response: z.object({ items: z.array(z.object({ id: z.string() })) }),
               handler: "ListUsers",
             }),
@@ -190,7 +182,7 @@ describe("compiler", () => {
     expect(handlerRegion!.content).not.toContain("ShouldBindJSON");
   });
 
-  it("uses ShouldBindQuery for DELETE routes with input", async () => {
+  it("uses ShouldBindQuery for DELETE routes with query schema", async () => {
     const app = defineApp({
       architecture: "clean",
       router: defineRouter({ adapter: "gin" }),
@@ -202,7 +194,7 @@ describe("compiler", () => {
               id: "remove",
               method: "DELETE",
               path: "/users/:id",
-              input: z.object({ reason: z.string().optional() }),
+              query: z.object({ reason: z.string().optional() }),
               handler: "RemoveUser",
             }),
           ],
@@ -221,7 +213,7 @@ describe("compiler", () => {
     expect(handlerRegion!.content).not.toContain("ShouldBindJSON");
   });
 
-  it("uses ShouldBindJSON for POST routes with input", async () => {
+  it("uses ShouldBindJSON for POST routes with body schema", async () => {
     const app = defineApp({
       architecture: "clean",
       router: defineRouter({ adapter: "gin" }),
@@ -233,7 +225,7 @@ describe("compiler", () => {
               id: "create",
               method: "POST",
               path: "/users",
-              input: z.object({ name: z.string() }),
+              body: z.object({ name: z.string() }),
               response: z.object({ id: z.string() }),
               handler: "CreateUser",
             }),
@@ -265,7 +257,7 @@ describe("compiler", () => {
               id: "list",
               method: "GET",
               path: "/users",
-              input: z.object({ page: z.number(), q: z.string().optional() }),
+              query: z.object({ page: z.number(), q: z.string().optional() }),
               handler: "ListUsers",
             }),
           ],
@@ -284,6 +276,49 @@ describe("compiler", () => {
     expect(typesRegion!.content).toContain(`form:"q"`);
     expect(typesRegion!.content).toContain(`json:"page"`);
     expect(typesRegion!.content).toContain(`json:"q,omitempty"`);
+  });
+
+  it("handles POST routes with both query and body schemas", async () => {
+    const app = defineApp({
+      architecture: "clean",
+      router: defineRouter({ adapter: "gin" }),
+      modules: [
+        defineModule({
+          name: "user",
+          routes: [
+            defineRoute({
+              id: "create",
+              method: "POST",
+              path: "/users",
+              query: z.object({ source: z.string().optional() }),
+              body: z.object({ name: z.string() }),
+              response: z.object({ id: z.string() }),
+              handler: "CreateUser",
+            }),
+          ],
+        }),
+      ],
+    });
+
+    const result = await compile({ app, dryRun: true });
+    expect(result.diagnostics.filter((d) => d.level === "error")).toEqual([]);
+
+    const handlerRegion = result.generation.files
+      .flatMap((f) => f.regions)
+      .find((r) => r.id === "user.create.handler");
+    expect(handlerRegion).toBeDefined();
+    expect(handlerRegion!.content).toContain("ShouldBindQuery");
+    expect(handlerRegion!.content).toContain("ShouldBindJSON");
+    expect(handlerRegion!.content).toContain("var query ");
+    expect(handlerRegion!.content).toContain("var requestBody ");
+
+    const typesRegion = result.generation.files
+      .flatMap((f) => f.regions)
+      .find((r) => r.id === "user.create.types");
+    expect(typesRegion).toBeDefined();
+    expect(typesRegion!.content).toContain("CreateUserQuery");
+    expect(typesRegion!.content).toContain("CreateUserBody");
+    expect(typesRegion!.content).toContain("CreateUserRequest");
   });
 
   it("filters partial generation by module and route", async () => {

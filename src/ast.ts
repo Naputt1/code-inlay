@@ -97,7 +97,8 @@ export function buildAst(app: AppDefinition, diagnostics: Diagnostic[]): AppAst 
             adapters: routeAdapters,
             resolvedArchitectures: resolvedArchitectureSelection.refs,
             resolvedAdapters: selectionToTargets(resolvedAdapterSelection),
-            input: route.input,
+            query: route.query,
+            body: route.body,
             response: route.response,
             middleware: route.middleware.map((middleware) =>
               toMiddlewareAst(middleware, `module:${module.name}:route:${route.id}`),
@@ -243,6 +244,14 @@ function validateAst(ast: AppAst, diagnostics: Diagnostic[]): void {
           level: "error",
           code: "invalid-route-id",
           message: `Route id "${route.id}" must contain only letters, numbers, underscores, or hyphens.`,
+        });
+      }
+
+      if (route.body && (route.method === "GET" || route.method === "DELETE")) {
+        diagnostics.push({
+          level: "error",
+          code: "body-not-allowed",
+          message: `Route "${route.id}" in module "${route.moduleName}" has a body schema but uses method ${route.method}. Body is not allowed on GET or DELETE routes.`,
         });
       }
     }

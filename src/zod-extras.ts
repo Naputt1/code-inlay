@@ -24,7 +24,4 @@ function float64(): ZodNumber {
 
 const extras = { int32, int64, float32, float64 };
 
-export const z: typeof zod & typeof extras = Object.assign(
-  Object.create(zod),
-  extras,
-);
+export const z: typeof zod & typeof extras = Object.assign(Object.create(zod), extras);

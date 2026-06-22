@@ -41,21 +41,21 @@ export const openapiTarget: CodeTarget = {
           responses: {},
         };
 
-        if (route.input) {
-          const reqName = `${pascalCase(route.id)}${pascalCase(module.name)}Request`;
-          spec.components.schemas[reqName] = zodToJsonSchema(route.input);
-
-          if (route.method === "GET" || route.method === "DELETE") {
-            operation.parameters = zodToQueryParams(route.input);
-          } else {
-            operation.requestBody = {
-              content: {
-                "application/json": {
-                  schema: { $ref: `#/components/schemas/${reqName}` },
-                },
+        if (route.body) {
+          const reqName = `${pascalCase(route.id)}${pascalCase(module.name)}Body`;
+          spec.components.schemas[reqName] = zodToJsonSchema(route.body);
+          operation.requestBody = {
+            content: {
+              "application/json": {
+                schema: { $ref: `#/components/schemas/${reqName}` },
               },
-            };
-          }
+            },
+          };
+        }
+
+        if (route.query) {
+          const existing = (operation.parameters ?? []) as Array<Record<string, unknown>>;
+          operation.parameters = existing.concat(zodToQueryParams(route.query));
         }
 
         if (route.response) {

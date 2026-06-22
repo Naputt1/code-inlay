@@ -70,7 +70,8 @@ function renderTreeGraph(ast: AppAst, architecture: ArchitectureAst): string {
     for (const route of module.routes) {
       lines.push(`│   │`);
       lines.push(`│   ├── Route: ${route.method} ${route.fullPath}`);
-      if (route.input) lines.push(`│   │   ├── Input: ${route.stableId}`);
+      if (route.query) lines.push(`│   │   ├── Query: ${route.stableId}`);
+      if (route.body) lines.push(`│   │   ├── Body: ${route.stableId}`);
       if (route.response) lines.push(`│   │   ├── Response: ${route.stableId}`);
 
       const expansion = architecture.routes.find(

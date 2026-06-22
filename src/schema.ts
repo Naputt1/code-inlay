@@ -99,7 +99,7 @@ export function generateRouteTypes(route: RouteAst, diagnostics: Diagnostic[]): 
     subStructs.set(name, { name, fields });
   };
 
-  const processSchema = (prefix: string, schema: SchemaLike) => {
+  const processSchema = (prefix: string, schema: SchemaLike): GoStruct | undefined => {
     const unwrapped = unwrap(schema);
     if (!isZodObject(unwrapped)) return undefined;
     const shape = unwrapped.shape;
@@ -142,14 +142,45 @@ export function generateRouteTypes(route: RouteAst, diagnostics: Diagnostic[]): 
     return { name: prefix, fields };
   };
 
-  if (route.input) {
-    const input = processSchema(routeTypeName(route, "Request"), route.input);
-    if (input) {
-      const pathParams = extractPathParams(route.path);
+  const pathParams = extractPathParams(route.path);
+  const hasQuery = !!route.query;
+  const hasBody = !!route.body;
+
+  let queryStruct: GoStruct | undefined;
+  if (route.query) {
+    queryStruct = processSchema(routeTypeName(route, "Query"), route.query);
+  }
+
+  let bodyStruct: GoStruct | undefined;
+  if (route.body) {
+    bodyStruct = processSchema(routeTypeName(route, "Body"), route.body);
+  }
+
+  if (hasQuery && hasBody) {
+    if (queryStruct) {
+      structs.push({ name: queryStruct.name, fields: [...queryStruct.fields] });
+    }
+    if (bodyStruct) {
+      structs.push({ name: bodyStruct.name, fields: [...bodyStruct.fields] });
+    }
+    const requestFields: GoField[] = [];
+    if (queryStruct) requestFields.push(...queryStruct.fields);
+    if (bodyStruct) requestFields.push(...bodyStruct.fields);
+    for (const param of pathParams) {
+      const fieldName = pascalCase(param);
+      if (!requestFields.find((f) => f.name === fieldName)) {
+        requestFields.push({ name: fieldName, type: "string", jsonName: param, optional: false });
+      }
+    }
+    requestFields.sort((a, b) => a.name.localeCompare(b.name));
+    structs.push({ name: routeTypeName(route, "Request"), fields: requestFields });
+  } else if (hasQuery || hasBody) {
+    const source = queryStruct || bodyStruct;
+    if (source) {
       for (const param of pathParams) {
         const fieldName = pascalCase(param);
-        if (!input.fields.find((f) => f.name === fieldName)) {
-          input.fields.push({
+        if (!source.fields.find((f) => f.name === fieldName)) {
+          source.fields.push({
             name: fieldName,
             type: "string",
             jsonName: param,
@@ -157,11 +188,11 @@ export function generateRouteTypes(route: RouteAst, diagnostics: Diagnostic[]): 
           });
         }
       }
-      input.fields.sort((a, b) => a.name.localeCompare(b.name));
-      structs.push(input);
+      source.fields.sort((a, b) => a.name.localeCompare(b.name));
+      source.name = routeTypeName(route, "Request");
+      structs.push(source);
     }
-  } else if (extractPathParams(route.path).length > 0) {
-    const pathParams = extractPathParams(route.path);
+  } else if (pathParams.length > 0) {
     const fields: GoField[] = pathParams.map((param) => ({
       name: pascalCase(param),
       type: "string",
@@ -192,7 +223,7 @@ export function generateRouteTypes(route: RouteAst, diagnostics: Diagnostic[]): 
 }
 
 export function requestType(route: RouteAst): string {
-  if (route.input || extractPathParams(route.path).length > 0) {
+  if (route.query || route.body || extractPathParams(route.path).length > 0) {
     return routeTypeName(route, "Request");
   }
   return "struct{}";
@@ -251,9 +282,7 @@ function renderStruct(goStruct: GoStruct): string {
   return `type ${goStruct.name} struct {\n${fields}\n}`;
 }
 
-function numberType(
-  checks: Array<{ kind: string }> | undefined,
-): string {
+function numberType(checks: Array<{ kind: string }> | undefined): string {
   if (!checks) return "float64";
   const has = (kind: string) => checks.some((c) => c.kind === kind);
   if (has("float32")) return "float32";

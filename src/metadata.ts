@@ -39,7 +39,7 @@ export function generateMetadata(ast: AppAst): GeneratedFilePatch[] {
   if (ast.options.metadata?.schemaReflection) {
     for (const module of ast.modules) {
       for (const route of module.routes) {
-        if (route.input || route.response) {
+        if (route.query || route.body || route.response) {
           patches.push({
             path: `internal/metadata/schemas.go`,
             regions: [
@@ -61,7 +61,7 @@ export function generateMetadata(ast: AppAst): GeneratedFilePatch[] {
 }
 
 function generateRouteInfo(route: RouteAst): string {
-  return `{ID: "${route.id}", Method: "${route.method}", Path: "${route.fullPath}", Handler: "${route.handlerName}", Module: "${route.moduleName}"${route.input ? `, Input: "${pascalCase(route.id)}${pascalCase(route.moduleName)}Request"` : ""}${route.response ? `, Response: "${pascalCase(route.id)}${pascalCase(route.moduleName)}Response"` : ""}}`;
+  return `{ID: "${route.id}", Method: "${route.method}", Path: "${route.fullPath}", Handler: "${route.handlerName}", Module: "${route.moduleName}"${route.query || route.body ? `, Input: "${pascalCase(route.id)}${pascalCase(route.moduleName)}Request"` : ""}${route.response ? `, Response: "${pascalCase(route.id)}${pascalCase(route.moduleName)}Response"` : ""}}`;
 }
 
 function generateRegistryGo(ast: AppAst, moduleInfos: Map<string, string[]>): string {
@@ -110,10 +110,26 @@ function generateRegistryGo(ast: AppAst, moduleInfos: Map<string, string[]>): st
 function generateSchemaReflection(route: RouteAst): string {
   const lines: string[] = [];
 
-  if (route.input) {
+  if (route.query) {
+    const name = `${pascalCase(route.id)}${pascalCase(route.moduleName)}Query`;
+    lines.push(`func (${name}) SchemaReflection() map[string]any {`);
+    lines.push(`\treturn ${generateSchemaMap(route.query)}`);
+    lines.push(`}`);
+    lines.push(``);
+  }
+
+  if (route.body) {
+    const name = `${pascalCase(route.id)}${pascalCase(route.moduleName)}Body`;
+    lines.push(`func (${name}) SchemaReflection() map[string]any {`);
+    lines.push(`\treturn ${generateSchemaMap(route.body)}`);
+    lines.push(`}`);
+    lines.push(``);
+  }
+
+  if (route.query || route.body) {
     const reqName = `${pascalCase(route.id)}${pascalCase(route.moduleName)}Request`;
     lines.push(`func (${reqName}) SchemaReflection() map[string]any {`);
-    lines.push(`\treturn ${generateSchemaMap(route.input)}`);
+    lines.push(`\treturn ${generateSchemaMap(route.body ?? route.query)}`);
     lines.push(`}`);
     lines.push(``);
   }

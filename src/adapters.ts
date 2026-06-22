@@ -4,6 +4,7 @@ import type {
   Diagnostic,
   GeneratedRegion,
   RouteAst,
+  SchemaLike,
 } from "./types.js";
 import {
   defaultFileForLayer,
@@ -11,6 +12,7 @@ import {
   extractPathParams,
   lowerIdent,
   pascalCase,
+  routeTypeName,
 } from "./naming.js";
 import { requestType, responseType } from "./schema.js";
 
@@ -59,16 +61,24 @@ export function resolveAdapters(
   return adapters;
 }
 
-function fieldInInputSchema(route: RouteAst, fieldName: string): boolean {
-  const input = route.input;
-  if (!input || typeof input !== "object") return false;
-  const def = (input as unknown as Record<string, unknown>)._def as
+function fieldInSchema(schema: SchemaLike, fieldName: string): boolean {
+  const def = (schema as unknown as Record<string, unknown>)._def as
     | Record<string, unknown>
     | undefined;
   if (!def) return false;
   const shapeFn = def.shape as (() => Record<string, unknown>) | undefined;
   if (!shapeFn) return false;
   return fieldName in shapeFn();
+}
+
+function getSchemaFieldNames(schema: SchemaLike): string[] {
+  const def = (schema as unknown as Record<string, unknown>)._def as
+    | Record<string, unknown>
+    | undefined;
+  if (!def) return [];
+  const shapeFn = def.shape as (() => Record<string, unknown>) | undefined;
+  if (!shapeFn) return [];
+  return Object.keys(shapeFn());
 }
 
 export function generateGinHandler(
@@ -83,20 +93,56 @@ export function generateGinHandler(
   const pathParams = extractPathParams(route.path);
   const body: string[] = [];
 
-  if (route.input) {
-    const isQuery = route.method === "GET" || route.method === "DELETE";
-    body.push(`var input ${reqType}`);
-    if (isQuery) {
-      body.push(`if err := c.ShouldBindQuery(&input); err != nil {`);
-    } else {
-      body.push(`if err := c.ShouldBindJSON(&input); err != nil {`);
+  const hasQuery = !!route.query;
+  const hasBody = !!route.body;
+
+  if (hasQuery && hasBody) {
+    const queryType = routeTypeName(route, "Query");
+    const bodyType = routeTypeName(route, "Body");
+    body.push(`var query ${queryType}`);
+    body.push(`if err := c.ShouldBindQuery(&query); err != nil {`);
+    body.push(`\tc.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})`);
+    body.push(`\treturn`);
+    body.push(`}`);
+    body.push(`var requestBody ${bodyType}`);
+    body.push(`if err := c.ShouldBindJSON(&requestBody); err != nil {`);
+    body.push(`\tc.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})`);
+    body.push(`\treturn`);
+    body.push(`}`);
+    const queryFields = getSchemaFieldNames(route.query!);
+    const bodyFields = getSchemaFieldNames(route.body!);
+    body.push(`input := ${reqType}{`);
+    for (const f of queryFields) {
+      body.push(`\t${pascalCase(f)}: query.${pascalCase(f)},`);
     }
+    for (const f of bodyFields) {
+      body.push(`\t${pascalCase(f)}: requestBody.${pascalCase(f)},`);
+    }
+    body.push(`}`);
+    for (const param of pathParams) {
+      body.push(`input.${pascalCase(param)} = c.Param("${param}")`);
+    }
+  } else if (hasQuery) {
+    body.push(`var input ${reqType}`);
+    body.push(`if err := c.ShouldBindQuery(&input); err != nil {`);
     body.push(`\tc.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})`);
     body.push(`\treturn`);
     body.push(`}`);
     for (const param of pathParams) {
       const fieldName = pascalCase(param);
-      if (!fieldInInputSchema(route, param)) {
+      if (!fieldInSchema(route.query!, param)) {
+        body.push(`input.${fieldName} = c.Param("${param}")`);
+      }
+    }
+  } else if (hasBody) {
+    body.push(`var input ${reqType}`);
+    body.push(`if err := c.ShouldBindJSON(&input); err != nil {`);
+    body.push(`\tc.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})`);
+    body.push(`\treturn`);
+    body.push(`}`);
+    for (const param of pathParams) {
+      const fieldName = pascalCase(param);
+      if (!fieldInSchema(route.body!, param)) {
         body.push(`input.${fieldName} = c.Param("${param}")`);
       }
     }

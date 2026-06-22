@@ -24,56 +24,31 @@ import type {
 } from "./types.js";
 
 export type DefineRouteInput<
-  TInput extends SchemaLike | undefined,
+  TQuery extends SchemaLike | undefined,
+  TBody extends SchemaLike | undefined,
   TResponse extends SchemaLike | undefined,
 > = {
   id: string;
-  method: HttpMethod;
   path: string;
   architecture?: ArchitectureRef | ArchitectureRef[] | ArchitectureSelection;
   adapter?: AdapterRef | AdapterRef[] | AdapterSelection;
   adapters?: AdapterRef[] | AdapterSelection;
-  input?: TInput;
   response?: TResponse;
   handler: string;
   usecaseGroup?: string;
   middleware?: MiddlewareDefinition[];
   metadata?: Record<string, unknown>;
-};
-
-type DefineRouteBase = {
-  id: string;
-  method: HttpMethod;
-  path: string;
-  architecture?: ArchitectureRef | ArchitectureRef[] | ArchitectureSelection;
-  adapter?: AdapterRef | AdapterRef[] | AdapterSelection;
-  adapters?: AdapterRef[] | AdapterSelection;
-  handler: string;
-  usecaseGroup?: string;
-  middleware?: MiddlewareDefinition[];
-  metadata?: Record<string, unknown>;
-};
-
-export function defineRoute<TInput extends SchemaLike, TResponse extends SchemaLike>(
-  input: DefineRouteBase & { input: TInput; response: TResponse },
-): RouteDefinition<TInput, TResponse>;
-
-export function defineRoute<TInput extends SchemaLike>(
-  input: DefineRouteBase & { input: TInput; response?: undefined },
-): RouteDefinition<TInput, undefined>;
-
-export function defineRoute<TResponse extends SchemaLike>(
-  input: DefineRouteBase & { input?: undefined; response: TResponse },
-): RouteDefinition<undefined, TResponse>;
-
-export function defineRoute(
-  input: DefineRouteBase & { input?: undefined; response?: undefined },
-): RouteDefinition<undefined, undefined>;
+  query?: TQuery;
+} & (
+  | { method: "GET" | "DELETE"; body?: undefined }
+  | { method: Exclude<HttpMethod, "GET" | "DELETE">; body?: TBody }
+);
 
 export function defineRoute<
-  TInput extends SchemaLike | undefined = undefined,
+  TQuery extends SchemaLike | undefined = undefined,
+  TBody extends SchemaLike | undefined = undefined,
   TResponse extends SchemaLike | undefined = undefined,
->(input: DefineRouteInput<TInput, TResponse>): RouteDefinition<TInput, TResponse> {
+>(input: DefineRouteInput<TQuery, TBody, TResponse>): RouteDefinition<TQuery, TBody, TResponse> {
   return {
     kind: "RouteDefinition",
     id: input.id,
@@ -82,7 +57,8 @@ export function defineRoute<
     architecture: input.architecture,
     adapter: input.adapter,
     adapters: input.adapters,
-    input: input.input,
+    query: input.query,
+    body: input.body,
     response: input.response,
     handler: input.handler,
     usecaseGroup: input.usecaseGroup,
@@ -104,7 +80,7 @@ export function defineModule(input: {
   architecture?: ArchitectureRef | ArchitectureRef[] | ArchitectureSelection;
   adapters?: AdapterRef[] | AdapterSelection;
   usecaseOrganization?: UsecaseOrganization;
-  routes?: RouteDefinition[];
+  routes?: RouteDefinition<SchemaLike | undefined, SchemaLike | undefined, SchemaLike | undefined>[];
   middleware?: MiddlewareDefinition[];
 }): ModuleDefinition {
   return {
@@ -175,12 +151,12 @@ export function defineApp(input: {
   };
 }
 
-export function defineRouteGroup(input: {
+export function defineRouteGroup<TRoute extends RouteDefinition<SchemaLike | undefined, SchemaLike | undefined, SchemaLike | undefined>>(input: {
   prefix: string;
   middleware?: MiddlewareDefinition[];
   architecture?: ArchitectureRef | ArchitectureRef[] | ArchitectureSelection;
-  routes: RouteDefinition[];
-}): RouteDefinition[] {
+  routes: TRoute[];
+}): TRoute[] {
   return input.routes.map((route) => ({
     ...route,
     path: joinPath(input.prefix, route.path),

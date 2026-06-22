@@ -101,7 +101,8 @@ async function inspectRoute(
       console.log(`  Method: ${route.method}`);
       console.log(`  Path: ${route.fullPath}`);
       console.log(`  Handler: ${route.handlerName}`);
-      console.log(`  Input: ${route.input ? "yes" : "no"}`);
+      console.log(`  Query: ${route.query ? "yes" : "no"}`);
+      console.log(`  Body: ${route.body ? "yes" : "no"}`);
       console.log(`  Response: ${route.response ? "yes" : "no"}`);
 
       const expansion = result.architecture.routes.find(

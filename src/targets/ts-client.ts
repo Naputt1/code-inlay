@@ -161,9 +161,34 @@ function generateObjectInterface(name: string, schema: unknown): string {
 function generateTypesForRoute(route: RouteAst, moduleName: string): GeneratedRegion[] {
   const regions: GeneratedRegion[] = [];
 
-  if (route.input) {
+  if (route.query) {
+    const name = routeTypeName(route, "Query");
+    const interfaceStr = generateObjectInterface(name, route.query);
+    regions.push({
+      id: `client.types.${moduleName}.${route.id}.query`,
+      stableHash: `ts-client:types:${moduleName}:${route.id}:query`,
+      owner: "ts-client",
+      language: "typescript",
+      content: interfaceStr,
+    });
+  }
+
+  if (route.body) {
+    const name = routeTypeName(route, "Body");
+    const interfaceStr = generateObjectInterface(name, route.body);
+    regions.push({
+      id: `client.types.${moduleName}.${route.id}.body`,
+      stableHash: `ts-client:types:${moduleName}:${route.id}:body`,
+      owner: "ts-client",
+      language: "typescript",
+      content: interfaceStr,
+    });
+  }
+
+  if (route.query || route.body) {
     const name = routeTypeName(route, "Request");
-    const interfaceStr = generateObjectInterface(name, route.input);
+    const schema = route.body ?? route.query;
+    const interfaceStr = generateObjectInterface(name, schema);
     regions.push({
       id: `client.types.${moduleName}.${route.id}.request`,
       stableHash: `ts-client:types:${moduleName}:${route.id}:request`,
@@ -189,8 +214,8 @@ function generateTypesForRoute(route: RouteAst, moduleName: string): GeneratedRe
 }
 
 function collectQueryFields(route: RouteAst, pathParams: string[]): string[] {
-  if (!route.input) return [];
-  const def = (route.input as unknown as Record<string, unknown>)._def as
+  if (!route.query) return [];
+  const def = (route.query as unknown as Record<string, unknown>)._def as
     | Record<string, unknown>
     | undefined;
   const shapeFn = def?.shape as (() => Record<string, unknown>) | undefined;
@@ -201,14 +226,14 @@ function collectQueryFields(route: RouteAst, pathParams: string[]): string[] {
 function generateClientMethod(route: RouteAst): string {
   const fnName = pascalCase(route.id);
   const resType = route.response ? routeTypeName(route, "Response") : "void";
-  const hasBody = route.method === "POST" || route.method === "PUT" || route.method === "PATCH";
+  const hasBody = !!route.body;
 
   const pathParams = extractPathParams(route.fullPath);
   const pathTemplate = route.fullPath.replace(/:([a-zA-Z_][a-zA-Z0-9_]*)/g, "${params.$1}");
 
   const body: string[] = [];
 
-  if (route.input) {
+  if (route.query || route.body) {
     const reqType = routeTypeName(route, "Request");
     body.push(`async ${fnName}(params: ${reqType}, options?: RequestInit): Promise<${resType}> {`);
     if (hasBody) {
@@ -282,7 +307,7 @@ function generateModuleClient(module: ModuleAst): string {
   const methods: string[] = [];
 
   for (const route of module.routes) {
-    if (route.input) imports.add(routeTypeName(route, "Request"));
+    if (route.query || route.body) imports.add(routeTypeName(route, "Request"));
     if (route.response) imports.add(routeTypeName(route, "Response"));
 
     const method = generateClientMethod(route);

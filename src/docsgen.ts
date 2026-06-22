@@ -33,7 +33,7 @@ function generateMarkdownDocs(ast: AppAst): string {
     lines.push(`|--------|------|---------|-------|----------|`);
 
     for (const route of module.routes) {
-      const inputType = route.input ? `\`${routeTypeName(route, "Request")}\`` : "-";
+      const inputType = route.query || route.body ? `\`${routeTypeName(route, "Request")}\`` : "-";
       const responseType = route.response ? `\`${routeTypeName(route, "Response")}\`` : "-";
       lines.push(
         `| ${route.method} | \`${route.fullPath}\` | \`${route.handlerName}\` | ${inputType} | ${responseType} |`,
@@ -53,12 +53,20 @@ function generateMarkdownDocs(ast: AppAst): string {
       lines.push(`- **ID:** \`${module.name}.${route.id}\``);
       lines.push(`- **Handler:** \`${route.handlerName}\``);
 
-      if (route.input) {
+      if (route.body) {
         lines.push(``);
         lines.push(`#### Request Body`);
         lines.push(``);
         lines.push("```json");
-        lines.push(JSON.stringify(zodToJsonSchemaSample(route.input), null, 2));
+        lines.push(JSON.stringify(zodToJsonSchemaSample(route.body), null, 2));
+        lines.push("```");
+      }
+      if (route.query) {
+        lines.push(``);
+        lines.push(`#### Query Parameters`);
+        lines.push(``);
+        lines.push("```json");
+        lines.push(JSON.stringify(zodToJsonSchemaSample(route.query), null, 2));
         lines.push("```");
       }
 

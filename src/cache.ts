@@ -82,10 +82,15 @@ export function buildDependencyGraph(
       addNode(route.stableId, "route", stableHash(route, 16));
       addEdge(module.stableId, route.stableId, "contains");
 
-      if (route.input) {
-        const schemaId = `${route.stableId}:input`;
-        addNode(schemaId, "schema", stableHash(route.input, 16));
-        addEdge(route.stableId, schemaId, "has-input-schema");
+      if (route.query) {
+        const schemaId = `${route.stableId}:query`;
+        addNode(schemaId, "schema", stableHash(route.query, 16));
+        addEdge(route.stableId, schemaId, "has-query-schema");
+      }
+      if (route.body) {
+        const schemaId = `${route.stableId}:body`;
+        addNode(schemaId, "schema", stableHash(route.body, 16));
+        addEdge(route.stableId, schemaId, "has-body-schema");
       }
       if (route.response) {
         const schemaId = `${route.stableId}:response`;
