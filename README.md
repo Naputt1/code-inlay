@@ -60,14 +60,14 @@ internal/http/routes.go  # Route registration
 
 ## CLI
 
-| Command | Description |
-|---|---|
-| `generate` | Full compile + write files |
-| `dev` | Watch mode with live-regeneration |
-| `check` | Dry-run, exit 1 on changes |
-| `diff` | Show pending changes |
-| `inspect` | Introspect AST, routes, plugins |
-| `init` | Scaffold a new project |
+| Command    | Description                       |
+| ---------- | --------------------------------- |
+| `generate` | Full compile + write files        |
+| `dev`      | Watch mode with live-regeneration |
+| `check`    | Dry-run, exit 1 on changes        |
+| `diff`     | Show pending changes              |
+| `inspect`  | Introspect AST, routes, plugins   |
+| `init`     | Scaffold a new project            |
 
 ## Documentation
 
