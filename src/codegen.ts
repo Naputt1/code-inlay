@@ -11,6 +11,7 @@ import type { GoModuleInfo } from "./env.js";
 import {
   defaultFileForLayer,
   defaultRegionId,
+  extractPathParams,
   fileForModuleRoutes,
   lowerIdent,
   pascalCase,
@@ -19,7 +20,13 @@ import {
   resolveUsecaseOrg,
   snakeCase,
 } from "./naming.js";
-import { generateEntityStructs, generateRouteTypes, requestType, responseType } from "./schema.js";
+import {
+  extractEntityContext,
+  generateEntityStructs,
+  generateRouteTypes,
+  requestType,
+  responseType,
+} from "./schema.js";
 import { generateGinHandler, resolveAdapters } from "./adapters.js";
 import { generateServer, serverFilePath } from "./srvgen.js";
 export function generateCode(
@@ -45,6 +52,7 @@ export function generateCode(
   const usecaseFileInfo = new Map<string, { moduleName: string; groupKey: string }>();
 
   const domainRoutesByModule = new Map<string, RouteAst[]>();
+  const repositoryRoutesByModule = new Map<string, RouteAst[]>();
 
   for (const expansion of architecture.routes) {
     const route = expansion.route;
@@ -57,8 +65,10 @@ export function generateCode(
         domainRoutesByModule.set(route.moduleName, routes);
       }
       if (layer.kind === "repository") {
-        if (repositoryModules.has(route.moduleName)) continue;
         repositoryModules.add(route.moduleName);
+        const routes = repositoryRoutesByModule.get(route.moduleName) ?? [];
+        routes.push(route);
+        repositoryRoutesByModule.set(route.moduleName, routes);
       }
       const layerGroupKey =
         layer.kind === "usecase"
@@ -160,6 +170,19 @@ export function generateCode(
       owner: "code-inlay",
       language: "go",
       content: domainContent,
+    });
+  }
+
+  for (const [moduleName, routes] of repositoryRoutesByModule) {
+    const repoFile = `internal/${moduleName}/repo.go`;
+    const regionId = `${moduleName}.repository`;
+    const repoContent = generateRepository(routes, moduleName);
+    add(repoFile, {
+      id: regionId,
+      stableHash: `${regionId}:${moduleName}:${routes.length}routes`,
+      owner: "code-inlay",
+      language: "go",
+      content: repoContent,
     });
   }
 
@@ -392,7 +415,7 @@ function generateLayerContent(
     case "domain":
       return undefined; // handled per module in aggregateDomainContent
     case "repository":
-      return generateRepository(route);
+      return undefined;
     case "usecase":
       return generateUsecase(route);
     case "handler":
@@ -420,13 +443,103 @@ function generateDomain(moduleName: string, routes: RouteAst[], diagnostics: Dia
   return parts.join("\n\n");
 }
 
-function generateRepository(route: RouteAst): string {
-  const moduleName = pascalCase(route.moduleName);
-  return [
-    `type ${moduleName}Repository interface {`,
-    `\t// Add developer-owned persistence methods outside generated regions as needed.`,
-    `}`,
-  ].join("\n");
+type RepositoryMethod = {
+  name: string;
+  params: string;
+  results: string;
+};
+
+function inferRepositoryMethod(route: RouteAst, moduleName: string): RepositoryMethod | null {
+  const handler = route.handlerName;
+  const pathParams = extractPathParams(route.path);
+  const hasID = pathParams.length > 0;
+  const baseEntity = pascalCase(moduleName);
+  const context = extractEntityContext(route.id);
+  const entityName = context ? `${baseEntity}${pascalCase(context)}` : baseEntity;
+
+  const verb = ["List", "Get", "Create", "New", "Update", "Edit", "Delete", "Remove", "Set"].find(
+    (v) => handler.startsWith(v),
+  );
+  if (!verb) return null;
+
+  const entityPart = handler.slice(verb.length);
+
+  switch (verb) {
+    case "List":
+      return {
+        name: context ? `FindAll${pascalCase(context)}` : "FindAll",
+        params: "ctx context.Context",
+        results: `([]${entityName}, error)`,
+      };
+    case "Get":
+      if (!hasID) return null;
+      return {
+        name: context ? `Find${pascalCase(context)}ByID` : "FindByID",
+        params: `ctx context.Context, id ${baseEntity}ID`,
+        results: `(${entityName}, error)`,
+      };
+    case "Create":
+    case "New":
+      return {
+        name: context ? `Create${pascalCase(context)}` : "Create",
+        params: `ctx context.Context, entity ${entityName}`,
+        results: `(${entityName}, error)`,
+      };
+    case "Update":
+    case "Edit":
+      if (!hasID) return null;
+      return {
+        name: context ? `Update${pascalCase(context)}` : "Update",
+        params: `ctx context.Context, id ${baseEntity}ID, entity ${entityName}`,
+        results: `(${entityName}, error)`,
+      };
+    case "Delete":
+    case "Remove":
+      if (!hasID) return null;
+      return {
+        name: context ? `Delete${pascalCase(context)}` : "Delete",
+        params: `ctx context.Context, id ${baseEntity}ID`,
+        results: "error",
+      };
+    case "Set": {
+      let field = entityPart;
+      if (field.startsWith(baseEntity)) field = field.slice(baseEntity.length);
+      if (!field) field = entityPart;
+      return {
+        name: `Set${field}`,
+        params: hasID ? `ctx context.Context, id ${baseEntity}ID` : "ctx context.Context",
+        results: "error",
+      };
+    }
+    default:
+      return null;
+  }
+}
+
+function generateRepository(routes: RouteAst[], moduleName: string): string {
+  const typeName = pascalCase(moduleName);
+  const seen = new Map<string, RepositoryMethod>();
+
+  for (const route of routes) {
+    const method = inferRepositoryMethod(route, moduleName);
+    if (!method) continue;
+    const key = `${method.name}(${method.params})`;
+    if (!seen.has(key)) {
+      seen.set(key, method);
+    }
+  }
+
+  if (seen.size === 0) {
+    return [
+      `type ${typeName}Repository interface {`,
+      `\t// Add developer-owned persistence methods outside generated regions as needed.`,
+      `}`,
+    ].join("\n");
+  }
+
+  const body = [...seen.values()].map((m) => `\t${m.name}(${m.params}) ${m.results}`).join("\n");
+
+  return [`type ${typeName}Repository interface {`, body, `}`].join("\n");
 }
 
 function generateUsecase(route: RouteAst): string {

@@ -57,13 +57,9 @@ describe("compiler", () => {
     );
     writeFileSync(
       join(cwd, "internal/user/repo.go"),
-      [
-        "package user",
-        "",
-        "// @gen:start user.create.repository",
-        "// @gen:end user.create.repository",
-        "",
-      ].join("\n"),
+      ["package user", "", "// @gen:start user.repository", "// @gen:end user.repository", ""].join(
+        "\n",
+      ),
     );
     writeFileSync(
       join(cwd, "internal/user/usecase.go"),
@@ -538,5 +534,165 @@ describe("compiler", () => {
     );
 
     expect(regionIds.every((id) => !id.includes("user.create"))).toBe(true);
+  });
+
+  describe("repository method inference", () => {
+    it("infers CRUD methods for standard route patterns", async () => {
+      const app = defineApp({
+        architecture: "clean",
+        router: defineRouter({ adapter: "gin" }),
+        modules: [
+          defineModule({
+            name: "staff",
+            routes: [
+              defineRoute({ id: "list", method: "GET", path: "", handler: "ListStaff" }),
+              defineRoute({ id: "get", method: "GET", path: "/:id", handler: "GetStaff" }),
+              defineRoute({ id: "new", method: "POST", path: "/new", handler: "NewStaff" }),
+              defineRoute({
+                id: "update",
+                method: "POST",
+                path: "/:id/update",
+                handler: "UpdateStaff",
+              }),
+              defineRoute({
+                id: "delete",
+                method: "POST",
+                path: "/:id/delete",
+                handler: "DeleteStaff",
+              }),
+            ],
+          }),
+        ],
+      });
+
+      const result = await compile({ app, dryRun: true });
+      expect(result.diagnostics.filter((d) => d.level === "error")).toEqual([]);
+
+      const repoRegion = result.generation.files
+        .flatMap((f) => f.regions)
+        .find((r) => r.id === "staff.repository");
+      expect(repoRegion).toBeDefined();
+
+      const content = repoRegion!.content;
+      expect(content).toContain("type StaffRepository interface");
+      expect(content).toContain("FindAll(ctx context.Context) ([]Staff, error)");
+      expect(content).toContain("FindByID(ctx context.Context, id StaffID) (Staff, error)");
+      expect(content).toContain("Create(ctx context.Context, entity Staff) (Staff, error)");
+      expect(content).toContain(
+        "Update(ctx context.Context, id StaffID, entity Staff) (Staff, error)",
+      );
+      expect(content).toContain("Delete(ctx context.Context, id StaffID) error");
+    });
+
+    it("infers sub-entity methods for context-prefixed route ids", async () => {
+      const app = defineApp({
+        architecture: "clean",
+        router: defineRouter({ adapter: "gin" }),
+        modules: [
+          defineModule({
+            name: "bus",
+            routes: [
+              defineRoute({ id: "list", method: "GET", path: "", handler: "ListBus" }),
+              defineRoute({ id: "timeList", method: "GET", path: "/time", handler: "ListBusTime" }),
+              defineRoute({
+                id: "timeCreate",
+                method: "POST",
+                path: "/time",
+                handler: "CreateBusTime",
+              }),
+              defineRoute({
+                id: "timeUpdate",
+                method: "POST",
+                path: "/time/:id/update",
+                handler: "UpdateBusTime",
+              }),
+              defineRoute({
+                id: "timeDelete",
+                method: "POST",
+                path: "/time/:id/delete",
+                handler: "DeleteBusTime",
+              }),
+            ],
+          }),
+        ],
+      });
+
+      const result = await compile({ app, dryRun: true });
+      expect(result.diagnostics.filter((d) => d.level === "error")).toEqual([]);
+
+      const repoRegion = result.generation.files
+        .flatMap((f) => f.regions)
+        .find((r) => r.id === "bus.repository");
+      expect(repoRegion).toBeDefined();
+
+      const content = repoRegion!.content;
+      expect(content).toContain("type BusRepository interface");
+      expect(content).toContain("FindAll(ctx context.Context) ([]Bus, error)");
+      expect(content).toContain("FindAllTime(ctx context.Context) ([]BusTime, error)");
+      expect(content).toContain("CreateTime(ctx context.Context, entity BusTime) (BusTime, error)");
+      expect(content).toContain(
+        "UpdateTime(ctx context.Context, id BusID, entity BusTime) (BusTime, error)",
+      );
+      expect(content).toContain("DeleteTime(ctx context.Context, id BusID) error");
+    });
+
+    it("deduplicates identical methods across routes", async () => {
+      const app = defineApp({
+        architecture: "clean",
+        router: defineRouter({ adapter: "gin" }),
+        modules: [
+          defineModule({
+            name: "item",
+            routes: [
+              defineRoute({ id: "list", method: "GET", path: "", handler: "ListItem" }),
+              defineRoute({ id: "listAll", method: "GET", path: "/all", handler: "ListItem" }),
+            ],
+          }),
+        ],
+      });
+
+      const result = await compile({ app, dryRun: true });
+      expect(result.diagnostics.filter((d) => d.level === "error")).toEqual([]);
+
+      const repoRegion = result.generation.files
+        .flatMap((f) => f.regions)
+        .find((r) => r.id === "item.repository");
+      expect(repoRegion).toBeDefined();
+
+      const content = repoRegion!.content;
+      const occurrences = content.split("FindAll").length - 1;
+      expect(occurrences).toBe(1);
+    });
+
+    it("skips non-CRUD handlers without generating a method", async () => {
+      const app = defineApp({
+        architecture: "clean",
+        router: defineRouter({ adapter: "gin" }),
+        modules: [
+          defineModule({
+            name: "auth",
+            routes: [
+              defineRoute({ id: "login", method: "POST", path: "/login", handler: "Login" }),
+              defineRoute({ id: "logout", method: "POST", path: "/logout", handler: "Logout" }),
+            ],
+          }),
+        ],
+      });
+
+      const result = await compile({ app, dryRun: true });
+      expect(result.diagnostics.filter((d) => d.level === "error")).toEqual([]);
+
+      const repoRegion = result.generation.files
+        .flatMap((f) => f.regions)
+        .find((r) => r.id === "auth.repository");
+      expect(repoRegion).toBeDefined();
+
+      const content = repoRegion!.content;
+      expect(content).toContain(
+        "// Add developer-owned persistence methods outside generated regions as needed.",
+      );
+      expect(content).not.toContain("Login");
+      expect(content).not.toContain("Logout");
+    });
   });
 });

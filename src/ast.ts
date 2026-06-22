@@ -56,10 +56,7 @@ export function buildAst(app: AppDefinition, diagnostics: Diagnostic[]): AppAst 
       const moduleAdapters = module.adapters
         ? resolveAdapterSelection(appAdapters, normalizeAdapterSelection(module.adapters))
         : undefined;
-      const moduleResponseFormat = resolveResponseFormat(
-        module.responseFormat,
-        appResponseFormat,
-      );
+      const moduleResponseFormat = resolveResponseFormat(module.responseFormat, appResponseFormat);
 
       return {
         kind: "Module",

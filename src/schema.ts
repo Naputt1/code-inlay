@@ -321,10 +321,13 @@ export function generateEntityStructs(
   const toFingerprint = (s: SchemaLike): string => {
     const u = unwrap(s);
     if (isZodObject(u)) {
-      return `{${Object.keys(u.shape).sort().map(k => {
-        const fs = u.shape[k] as SchemaLike;
-        return `${k}:${schemaToGoType(fs, diagnostics)}`;
-      }).join(",")}}`;
+      return `{${Object.keys(u.shape)
+        .sort()
+        .map((k) => {
+          const fs = u.shape[k] as SchemaLike;
+          return `${k}:${schemaToGoType(fs, diagnostics)}`;
+        })
+        .join(",")}}`;
     }
     return "";
   };
@@ -332,30 +335,37 @@ export function generateEntityStructs(
   const toEntityFields = (schema: SchemaLike): GoField[] | undefined => {
     const u = unwrap(schema);
     if (!isZodObject(u)) return undefined;
-    return Object.keys(u.shape).sort().map((fieldName) => {
-      const fieldSchema = u.shape[fieldName] as SchemaLike;
-      const optional = isZodOptional(fieldSchema);
-      const inner = unwrap(fieldSchema);
-      if (isZodObject(inner)) {
-        const childName = `${pascalCase(moduleName)}${pascalCase(fieldName)}`;
-        registerEntitySub(childName, inner, subStructs, diagnostics, moduleName);
-        return { name: pascalCase(fieldName), type: childName, jsonName: fieldName, optional };
-      }
-      if (isZodArray(inner)) {
-        const elem = unwrap(inner.element);
-        if (isZodObject(elem)) {
-          const childName = `${pascalCase(moduleName)}${pascalCase(fieldName)}Item`;
-          registerEntitySub(childName, elem, subStructs, diagnostics, moduleName);
-          return { name: pascalCase(fieldName), type: `[]${childName}`, jsonName: fieldName, optional };
+    return Object.keys(u.shape)
+      .sort()
+      .map((fieldName) => {
+        const fieldSchema = u.shape[fieldName] as SchemaLike;
+        const optional = isZodOptional(fieldSchema);
+        const inner = unwrap(fieldSchema);
+        if (isZodObject(inner)) {
+          const childName = `${pascalCase(moduleName)}${pascalCase(fieldName)}`;
+          registerEntitySub(childName, inner, subStructs, diagnostics, moduleName);
+          return { name: pascalCase(fieldName), type: childName, jsonName: fieldName, optional };
         }
-      }
-      return {
-        name: pascalCase(fieldName),
-        type: schemaToGoType(fieldSchema, diagnostics),
-        jsonName: fieldName,
-        optional,
-      };
-    });
+        if (isZodArray(inner)) {
+          const elem = unwrap(inner.element);
+          if (isZodObject(elem)) {
+            const childName = `${pascalCase(moduleName)}${pascalCase(fieldName)}Item`;
+            registerEntitySub(childName, elem, subStructs, diagnostics, moduleName);
+            return {
+              name: pascalCase(fieldName),
+              type: `[]${childName}`,
+              jsonName: fieldName,
+              optional,
+            };
+          }
+        }
+        return {
+          name: pascalCase(fieldName),
+          type: schemaToGoType(fieldSchema, diagnostics),
+          jsonName: fieldName,
+          optional,
+        };
+      });
   };
 
   const seenFingerprints = new Set<string>();
@@ -386,13 +396,9 @@ export function generateEntityStructs(
     entities.push({ name: entityName, fields });
   }
 
-  const rendered = entities
-    .map((s) => renderEntityStruct(s))
-    .join("\n\n");
+  const rendered = entities.map((s) => renderEntityStruct(s)).join("\n\n");
 
-  const subRendered = [...subStructs.values()]
-    .map((s) => renderEntityStruct(s))
-    .join("\n\n");
+  const subRendered = [...subStructs.values()].map((s) => renderEntityStruct(s)).join("\n\n");
 
   return [rendered, subRendered].filter(Boolean).join("\n\n");
 }
@@ -408,30 +414,37 @@ function registerEntitySub(
   const unwrapped = unwrap(schema);
   if (!isZodObject(unwrapped)) return;
   const shape = unwrapped.shape;
-  const fields = Object.keys(shape).sort().map((fieldName) => {
-    const fieldSchema = shape[fieldName] as SchemaLike;
-    const optional = isZodOptional(fieldSchema);
-    const inner = unwrap(fieldSchema);
-    if (isZodObject(inner)) {
-      const childName = `${name}${pascalCase(fieldName)}`;
-      registerEntitySub(childName, inner, subStructs, diagnostics, moduleName);
-      return { name: pascalCase(fieldName), type: childName, jsonName: fieldName, optional };
-    }
-    if (isZodArray(inner)) {
-      const elem = unwrap(inner.element);
-      if (isZodObject(elem)) {
-        const childName = `${name}${pascalCase(fieldName)}Item`;
-        registerEntitySub(childName, elem, subStructs, diagnostics, moduleName);
-        return { name: pascalCase(fieldName), type: `[]${childName}`, jsonName: fieldName, optional };
+  const fields = Object.keys(shape)
+    .sort()
+    .map((fieldName) => {
+      const fieldSchema = shape[fieldName] as SchemaLike;
+      const optional = isZodOptional(fieldSchema);
+      const inner = unwrap(fieldSchema);
+      if (isZodObject(inner)) {
+        const childName = `${name}${pascalCase(fieldName)}`;
+        registerEntitySub(childName, inner, subStructs, diagnostics, moduleName);
+        return { name: pascalCase(fieldName), type: childName, jsonName: fieldName, optional };
       }
-    }
-    return {
-      name: pascalCase(fieldName),
-      type: schemaToGoType(fieldSchema, diagnostics),
-      jsonName: fieldName,
-      optional,
-    };
-  });
+      if (isZodArray(inner)) {
+        const elem = unwrap(inner.element);
+        if (isZodObject(elem)) {
+          const childName = `${name}${pascalCase(fieldName)}Item`;
+          registerEntitySub(childName, elem, subStructs, diagnostics, moduleName);
+          return {
+            name: pascalCase(fieldName),
+            type: `[]${childName}`,
+            jsonName: fieldName,
+            optional,
+          };
+        }
+      }
+      return {
+        name: pascalCase(fieldName),
+        type: schemaToGoType(fieldSchema, diagnostics),
+        jsonName: fieldName,
+        optional,
+      };
+    });
   subStructs.set(name, { name, fields });
 }
 
@@ -445,10 +458,24 @@ function extractEntitySchema(schema: SchemaLike): SchemaLike | undefined {
   return undefined;
 }
 
-function extractEntityContext(routeId: string): string {
-  const verbs = ["list", "get", "create", "update", "delete", "set", "edit", "new",
-    "adminlist", "adminget", "admincreate", "adminupdate", "admindelete", "adminset",
-    "admin"];
+export function extractEntityContext(routeId: string): string {
+  const verbs = [
+    "list",
+    "get",
+    "create",
+    "update",
+    "delete",
+    "set",
+    "edit",
+    "new",
+    "adminlist",
+    "adminget",
+    "admincreate",
+    "adminupdate",
+    "admindelete",
+    "adminset",
+    "admin",
+  ];
   const lower = routeId.toLowerCase();
   for (const verb of verbs) {
     if (lower.endsWith(verb)) {
@@ -459,10 +486,7 @@ function extractEntityContext(routeId: string): string {
   return "";
 }
 
-function mergeEntityIntoWrapper(
-  wrapperSchema: SchemaLike,
-  entitySchema: SchemaLike,
-): SchemaLike {
+function mergeEntityIntoWrapper(wrapperSchema: SchemaLike, entitySchema: SchemaLike): SchemaLike {
   return replaceEntity(wrapperSchema, entitySchema);
 }
 
@@ -478,7 +502,10 @@ function replaceEntity(schema: SchemaLike, entitySchema: SchemaLike): SchemaLike
     return { ...inner, shape: newShape } as unknown as SchemaLike;
   }
   if (isZodArray(inner)) {
-    return { ...inner, element: replaceEntity(inner.element, entitySchema) } as unknown as SchemaLike;
+    return {
+      ...inner,
+      element: replaceEntity(inner.element, entitySchema),
+    } as unknown as SchemaLike;
   }
   return schema;
 }
