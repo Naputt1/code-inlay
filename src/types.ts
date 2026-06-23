@@ -94,6 +94,7 @@ export type CompileSettings = {
   responseFormat?: ResponseFormat;
   targets?: string[];
   targetOptions?: Record<string, Record<string, unknown>>;
+  featuresDir?: string;
   runtime?: RuntimeConfig;
   testing?: TestingConfig;
   metadata?: MetadataConfig;

@@ -23,27 +23,35 @@ export function snakeCase(value: string): string {
     .replace(/^_|_$/g, "");
 }
 
+export function featuresPath(path: string, featuresDir?: string): string {
+  if (!featuresDir) return path;
+  return path.replace(/^internal\//, `internal/${featuresDir}/`);
+}
+
 export function routeTypeName(route: RouteAst, suffix: string): string {
   return `${pascalCase(route.id)}${pascalCase(route.moduleName)}${suffix}`;
 }
 
-export function defaultFileForLayer(route: RouteAst, layer: string): string {
-  switch (layer) {
-    case "types":
-    case "domain":
-      return `internal/${route.moduleName}/types.go`;
-    case "handler":
-      return `internal/${route.moduleName}/handler.go`;
-    case "usecase":
-      return fileForUsecaseGroup(route.moduleName, "default");
-    case "repository":
-      return `internal/${route.moduleName}/repo.go`;
-    case "route":
-    case "server":
-      return `internal/http/routes.go`;
-    default:
-      return `internal/${route.moduleName}/${layer}.go`;
-  }
+export function defaultFileForLayer(route: RouteAst, layer: string, featuresDir?: string): string {
+  const base = (() => {
+    switch (layer) {
+      case "types":
+      case "domain":
+        return `internal/${route.moduleName}/types.go`;
+      case "handler":
+        return `internal/${route.moduleName}/handler.go`;
+      case "usecase":
+        return fileForUsecaseGroup(route.moduleName, "default", featuresDir);
+      case "repository":
+        return `internal/${route.moduleName}/repo.go`;
+      case "route":
+      case "server":
+        return `internal/http/routes.go`;
+      default:
+        return `internal/${route.moduleName}/${layer}.go`;
+    }
+  })();
+  return featuresPath(base, featuresDir);
 }
 
 export function defaultRegionId(route: RouteAst, layer: string): string {
@@ -130,12 +138,15 @@ export function extractPathParams(path: string): string[] {
   return params;
 }
 
-export function fileForUsecaseGroup(moduleName: string, groupKey: string): string {
-  if (groupKey === "default" || groupKey === moduleName) {
-    return `internal/${moduleName}/usecase.go`;
-  }
-  const safeKey = snakeCase(groupKey);
-  return `internal/${moduleName}/${safeKey}_usecase.go`;
+export function fileForUsecaseGroup(moduleName: string, groupKey: string, featuresDir?: string): string {
+  const base = (() => {
+    if (groupKey === "default" || groupKey === moduleName) {
+      return `internal/${moduleName}/usecase.go`;
+    }
+    const safeKey = snakeCase(groupKey);
+    return `internal/${moduleName}/${safeKey}_usecase.go`;
+  })();
+  return featuresPath(base, featuresDir);
 }
 
 export function regionIdForUsecase(route: RouteAst, groupKey: string): string {

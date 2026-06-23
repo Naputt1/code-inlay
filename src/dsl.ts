@@ -145,6 +145,7 @@ export function defineApp(input: {
       responseFormat: input.options?.responseFormat,
       targets: input.options?.targets ?? ["go-server"],
       targetOptions: input.options?.targetOptions,
+      featuresDir: input.options?.featuresDir,
       runtime: input.runtime ?? { enabled: false },
       testing: input.testing ?? {
         mocks: false,

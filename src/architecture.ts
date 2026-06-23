@@ -88,10 +88,11 @@ export function resolveArchitecture(
 export function applyArchitecture(ast: AppAst, diagnostics: Diagnostic[]): ArchitectureAst {
   const allNodes: ArchitectureAst["nodes"] = [];
   const routeMap = new Map<string, { route: RouteAst; layers: GeneratedLayer[] }>();
+  const featuresDir = ast.options.featuresDir;
 
   const baseCtx: ArchitectureContext = {
     diagnostics,
-    fileForLayer: defaultFileForLayer,
+    fileForLayer: (route, layer) => defaultFileForLayer(route, layer, featuresDir),
     regionId: defaultRegionId,
     owner: "code-inlay",
   };
@@ -113,9 +114,9 @@ export function applyArchitecture(ast: AppAst, diagnostics: Diagnostic[]): Archi
             ast.options.usecaseOrganization,
           );
           const gk = resolveUsecaseGroupKey(r, org);
-          return fileForUsecaseGroup(r.moduleName, gk);
+          return fileForUsecaseGroup(r.moduleName, gk, featuresDir);
         }
-        return defaultFileForLayer(r, layer);
+        return defaultFileForLayer(r, layer, featuresDir);
       };
 
       const ctxUsecaseRegionId = (r: RouteAst, layer: string): string => {

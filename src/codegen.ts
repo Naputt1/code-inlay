@@ -12,6 +12,7 @@ import {
   defaultFileForLayer,
   defaultRegionId,
   extractPathParams,
+  featuresPath,
   fileForModuleRoutes,
   lowerIdent,
   pascalCase,
@@ -37,6 +38,7 @@ export function generateCode(
   moduleInfo?: GoModuleInfo,
 ): GenerationAst {
   const files = new Map<string, GeneratedRegion[]>();
+  const featuresDir = ast.options.featuresDir;
 
   const add = (path: string, region: GeneratedRegion) => {
     const regions = files.get(path) ?? [];
@@ -110,7 +112,7 @@ export function generateCode(
     const adapters = resolveAdapters(route.resolvedAdapters, diagnostics);
     for (const adapter of adapters) {
       if (adapter.name === "gin") {
-        const handlerFile = defaultFileForLayer(route, "handler");
+        const handlerFile = defaultFileForLayer(route, "handler", featuresDir);
         if (!handlerImportsAdded.has(handlerFile)) {
           handlerImportsAdded.add(handlerFile);
           add(handlerFile, {
@@ -162,7 +164,7 @@ export function generateCode(
   }
 
   for (const [moduleName, routes] of domainRoutesByModule) {
-    const domainFile = `internal/${moduleName}/types.go`;
+    const domainFile = featuresPath(`internal/${moduleName}/types.go`, featuresDir);
     const regionId = `${moduleName}.domain`;
     const domainContent = generateDomain(moduleName, routes, diagnostics);
     add(domainFile, {
@@ -175,7 +177,7 @@ export function generateCode(
   }
 
   for (const [moduleName, routes] of repositoryRoutesByModule) {
-    const repoFile = `internal/${moduleName}/repo.go`;
+    const repoFile = featuresPath(`internal/${moduleName}/repo.go`, featuresDir);
     const regionId = `${moduleName}.repository`;
     const repoContent = generateRepository(routes, moduleName);
     add(repoFile, {
@@ -229,7 +231,7 @@ export function generateCode(
     const info = [...usecaseFileInfo.entries()].find(
       ([, v]) => v.moduleName === route.moduleName && v.groupKey === groupKey,
     );
-    const implFile = info?.[0] ?? defaultFileForLayer(route, "usecase");
+    const implFile = info?.[0] ?? defaultFileForLayer(route, "usecase", featuresDir);
     const content = generateUsecaseScaffold(route, route.moduleName, hasRepository);
     add(implFile, {
       id: regionIdForUsecaseImpl(route, groupKey),
@@ -265,7 +267,7 @@ export function generateCode(
 
       if (layerKinds.has("handler") || layerKinds.has("usecase")) {
         if (moduleInfo) {
-          moduleImports.push(`"${moduleInfo.modulePath}/internal/${modPkg}"`);
+          moduleImports.push(`"${moduleInfo.modulePath}/${featuresPath(`internal/${modPkg}`, featuresDir)}"`);
         }
         const usecaseFields: string[] = [];
         for (const expansion of architecture.routes) {
@@ -391,7 +393,7 @@ export function generateCode(
     });
   }
 
-  for (const { file, regionId, content } of generateHandlerStructs(architecture)) {
+  for (const { file, regionId, content } of generateHandlerStructs(architecture, featuresDir)) {
     add(file, { id: regionId, language: "go", content });
   }
 
@@ -622,7 +624,7 @@ type HandlerStructOutput = {
   content: string;
 };
 
-function generateHandlerStructs(architecture: ArchitectureAst): HandlerStructOutput[] {
+function generateHandlerStructs(architecture: ArchitectureAst, featuresDir?: string): HandlerStructOutput[] {
   const moduleFields = new Map<string, string[]>();
 
   for (const expansion of architecture.routes) {
@@ -639,7 +641,7 @@ function generateHandlerStructs(architecture: ArchitectureAst): HandlerStructOut
   for (const [moduleName, fields] of moduleFields) {
     const typeName = `${pascalCase(moduleName)}Handler`;
     result.push({
-      file: `internal/${moduleName}/handler.go`,
+      file: featuresPath(`internal/${moduleName}/handler.go`, featuresDir),
       regionId: `${moduleName}.0handler.struct`,
       content: `type ${typeName} struct {\n${fields.join("\n")}\n}`,
     });
