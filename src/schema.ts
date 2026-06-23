@@ -341,14 +341,14 @@ export function generateEntityStructs(
         const fieldSchema = u.shape[fieldName] as SchemaLike;
         const optional = isZodOptional(fieldSchema);
         const inner = unwrap(fieldSchema);
-        if (isZodObject(inner)) {
+        if (isZodObject(inner) || isZodEntity(inner)) {
           const childName = `${pascalCase(moduleName)}${pascalCase(fieldName)}`;
           registerEntitySub(childName, inner, subStructs, diagnostics, moduleName);
           return { name: pascalCase(fieldName), type: childName, jsonName: fieldName, optional };
         }
         if (isZodArray(inner)) {
           const elem = unwrap(inner.element);
-          if (isZodObject(elem)) {
+          if (isZodObject(elem) || isZodEntity(elem)) {
             const childName = `${pascalCase(moduleName)}${pascalCase(fieldName)}Item`;
             registerEntitySub(childName, elem, subStructs, diagnostics, moduleName);
             return {
@@ -412,7 +412,12 @@ function registerEntitySub(
 ): void {
   if (subStructs.has(name)) return;
   const unwrapped = unwrap(schema);
-  if (!isZodObject(unwrapped)) return;
+  if (!isZodObject(unwrapped)) {
+    if (isZodEntity(unwrapped)) {
+      subStructs.set(name, { name, fields: [] });
+    }
+    return;
+  }
   const shape = unwrapped.shape;
   const fields = Object.keys(shape)
     .sort()
@@ -420,14 +425,14 @@ function registerEntitySub(
       const fieldSchema = shape[fieldName] as SchemaLike;
       const optional = isZodOptional(fieldSchema);
       const inner = unwrap(fieldSchema);
-      if (isZodObject(inner)) {
+      if (isZodObject(inner) || isZodEntity(inner)) {
         const childName = `${name}${pascalCase(fieldName)}`;
         registerEntitySub(childName, inner, subStructs, diagnostics, moduleName);
         return { name: pascalCase(fieldName), type: childName, jsonName: fieldName, optional };
       }
       if (isZodArray(inner)) {
         const elem = unwrap(inner.element);
-        if (isZodObject(elem)) {
+        if (isZodObject(elem) || isZodEntity(elem)) {
           const childName = `${name}${pascalCase(fieldName)}Item`;
           registerEntitySub(childName, elem, subStructs, diagnostics, moduleName);
           return {
