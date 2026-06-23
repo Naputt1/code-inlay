@@ -347,11 +347,10 @@ export function injectContent(
     const newline = fileText.includes("\r\n") ? "\r\n" : "\n";
     const content = region.content.trimEnd();
 
-    const owner = region.owner ? ` owner:${region.owner}` : "";
     const hash = region.stableHash ? ` hash:${region.stableHash}` : "";
 
-    const startMarker = `// @gen:start ${region.id}${hash}${owner}`;
-    const endMarker = `// @gen:end ${region.id}${hash}`;
+    const startMarker = `// @gen:start ${region.id}${hash}`;
+    const endMarker = `// @gen:end ${region.id}`;
 
     const beforeStart = next.slice(0, match.startIndex);
     const afterEnd = next.slice(match.endLineEnd);
@@ -478,17 +477,15 @@ export function upgradeLegacyMarkers(
       (cached && regionContent === cached.contentHash);
 
     if (shouldUpgrade) {
-      const owner = planned.owner ? ` owner:${planned.owner}` : "";
       const hash = planned.stableHash ? ` hash:${planned.stableHash}` : "";
-      const newStart = `// @gen:start ${regionId}${hash}${owner}`;
+      const newStart = `// @gen:start ${regionId}${hash}`;
       next = `${next.slice(0, startIndex)}${newStart}\n${next.slice(lineEnd)}`;
 
       const endMarker = `// @gen:end ${regionId}`;
       const endIdx = next.lastIndexOf(endMarker);
       if (endIdx !== -1) {
         const endLineEnd = lineEndIndex(next, endIdx);
-        const newEnd = `// @gen:end ${regionId}${hash}`;
-        next = `${next.slice(0, endIdx)}${newEnd}${next.slice(endLineEnd)}`;
+        next = `${next.slice(0, endIdx)}${endMarker}${next.slice(endLineEnd)}`;
       }
     } else if (diagnostics) {
       diagnostics.push({

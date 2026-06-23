@@ -125,8 +125,8 @@ describe("Phase 2: Region v2", () => {
       [],
     );
 
-    expect(result).toContain("// @gen:start test.region hash:abc123 owner:gin");
-    expect(result).toContain("// @gen:end test.region hash:abc123");
+    expect(result).toContain("// @gen:start test.region hash:abc123");
+    expect(result).toContain("// @gen:end test.region");
     expect(result).toContain("type Foo struct{}");
   });
 
@@ -187,7 +187,6 @@ describe("Phase 2: Region v2", () => {
     ]);
 
     expect(result).toContain("hash:abc123");
-    expect(result).toContain("owner:gin");
   });
 
   it("does not upgrade legacy markers with manual content", () => {
