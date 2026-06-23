@@ -10,9 +10,9 @@ describe("region injection", () => {
       "",
       "func Manual() {}",
       "",
-      "// @gen:start user.create.types",
+      "// @gen:start user.create.entity",
       "old",
-      "// @gen:end user.create.types",
+      "// @gen:end user.create.entity",
       "",
       "func StillManual() {}",
       "",
@@ -20,12 +20,12 @@ describe("region injection", () => {
 
     const output = injectRegions(
       input,
-      [{ id: "user.create.types", content: "type CreateUserRequest struct{}" }],
+      [{ id: "user.create.entity", content: "type CreateUserRequest struct{}" }],
       diagnostics,
     );
     const second = injectRegions(
       output,
-      [{ id: "user.create.types", content: "type CreateUserRequest struct{}" }],
+      [{ id: "user.create.entity", content: "type CreateUserRequest struct{}" }],
       diagnostics,
     );
 

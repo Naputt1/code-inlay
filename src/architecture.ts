@@ -44,10 +44,10 @@ function buildArchitecture(name: string, layerKinds: readonly string[]): Archite
   };
 }
 
-const cleanLayers = ["types", "domain", "repository", "usecase", "handler"] as const;
-const minimalLayers = ["types", "usecase", "handler"] as const;
-const atomicLayers = ["types", "handler", "service", "store"] as const;
-const layeredLayers = ["types", "controller", "service", "repository", "model"] as const;
+const cleanLayers = ["entity", "domain", "repository", "usecase", "handler"] as const;
+const minimalLayers = ["entity", "usecase", "handler"] as const;
+const atomicLayers = ["entity", "handler", "service", "store"] as const;
+const layeredLayers = ["entity", "controller", "service", "repository", "model"] as const;
 
 export const cleanArchitecture = buildArchitecture("clean", cleanLayers);
 export const minimalArchitecture = buildArchitecture("minimal", minimalLayers);

@@ -170,7 +170,7 @@ export function generateCode(
   }
 
   for (const [moduleName, routes] of domainRoutesByModule) {
-    const domainFile = featuresPath(`internal/${moduleName}/types.go`, featuresDir);
+    const domainFile = featuresPath(`internal/${moduleName}/domain.go`, featuresDir);
     const regionId = `${moduleName}.domain`;
     const domainContent = generateDomain(moduleName, routes, diagnostics);
     add(domainFile, {
@@ -526,7 +526,7 @@ function generateLayerContent(
   diagnostics: Diagnostic[],
 ): string | undefined {
   switch (layer) {
-    case "types":
+    case "entity":
       return generateRouteTypes(route, diagnostics, route.responseFormat);
     case "domain":
       return undefined; // handled per module in aggregateDomainContent

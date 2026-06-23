@@ -30,7 +30,7 @@ describe("compiler", () => {
     expect(first.diagnostics.filter((diagnostic) => diagnostic.level === "error")).toEqual([]);
     expect(first.generation).toEqual(second.generation);
     expect(first.architecture?.routes[0]?.layers.map((layer) => layer.kind)).toEqual([
-      "types",
+      "entity",
       "domain",
       "repository",
       "usecase",
@@ -43,15 +43,22 @@ describe("compiler", () => {
     mkdirSync(join(cwd, "internal/user"), { recursive: true });
     mkdirSync(join(cwd, "internal/http"), { recursive: true });
     writeFileSync(
-      join(cwd, "internal/user/types.go"),
+      join(cwd, "internal/user/entity.go"),
+      [
+        "package user",
+        "",
+        "// @gen:start user.create.entity",
+        "// @gen:end user.create.entity",
+        "",
+      ].join("\n"),
+    );
+    writeFileSync(
+      join(cwd, "internal/user/domain.go"),
       [
         "package user",
         "",
         "// @gen:start user.domain",
         "// @gen:end user.domain",
-        "",
-        "// @gen:start user.create.types",
-        "// @gen:end user.create.types",
         "",
       ].join("\n"),
     );
@@ -138,9 +145,10 @@ describe("compiler", () => {
     expect(result.changedFiles.sort()).toEqual([
       "internal/http/routes.go",
       "internal/http/user_routes.go",
+      "internal/user/domain.go",
+      "internal/user/entity.go",
       "internal/user/handler.go",
       "internal/user/repo.go",
-      "internal/user/types.go",
       "internal/user/usecase.go",
     ]);
     expect(handler).toContain("func Manual() {}");
@@ -269,7 +277,7 @@ describe("compiler", () => {
 
     const typesRegion = result.generation.files
       .flatMap((f) => f.regions)
-      .find((r) => r.id === "user.list.types");
+      .find((r) => r.id === "user.list.entity");
     expect(typesRegion).toBeDefined();
     expect(typesRegion!.content).toContain(`form:"page"`);
     expect(typesRegion!.content).toContain(`form:"q"`);
@@ -309,7 +317,7 @@ describe("compiler", () => {
 
     const typesRegion = result.generation.files
       .flatMap((f) => f.regions)
-      .find((r) => r.id === "user.create.types");
+      .find((r) => r.id === "user.create.entity");
     expect(typesRegion).toBeDefined();
     expect(typesRegion!.content).toContain(`validate:"required,min=3,max=100"`);
   });
@@ -339,7 +347,7 @@ describe("compiler", () => {
 
     const typesRegion = result.generation.files
       .flatMap((f) => f.regions)
-      .find((r) => r.id === "user.create.types");
+      .find((r) => r.id === "user.create.entity");
     expect(typesRegion).toBeDefined();
     expect(typesRegion!.content).toContain(`validate:"required,email"`);
   });
@@ -369,7 +377,7 @@ describe("compiler", () => {
 
     const typesRegion = result.generation.files
       .flatMap((f) => f.regions)
-      .find((r) => r.id === "user.create.types");
+      .find((r) => r.id === "user.create.entity");
     expect(typesRegion).toBeDefined();
     expect(typesRegion!.content).toContain(`validate:"required,gt=0"`);
   });
@@ -399,7 +407,7 @@ describe("compiler", () => {
 
     const typesRegion = result.generation.files
       .flatMap((f) => f.regions)
-      .find((r) => r.id === "user.create.types");
+      .find((r) => r.id === "user.create.entity");
     expect(typesRegion).toBeDefined();
     expect(typesRegion!.content).toContain(`validate:"required,oneof=admin user moderator"`);
   });
@@ -429,7 +437,7 @@ describe("compiler", () => {
 
     const typesRegion = result.generation.files
       .flatMap((f) => f.regions)
-      .find((r) => r.id === "user.create.types");
+      .find((r) => r.id === "user.create.entity");
     expect(typesRegion).toBeDefined();
     expect(typesRegion!.content).toContain(`validate:"email"`);
     expect(typesRegion!.content).not.toContain(`validate:"required,email"`);
@@ -460,7 +468,7 @@ describe("compiler", () => {
 
     const typesRegion = result.generation.files
       .flatMap((f) => f.regions)
-      .find((r) => r.id === "user.get.types");
+      .find((r) => r.id === "user.get.entity");
     expect(typesRegion).toBeDefined();
 
     const responseBlock = typesRegion!.content.split("type GetUserResponse")[1] ?? "";
@@ -503,7 +511,7 @@ describe("compiler", () => {
 
     const typesRegion = result.generation.files
       .flatMap((f) => f.regions)
-      .find((r) => r.id === "user.create.types");
+      .find((r) => r.id === "user.create.entity");
     expect(typesRegion).toBeDefined();
     expect(typesRegion!.content).toContain("CreateUserQuery");
     expect(typesRegion!.content).toContain("CreateUserBody");

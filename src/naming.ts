@@ -35,9 +35,10 @@ export function routeTypeName(route: RouteAst, suffix: string): string {
 export function defaultFileForLayer(route: RouteAst, layer: string, featuresDir?: string): string {
   const base = (() => {
     switch (layer) {
-      case "types":
+      case "entity":
+        return `internal/${route.moduleName}/entity.go`;
       case "domain":
-        return `internal/${route.moduleName}/types.go`;
+        return `internal/${route.moduleName}/domain.go`;
       case "handler":
         return `internal/${route.moduleName}/handler.go`;
       case "usecase":

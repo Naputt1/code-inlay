@@ -44,7 +44,7 @@ describe("Phase 2: Multi-Architecture", () => {
     const expansion = result.architecture?.routes[0];
     const layerKinds = expansion?.layers.map((l) => `${l.kind}:${l.owner}`) ?? [];
 
-    expect(layerKinds.some((k) => k.startsWith("types:"))).toBe(true);
+    expect(layerKinds.some((k) => k.startsWith("entity:"))).toBe(true);
     expect(layerKinds.some((k) => k.startsWith("handler:"))).toBe(true);
     // clean + atomic overlap on types/handler layers, producing duplicate-symbol diagnostics
     const dupSymbols = result.diagnostics.filter((d) => d.code === "duplicate-symbol");
