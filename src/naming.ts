@@ -65,7 +65,7 @@ export function resolveUsecaseOrg(
   const org = moduleOrg ?? appOrg;
   if (org?.strategy === "single") return org;
   if (org?.strategy === "grouped") return org;
-  return { strategy: "merged" };
+  return { strategy: "merged", scaffold: org?.scaffold };
 }
 
 export function resolveUsecaseGroupKey(route: RouteAst, org: UsecaseOrganization): string {
@@ -154,4 +154,11 @@ export function regionIdForUsecaseImports(moduleName: string, groupKey: string):
     return `${moduleName}.0usecase.imports`;
   }
   return `${moduleName}.${groupKey}.0usecase.imports`;
+}
+
+export function regionIdForUsecaseImpl(route: RouteAst, groupKey: string): string {
+  if (groupKey === "default") {
+    return `${route.moduleName}.${route.id}.usecase.impl`;
+  }
+  return `${route.moduleName}.${groupKey}.${route.id}.usecase.impl`;
 }

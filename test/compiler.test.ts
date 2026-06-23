@@ -71,6 +71,8 @@ describe("compiler", () => {
         "// @gen:end user.0usecase.imports",
         "// @gen:start user.create.usecase",
         "// @gen:end user.create.usecase",
+        "// @gen:start user.create.usecase.impl",
+        "// @gen:end user.create.usecase.impl",
         "",
       ].join("\n"),
     );
@@ -694,5 +696,170 @@ describe("compiler", () => {
       expect(content).not.toContain("Login");
       expect(content).not.toContain("Logout");
     });
+  });
+
+  it("generates usecase scaffold implementations by default in same usecase file", async () => {
+    const app = defineApp({
+      architecture: "clean",
+      router: defineRouter({ adapter: "gin" }),
+      modules: [
+        defineModule({
+          name: "user",
+          routes: [
+            defineRoute({
+              id: "create",
+              method: "POST",
+              path: "/users",
+              body: z.object({ name: z.string() }),
+              response: z.object({ id: z.string() }),
+              handler: "CreateUser",
+            }),
+          ],
+        }),
+      ],
+    });
+
+    const result = await compile({ app, dryRun: true });
+    expect(result.diagnostics.filter((d) => d.level === "error")).toEqual([]);
+
+    const usecaseFile = result.generation.files.find((f) =>
+      f.path.endsWith("user/usecase.go"),
+    );
+    expect(usecaseFile).toBeDefined();
+
+    const scaffoldRegion = usecaseFile!.regions.find((r) =>
+      r.id.endsWith("usecase.impl"),
+    );
+    expect(scaffoldRegion).toBeDefined();
+
+    const content = scaffoldRegion!.content;
+    expect(content).toContain("type createUserUsecaseImpl struct");
+    expect(content).toContain("repo UserRepository");
+    expect(content).toContain("func NewCreateUserUsecase");
+    expect(content).toContain("panic(\"UserRepository must not be nil\")");
+    expect(content).toContain("func (uc *createUserUsecaseImpl) Execute");
+    expect(content).toContain("// TODO: implement CreateUserUsecase");
+    expect(content).toContain("return CreateUserResponse{}, nil");
+  });
+
+  it("generates usecase scaffold with repo dependency in clean architecture", async () => {
+    const app = defineApp({
+      architecture: "clean",
+      router: defineRouter({ adapter: "gin" }),
+      modules: [
+        defineModule({
+          name: "auth",
+          routes: [
+            defineRoute({
+              id: "login",
+              method: "POST",
+              path: "/login",
+              handler: "Login",
+            }),
+          ],
+        }),
+      ],
+    });
+
+    const result = await compile({ app, dryRun: true });
+    expect(result.diagnostics.filter((d) => d.level === "error")).toEqual([]);
+
+    const usecaseFile = result.generation.files.find((f) =>
+      f.path.endsWith("auth/usecase.go"),
+    );
+    expect(usecaseFile).toBeDefined();
+
+    const scaffoldRegion = usecaseFile!.regions.find((r) =>
+      r.id.endsWith("usecase.impl"),
+    );
+    expect(scaffoldRegion).toBeDefined();
+
+    const content = scaffoldRegion!.content;
+    expect(content).toContain("type loginUsecaseImpl struct");
+    expect(content).toContain("repo AuthRepository");
+    expect(content).toContain("panic(\"AuthRepository must not be nil\")");
+    expect(content).toContain("func NewLoginUsecase");
+    expect(content).toContain("func (uc *loginUsecaseImpl) Execute");
+    expect(content).toContain("// TODO: implement LoginUsecase");
+  });
+
+  it("generates usecase scaffold without repo dependency in minimal architecture", async () => {
+    const app = defineApp({
+      architecture: "minimal",
+      router: defineRouter({ adapter: "gin" }),
+      modules: [
+        defineModule({
+          name: "auth",
+          routes: [
+            defineRoute({
+              id: "login",
+              method: "POST",
+              path: "/login",
+              handler: "Login",
+            }),
+          ],
+        }),
+      ],
+    });
+
+    const result = await compile({ app, dryRun: true });
+    expect(result.diagnostics.filter((d) => d.level === "error")).toEqual([]);
+
+    const usecaseFile = result.generation.files.find((f) =>
+      f.path.endsWith("auth/usecase.go"),
+    );
+    expect(usecaseFile).toBeDefined();
+
+    const scaffoldRegion = usecaseFile!.regions.find((r) =>
+      r.id.endsWith("usecase.impl"),
+    );
+    expect(scaffoldRegion).toBeDefined();
+
+    const content = scaffoldRegion!.content;
+    expect(content).toContain("type loginUsecaseImpl struct{}");
+    expect(content).not.toContain("Repository");
+    expect(content).toContain("func NewLoginUsecase()");
+    expect(content).toContain("func (uc *loginUsecaseImpl) Execute");
+    expect(content).toContain("// TODO: implement LoginUsecase");
+  });
+
+  it("does not generate scaffold when scaffold is disabled", async () => {
+    const app = defineApp({
+      architecture: "clean",
+      router: defineRouter({ adapter: "gin" }),
+      options: {
+        usecaseOrganization: {
+          strategy: "merged",
+          scaffold: false,
+        },
+      },
+      modules: [
+        defineModule({
+          name: "user",
+          routes: [
+            defineRoute({
+              id: "create",
+              method: "POST",
+              path: "/users",
+              body: z.object({ name: z.string() }),
+              handler: "CreateUser",
+            }),
+          ],
+        }),
+      ],
+    });
+
+    const result = await compile({ app, dryRun: true });
+    expect(result.diagnostics.filter((d) => d.level === "error")).toEqual([]);
+
+    const usecaseFile = result.generation.files.find((f) =>
+      f.path.endsWith("user/usecase.go"),
+    );
+    expect(usecaseFile).toBeDefined();
+
+    const scaffoldRegions = usecaseFile!.regions.filter((r) =>
+      r.id.endsWith("usecase.impl"),
+    );
+    expect(scaffoldRegions.length).toBe(0);
   });
 });

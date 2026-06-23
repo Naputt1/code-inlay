@@ -15,6 +15,7 @@ import {
   fileForModuleRoutes,
   lowerIdent,
   pascalCase,
+  regionIdForUsecaseImpl,
   regionIdForUsecaseImports,
   resolveUsecaseGroupKey,
   resolveUsecaseOrg,
@@ -208,6 +209,35 @@ export function generateCode(
       owner: "code-inlay",
       language: "go",
       content: `import "context"`,
+    });
+  }
+
+  // Usecase scaffold implementations (default: on)
+  for (const expansion of architecture.routes) {
+    const route = expansion.route;
+    const usecaseLayers = expansion.layers.filter((l) => l.kind === "usecase");
+    if (usecaseLayers.length === 0) continue;
+    const mod = ast.modules.find((m) => m.name === route.moduleName);
+    const org = resolveUsecaseOrg(
+      route,
+      mod?.usecaseOrganization,
+      ast.options.usecaseOrganization,
+    );
+    if (org.scaffold === false) continue;
+    const groupKey = resolveUsecaseGroupKey(route, org);
+    const hasRepository = repositoryModules.has(route.moduleName);
+    const info = [...usecaseFileInfo.entries()].find(
+      ([, v]) => v.moduleName === route.moduleName && v.groupKey === groupKey,
+    );
+    const implFile = info?.[0] ?? defaultFileForLayer(route, "usecase");
+    const content = generateUsecaseScaffold(route, route.moduleName, hasRepository);
+    add(implFile, {
+      id: regionIdForUsecaseImpl(route, groupKey),
+      stableHash: `${route.stableId}:usecase-impl:${implFile}`,
+      owner: "code-inlay",
+      language: "go",
+      content,
+      groupKey,
     });
   }
 
@@ -550,6 +580,42 @@ function generateUsecase(route: RouteAst): string {
   ].join("\n");
 }
 
+function generateUsecaseScaffold(route: RouteAst, moduleName: string, hasRepository: boolean): string {
+  const ifaceName = `${route.handlerName}Usecase`;
+  const structName = `${lowerIdent(route.handlerName)}UsecaseImpl`;
+  const repoType = hasRepository ? `${pascalCase(moduleName)}Repository` : undefined;
+  const reqType = requestType(route);
+  const respType = responseType(route);
+  const lines: string[] = [];
+
+  if (repoType) {
+    lines.push(`type ${structName} struct {`);
+    lines.push(`\trepo ${repoType}`);
+    lines.push(`}`);
+    lines.push(``);
+    lines.push(`func New${ifaceName}(repo ${repoType}) *${structName} {`);
+    lines.push(`\tif repo == nil {`);
+    lines.push(`\t\tpanic("${repoType} must not be nil")`);
+    lines.push(`\t}`);
+    lines.push(`\treturn &${structName}{repo: repo}`);
+    lines.push(`}`);
+  } else {
+    lines.push(`type ${structName} struct {}`);
+    lines.push(``);
+    lines.push(`func New${ifaceName}() *${structName} {`);
+    lines.push(`\treturn &${structName}{}`);
+    lines.push(`}`);
+  }
+
+  lines.push(``);
+  lines.push(`func (uc *${structName}) Execute(ctx context.Context, input ${reqType}) (${respType}, error) {`);
+  lines.push(`\t// TODO: implement ${ifaceName}`);
+  lines.push(`\treturn ${respType}{}, nil`);
+  lines.push(`}`);
+
+  return lines.join("\n");
+}
+
 type HandlerStructOutput = {
   file: string;
   regionId: string;
@@ -558,7 +624,6 @@ type HandlerStructOutput = {
 
 function generateHandlerStructs(architecture: ArchitectureAst): HandlerStructOutput[] {
   const moduleFields = new Map<string, string[]>();
-  const moduleRespTypes = new Map<string, string[]>();
 
   for (const expansion of architecture.routes) {
     const route = expansion.route;
@@ -568,27 +633,15 @@ function generateHandlerStructs(architecture: ArchitectureAst): HandlerStructOut
     const fields = moduleFields.get(route.moduleName) ?? [];
     fields.push(`\t${route.handlerName}Usecase ${route.handlerName}Usecase`);
     moduleFields.set(route.moduleName, fields);
-
-    const respTypes = moduleRespTypes.get(route.moduleName) ?? [];
-    const rType = responseType(route);
-    if (rType !== "struct{}" && !respTypes.includes(rType)) {
-      respTypes.push(rType);
-    }
-    moduleRespTypes.set(route.moduleName, respTypes);
   }
 
   const result: HandlerStructOutput[] = [];
   for (const [moduleName, fields] of moduleFields) {
     const typeName = `${pascalCase(moduleName)}Handler`;
-    const respTypes = (moduleRespTypes.get(moduleName) ?? []).sort();
-    const checks = respTypes.map((t) => `var _ ${t}`).join("\n");
-    const content = checks
-      ? `type ${typeName} struct {\n${fields.join("\n")}\n}\n\n${checks}`
-      : `type ${typeName} struct {\n${fields.join("\n")}\n}`;
     result.push({
       file: `internal/${moduleName}/handler.go`,
       regionId: `${moduleName}.0handler.struct`,
-      content,
+      content: `type ${typeName} struct {\n${fields.join("\n")}\n}`,
     });
   }
 

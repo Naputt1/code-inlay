@@ -80,6 +80,7 @@ export type UsecaseGroupBy =
 export type UsecaseOrganization = {
   strategy: "merged" | "single" | "grouped";
   groupBy?: UsecaseGroupBy;
+  scaffold?: boolean;
 };
 
 export type ResponseFormat = {
