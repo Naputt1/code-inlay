@@ -3,7 +3,8 @@ import { dirname, resolve } from "node:path";
 import type { Diagnostic, FileDiff, GeneratedFilePatch } from "./types.js";
 import { formatGoSnippet } from "./format.js";
 
-const startPattern = /^([ \t]*)\/\/ @gen:start ([a-zA-Z0-9._-]+)(?: hash:\S+)?(?: owner:\S+)?[ \t]*$/gm;
+const startPattern =
+  /^([ \t]*)\/\/ @gen:start ([a-zA-Z0-9._-]+)(?: hash:\S+)?(?: owner:\S+)?[ \t]*$/gm;
 const endPattern = /^([ \t]*)\/\/ @gen:end ([a-zA-Z0-9._-]+)(?: hash:\S+)?[ \t]*$/gm;
 
 export function applyPatches(input: {

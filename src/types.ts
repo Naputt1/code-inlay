@@ -88,6 +88,12 @@ export type ResponseFormat = {
   wrapper: SchemaLike;
 };
 
+export type ServiceDefinition = {
+  kind: "ServiceDefinition";
+  name: string;
+  close?: boolean;
+};
+
 export type CompileSettings = {
   fileCreation: FileCreationMode;
   usecaseOrganization?: UsecaseOrganization;
@@ -134,6 +140,7 @@ export type ModuleDefinition = {
   name: string;
   architecture?: ArchitectureRef | ArchitectureRef[] | ArchitectureSelection;
   adapters?: AdapterRef[] | AdapterSelection;
+  services?: string[];
   usecaseOrganization?: UsecaseOrganization;
   responseFormat?: ResponseFormat;
   routes: RouteDefinition<SchemaLike | undefined, SchemaLike | undefined, SchemaLike | undefined>[];
@@ -159,6 +166,7 @@ export type AppDefinition = {
   adapters?: AdapterRef[] | AdapterSelection;
   router?: RouterDefinition;
   modules: ModuleDefinition[];
+  services?: ServiceDefinition[];
   transformers: AstTransformer[];
   plugins: BackendCompilerPlugin[];
   targets?: CodeTarget[];
@@ -176,11 +184,18 @@ export type AstDocument = {
   root: AppAst;
 };
 
+export type AppServiceDef = {
+  name: string;
+  close?: boolean;
+  typeName: string;
+};
+
 export type AppAst = AstNodeBase<"App"> & {
   architecture: ArchitectureSelection;
   adapters: AdapterSelection;
   router: RouterAst;
   modules: ModuleAst[];
+  services: AppServiceDef[];
   plugins: BackendCompilerPlugin[];
   targets: CodeTarget[];
   options: CompileSettings;
@@ -196,6 +211,7 @@ export type ModuleAst = AstNodeBase<"Module"> & {
   name: string;
   architecture?: ArchitectureSelection;
   adapters?: AdapterSelection;
+  services: string[];
   usecaseOrganization?: UsecaseOrganization;
   responseFormat?: ResponseFormat;
   routes: RouteAst[];

@@ -12,7 +12,7 @@ import type {
   ResponseFormat,
   RouteAst,
 } from "./types.js";
-import { joinPath } from "./naming.js";
+import { joinPath, serviceTypeName } from "./naming.js";
 import { stableHash } from "./hash.js";
 
 export function buildAst(app: AppDefinition, diagnostics: Diagnostic[]): AppAst {
@@ -36,6 +36,12 @@ export function buildAst(app: AppDefinition, diagnostics: Diagnostic[]): AppAst 
     pluginData: {},
     architecture: appArchitecture,
     adapters: appAdapters,
+    services:
+      app.services?.map((s) => ({
+        name: s.name,
+        close: s.close,
+        typeName: serviceTypeName(s.name),
+      })) ?? [],
     router: {
       kind: "Router",
       id: "router",
@@ -67,6 +73,7 @@ export function buildAst(app: AppDefinition, diagnostics: Diagnostic[]): AppAst 
         name: module.name,
         architecture: moduleArchitecture,
         adapters: moduleAdapters,
+        services: module.services ?? [],
         usecaseOrganization: module.usecaseOrganization,
         responseFormat: moduleResponseFormat,
         middleware: module.middleware.map((middleware) =>

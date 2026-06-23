@@ -19,6 +19,7 @@ import type {
   RouterDefinition,
   RuntimeConfig,
   SchemaLike,
+  ServiceDefinition,
   TestingConfig,
   AdapterSelection,
   UsecaseOrganization,
@@ -81,6 +82,7 @@ export function defineModule(input: {
   name: string;
   architecture?: ArchitectureRef | ArchitectureRef[] | ArchitectureSelection;
   adapters?: AdapterRef[] | AdapterSelection;
+  services?: string[];
   usecaseOrganization?: UsecaseOrganization;
   responseFormat?: ResponseFormat;
   routes?: RouteDefinition<
@@ -95,10 +97,19 @@ export function defineModule(input: {
     name: input.name,
     architecture: input.architecture,
     adapters: input.adapters,
+    services: input.services,
     usecaseOrganization: input.usecaseOrganization,
     responseFormat: input.responseFormat,
     routes: input.routes ?? [],
     middleware: input.middleware ?? [],
+  };
+}
+
+export function defineService(input: { name: string; close?: boolean }): ServiceDefinition {
+  return {
+    kind: "ServiceDefinition",
+    name: input.name,
+    close: input.close,
   };
 }
 
@@ -121,6 +132,7 @@ export function defineApp(input: {
   adapters?: AdapterRef[] | AdapterSelection;
   router?: RouterDefinition;
   modules: ModuleDefinition[];
+  services?: ServiceDefinition[];
   transformers?: AstTransformer[];
   plugins?: BackendCompilerPlugin[];
   targets?: CodeTarget[];
@@ -136,6 +148,7 @@ export function defineApp(input: {
     adapters: input.adapters,
     router: input.router,
     modules: input.modules,
+    services: input.services ?? [],
     transformers: input.transformers ?? [],
     plugins: input.plugins ?? [],
     targets: input.targets ?? [],

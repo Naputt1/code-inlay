@@ -722,21 +722,17 @@ describe("compiler", () => {
     const result = await compile({ app, dryRun: true });
     expect(result.diagnostics.filter((d) => d.level === "error")).toEqual([]);
 
-    const usecaseFile = result.generation.files.find((f) =>
-      f.path.endsWith("user/usecase.go"),
-    );
+    const usecaseFile = result.generation.files.find((f) => f.path.endsWith("user/usecase.go"));
     expect(usecaseFile).toBeDefined();
 
-    const scaffoldRegion = usecaseFile!.regions.find((r) =>
-      r.id.endsWith("usecase.impl"),
-    );
+    const scaffoldRegion = usecaseFile!.regions.find((r) => r.id.endsWith("usecase.impl"));
     expect(scaffoldRegion).toBeDefined();
 
     const content = scaffoldRegion!.content;
     expect(content).toContain("type createUserUsecaseImpl struct");
     expect(content).toContain("repo UserRepository");
     expect(content).toContain("func NewCreateUserUsecase");
-    expect(content).toContain("panic(\"UserRepository must not be nil\")");
+    expect(content).toContain('panic("UserRepository must not be nil")');
     expect(content).toContain("func (uc *createUserUsecaseImpl) Execute");
     expect(content).toContain("// TODO: implement CreateUserUsecase");
     expect(content).toContain("return CreateUserResponse{}, nil");
@@ -764,20 +760,16 @@ describe("compiler", () => {
     const result = await compile({ app, dryRun: true });
     expect(result.diagnostics.filter((d) => d.level === "error")).toEqual([]);
 
-    const usecaseFile = result.generation.files.find((f) =>
-      f.path.endsWith("auth/usecase.go"),
-    );
+    const usecaseFile = result.generation.files.find((f) => f.path.endsWith("auth/usecase.go"));
     expect(usecaseFile).toBeDefined();
 
-    const scaffoldRegion = usecaseFile!.regions.find((r) =>
-      r.id.endsWith("usecase.impl"),
-    );
+    const scaffoldRegion = usecaseFile!.regions.find((r) => r.id.endsWith("usecase.impl"));
     expect(scaffoldRegion).toBeDefined();
 
     const content = scaffoldRegion!.content;
     expect(content).toContain("type loginUsecaseImpl struct");
     expect(content).toContain("repo AuthRepository");
-    expect(content).toContain("panic(\"AuthRepository must not be nil\")");
+    expect(content).toContain('panic("AuthRepository must not be nil")');
     expect(content).toContain("func NewLoginUsecase");
     expect(content).toContain("func (uc *loginUsecaseImpl) Execute");
     expect(content).toContain("// TODO: implement LoginUsecase");
@@ -805,14 +797,10 @@ describe("compiler", () => {
     const result = await compile({ app, dryRun: true });
     expect(result.diagnostics.filter((d) => d.level === "error")).toEqual([]);
 
-    const usecaseFile = result.generation.files.find((f) =>
-      f.path.endsWith("auth/usecase.go"),
-    );
+    const usecaseFile = result.generation.files.find((f) => f.path.endsWith("auth/usecase.go"));
     expect(usecaseFile).toBeDefined();
 
-    const scaffoldRegion = usecaseFile!.regions.find((r) =>
-      r.id.endsWith("usecase.impl"),
-    );
+    const scaffoldRegion = usecaseFile!.regions.find((r) => r.id.endsWith("usecase.impl"));
     expect(scaffoldRegion).toBeDefined();
 
     const content = scaffoldRegion!.content;
@@ -852,14 +840,10 @@ describe("compiler", () => {
     const result = await compile({ app, dryRun: true });
     expect(result.diagnostics.filter((d) => d.level === "error")).toEqual([]);
 
-    const usecaseFile = result.generation.files.find((f) =>
-      f.path.endsWith("user/usecase.go"),
-    );
+    const usecaseFile = result.generation.files.find((f) => f.path.endsWith("user/usecase.go"));
     expect(usecaseFile).toBeDefined();
 
-    const scaffoldRegions = usecaseFile!.regions.filter((r) =>
-      r.id.endsWith("usecase.impl"),
-    );
+    const scaffoldRegions = usecaseFile!.regions.filter((r) => r.id.endsWith("usecase.impl"));
     expect(scaffoldRegions.length).toBe(0);
   });
 });

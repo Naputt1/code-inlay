@@ -138,7 +138,35 @@ export function extractPathParams(path: string): string[] {
   return params;
 }
 
-export function fileForUsecaseGroup(moduleName: string, groupKey: string, featuresDir?: string): string {
+export function serviceFilePath(name: string): string {
+  return `internal/service/${snakeCase(name)}.go`;
+}
+
+export function serviceTypeName(name: string): string {
+  return `${pascalCase(name)}Service`;
+}
+
+export function serviceImplName(name: string): string {
+  return `${lowerIdent(name)}ServiceImpl`;
+}
+
+export function serviceConstructorName(name: string): string {
+  return `New${pascalCase(name)}Service`;
+}
+
+export function serviceRegionId(name: string): string {
+  return `service.${name}`;
+}
+
+export function serviceCloseRegionId(name: string): string {
+  return `service.${name}.close`;
+}
+
+export function fileForUsecaseGroup(
+  moduleName: string,
+  groupKey: string,
+  featuresDir?: string,
+): string {
   const base = (() => {
     if (groupKey === "default" || groupKey === moduleName) {
       return `internal/${moduleName}/usecase.go`;

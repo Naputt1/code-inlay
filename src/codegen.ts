@@ -1,5 +1,6 @@
 import type {
   AppAst,
+  AppServiceDef,
   ArchitectureAst,
   Diagnostic,
   GeneratedFilePatch,
@@ -20,6 +21,11 @@ import {
   regionIdForUsecaseImports,
   resolveUsecaseGroupKey,
   resolveUsecaseOrg,
+  serviceConstructorName,
+  serviceFilePath,
+  serviceImplName,
+  serviceRegionId,
+  serviceTypeName,
   snakeCase,
 } from "./naming.js";
 import {
@@ -189,6 +195,38 @@ export function generateCode(
     });
   }
 
+  // Resolve services for a module: by name match + explicit module.services config
+  const getModuleServices = (moduleName: string): AppServiceDef[] => {
+    const mod = ast.modules.find((m) => m.name === moduleName);
+    const explicit = mod?.services ?? [];
+    const services: AppServiceDef[] = [];
+    const seen = new Set<string>();
+    const addIfNew = (svc: AppServiceDef) => {
+      if (!seen.has(svc.name)) {
+        seen.add(svc.name);
+        services.push(svc);
+      }
+    };
+    for (const svc of ast.services) {
+      if (svc.name === moduleName) addIfNew(svc);
+      if (explicit.includes(svc.name)) addIfNew(svc);
+    }
+    return services;
+  };
+
+  // Generate service files at internal/service/<name>.go
+  for (const svc of ast.services) {
+    const svcFile = serviceFilePath(svc.name);
+    const content = generateServiceFile(svc);
+    add(svcFile, {
+      id: serviceRegionId(svc.name),
+      stableHash: `service:${svc.name}`,
+      owner: "code-inlay",
+      language: "go",
+      content,
+    });
+  }
+
   const groupMwByPrefix = new Map<string, Set<string>>();
   for (const expansion of architecture.routes) {
     const route = expansion.route;
@@ -205,12 +243,22 @@ export function generateCode(
     const regionId = regionIdForUsecaseImports(info.moduleName, info.groupKey);
     if (usecaseImportsAdded.has(regionId)) continue;
     usecaseImportsAdded.add(regionId);
+    const moduleServices = getModuleServices(info.moduleName);
+    const importLines: string[] = [];
+    if (moduleServices.length > 0 && moduleInfo) {
+      importLines.push(`import (`);
+      importLines.push(`\t"context"`);
+      importLines.push(`\tservice "${moduleInfo.modulePath}/internal/service"`);
+      importLines.push(`)`);
+    } else {
+      importLines.push(`import "context"`);
+    }
     add(file, {
       id: regionId,
       stableHash: `${file}:imports:${info.groupKey}`,
       owner: "code-inlay",
       language: "go",
-      content: `import "context"`,
+      content: importLines.join("\n"),
     });
   }
 
@@ -220,19 +268,17 @@ export function generateCode(
     const usecaseLayers = expansion.layers.filter((l) => l.kind === "usecase");
     if (usecaseLayers.length === 0) continue;
     const mod = ast.modules.find((m) => m.name === route.moduleName);
-    const org = resolveUsecaseOrg(
-      route,
-      mod?.usecaseOrganization,
-      ast.options.usecaseOrganization,
-    );
+    const org = resolveUsecaseOrg(route, mod?.usecaseOrganization, ast.options.usecaseOrganization);
     if (org.scaffold === false) continue;
     const groupKey = resolveUsecaseGroupKey(route, org);
     const hasRepository = repositoryModules.has(route.moduleName);
+    const moduleServices = getModuleServices(route.moduleName);
+    const serviceTypes = moduleServices.map((s) => serviceTypeName(s.name));
     const info = [...usecaseFileInfo.entries()].find(
       ([, v]) => v.moduleName === route.moduleName && v.groupKey === groupKey,
     );
     const implFile = info?.[0] ?? defaultFileForLayer(route, "usecase", featuresDir);
-    const content = generateUsecaseScaffold(route, route.moduleName, hasRepository);
+    const content = generateUsecaseScaffold(route, route.moduleName, hasRepository, serviceTypes);
     add(implFile, {
       id: regionIdForUsecaseImpl(route, groupKey),
       stableHash: `${route.stableId}:usecase-impl:${implFile}`,
@@ -254,6 +300,7 @@ export function generateCode(
     const moduleImports: string[] = [];
     const handlerInitLines: string[] = [];
     const mod = ast.modules.find((m) => m.name === moduleName);
+    const moduleServices = getModuleServices(moduleName);
 
     if (mod) {
       const modPkg = mod.name;
@@ -267,14 +314,28 @@ export function generateCode(
 
       if (layerKinds.has("handler") || layerKinds.has("usecase")) {
         if (moduleInfo) {
-          moduleImports.push(`"${moduleInfo.modulePath}/${featuresPath(`internal/${modPkg}`, featuresDir)}"`);
+          moduleImports.push(
+            `"${moduleInfo.modulePath}/${featuresPath(`internal/${modPkg}`, featuresDir)}"`,
+          );
+        }
+        if (moduleServices.length > 0 && moduleInfo) {
+          moduleImports.push(`"${moduleInfo.modulePath}/internal/service"`);
         }
         const usecaseFields: string[] = [];
         for (const expansion of architecture.routes) {
           if (expansion.route.moduleName !== modPkg) continue;
           const layers = new Set(expansion.layers.map((l) => l.kind));
           if (!layers.has("handler") && !layers.has("usecase")) continue;
-          usecaseFields.push(`\t\t${expansion.route.handlerName}Usecase: nil, // TODO: inject`);
+          const handlerName = expansion.route.handlerName;
+          if (moduleServices.length > 0) {
+            const repoArg = repositoryModules.has(modPkg) ? "nil /*repo TODO*/, " : "";
+            const svcArgs = moduleServices.map((s) => `${lowerIdent(s.name)}Svc`).join(", ");
+            usecaseFields.push(
+              `\t\t${handlerName}Usecase: ${modPkg}.New${handlerName}Usecase(${repoArg}${svcArgs}),`,
+            );
+          } else {
+            usecaseFields.push(`\t\t${handlerName}Usecase: nil, // TODO: inject`);
+          }
         }
         handlerInitLines.push(`\t${handlerVar} := &${modPkg}.${handlerType}{`);
         handlerInitLines.push(...usecaseFields);
@@ -282,7 +343,11 @@ export function generateCode(
       }
     }
 
-    const funcParams = `api *gin.RouterGroup`;
+    let funcParams = `api *gin.RouterGroup`;
+    for (const svc of moduleServices) {
+      const svcName = serviceTypeName(svc.name);
+      funcParams += `, ${lowerIdent(svc.name)}Svc service.${svcName}`;
+    }
 
     const body: string[] = [];
     body.push(`import (`);
@@ -372,15 +437,34 @@ export function generateCode(
 
   // Generate combined routes.go that calls each per-module function
   if (routeLinesByFile.size > 0) {
+    const serviceImports = new Set<string>();
+    const combinedParams: string[] = [`api *gin.RouterGroup`];
+    for (const svc of ast.services) {
+      const svcName = serviceTypeName(svc.name);
+      const svcArg = `${lowerIdent(svc.name)}Svc service.${svcName}`;
+      combinedParams.push(svcArg);
+      if (moduleInfo) {
+        serviceImports.add(`"${moduleInfo.modulePath}/internal/service"`);
+      }
+    }
+
     const combinedBody: string[] = [];
     combinedBody.push(`import (`);
     combinedBody.push(`\t"github.com/gin-gonic/gin"`);
+    for (const imp of [...serviceImports].sort()) {
+      combinedBody.push(`\t${imp}`);
+    }
     combinedBody.push(`)`);
     combinedBody.push(``);
-    combinedBody.push(`func RegisterRoutes(api *gin.RouterGroup) {`);
+    combinedBody.push(`func RegisterRoutes(${combinedParams.join(", ")}) {`);
     for (const modName of moduleNamesInOrder) {
       const funcName = `register${pascalCase(modName)}Routes`;
-      combinedBody.push(`\t${funcName}(api)`);
+      const callArgs = [`api`];
+      const modServices = getModuleServices(modName);
+      for (const s of modServices) {
+        callArgs.push(`${lowerIdent(s.name)}Svc`);
+      }
+      combinedBody.push(`\t${funcName}(${callArgs.join(", ")})`);
     }
     combinedBody.push(`}`);
 
@@ -582,7 +666,39 @@ function generateUsecase(route: RouteAst): string {
   ].join("\n");
 }
 
-function generateUsecaseScaffold(route: RouteAst, moduleName: string, hasRepository: boolean): string {
+function generateServiceFile(svc: AppServiceDef): string {
+  const typeName = serviceTypeName(svc.name);
+  const implName = serviceImplName(svc.name);
+  const ctorName = serviceConstructorName(svc.name);
+  const lines: string[] = [];
+
+  lines.push(`type ${typeName} interface {`);
+  if (svc.close) {
+    lines.push(`\tClose() error`);
+  }
+  lines.push(`}`);
+  lines.push(``);
+  lines.push(`type ${implName} struct {}`);
+  lines.push(``);
+  lines.push(`func ${ctorName}() (*${implName}, error) {`);
+  lines.push(`\treturn &${implName}{}, nil`);
+  lines.push(`}`);
+  if (svc.close) {
+    lines.push(``);
+    lines.push(`func (s *${implName}) Close() error {`);
+    lines.push(`\treturn nil`);
+    lines.push(`}`);
+  }
+
+  return lines.join("\n");
+}
+
+function generateUsecaseScaffold(
+  route: RouteAst,
+  moduleName: string,
+  hasRepository: boolean,
+  serviceTypes: string[],
+): string {
   const ifaceName = `${route.handlerName}Usecase`;
   const structName = `${lowerIdent(route.handlerName)}UsecaseImpl`;
   const repoType = hasRepository ? `${pascalCase(moduleName)}Repository` : undefined;
@@ -590,27 +706,54 @@ function generateUsecaseScaffold(route: RouteAst, moduleName: string, hasReposit
   const respType = responseType(route);
   const lines: string[] = [];
 
+  const structFields: string[] = [];
+  const ctorParams: string[] = [];
+  const ctorBody: string[] = [];
+  const assignFields: string[] = [];
+
   if (repoType) {
-    lines.push(`type ${structName} struct {`);
-    lines.push(`\trepo ${repoType}`);
-    lines.push(`}`);
-    lines.push(``);
-    lines.push(`func New${ifaceName}(repo ${repoType}) *${structName} {`);
-    lines.push(`\tif repo == nil {`);
-    lines.push(`\t\tpanic("${repoType} must not be nil")`);
-    lines.push(`\t}`);
-    lines.push(`\treturn &${structName}{repo: repo}`);
-    lines.push(`}`);
-  } else {
+    structFields.push(`\trepo ${repoType}`);
+    ctorParams.push(`repo ${repoType}`);
+    ctorBody.push(`\tif repo == nil {`);
+    ctorBody.push(`\t\tpanic("${repoType} must not be nil")`);
+    ctorBody.push(`\t}`);
+    assignFields.push(`\t\trepo: repo`);
+  }
+  for (let i = 0; i < serviceTypes.length; i++) {
+    const st = serviceTypes[i];
+    const svcName = st.replace(/Service$/, "");
+    const varName = `${lowerIdent(svcName)}Svc`;
+    structFields.push(`\t${varName} service.${st}`);
+    ctorParams.push(`${varName} service.${st}`);
+    ctorBody.push(`\tif ${varName} == nil {`);
+    ctorBody.push(`\t\tpanic("service.${st} must not be nil")`);
+    ctorBody.push(`\t}`);
+    assignFields.push(`\t\t${varName}: ${varName}`);
+  }
+
+  if (structFields.length === 0) {
     lines.push(`type ${structName} struct {}`);
     lines.push(``);
     lines.push(`func New${ifaceName}() *${structName} {`);
     lines.push(`\treturn &${structName}{}`);
     lines.push(`}`);
+  } else {
+    lines.push(`type ${structName} struct {`);
+    lines.push(...structFields);
+    lines.push(`}`);
+    lines.push(``);
+    lines.push(`func New${ifaceName}(${ctorParams.join(", ")}) *${structName} {`);
+    lines.push(...ctorBody);
+    lines.push(`\treturn &${structName}{`);
+    lines.push(assignFields.map((f) => `${f},`).join("\n"));
+    lines.push(`\t}`);
+    lines.push(`}`);
   }
 
   lines.push(``);
-  lines.push(`func (uc *${structName}) Execute(ctx context.Context, input ${reqType}) (${respType}, error) {`);
+  lines.push(
+    `func (uc *${structName}) Execute(ctx context.Context, input ${reqType}) (${respType}, error) {`,
+  );
   lines.push(`\t// TODO: implement ${ifaceName}`);
   lines.push(`\treturn ${respType}{}, nil`);
   lines.push(`}`);
@@ -624,7 +767,10 @@ type HandlerStructOutput = {
   content: string;
 };
 
-function generateHandlerStructs(architecture: ArchitectureAst, featuresDir?: string): HandlerStructOutput[] {
+function generateHandlerStructs(
+  architecture: ArchitectureAst,
+  featuresDir?: string,
+): HandlerStructOutput[] {
   const moduleFields = new Map<string, string[]>();
 
   for (const expansion of architecture.routes) {
