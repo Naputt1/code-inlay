@@ -192,7 +192,10 @@ export async function compile(options: CompileOptions): Promise<CompileResult> {
               if (currentPatchFiles.has(relPath)) continue;
               const content = readFileSync(abs, "utf8");
               if (!content.includes("// @gen:start")) continue;
-              const after = removeOrphanRegions(content, currentRegionIds, diagnostics, relPath, [".usecase", ".0usecase.imports"]);
+              const after = removeOrphanRegions(content, currentRegionIds, diagnostics, relPath, [
+                ".usecase",
+                ".0usecase.imports",
+              ]);
               if (content !== after) {
                 writeFileSync(abs, after, "utf8");
                 injected.changedFiles.push(relPath);

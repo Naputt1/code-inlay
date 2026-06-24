@@ -103,7 +103,8 @@ export function removeOrphanRegions(
 
   const orphans: Array<{ id: string; start: number; end: number }> = [];
   const starts: Array<{ id: string; index: number; lineEnd: number }> = [];
-  const startRe = /^([ \t]*)\/\/ @gen:start ([a-zA-Z0-9._-]+)(?: hash:\S+)?(?: owner:\S+)?[ \t]*$/gm;
+  const startRe =
+    /^([ \t]*)\/\/ @gen:start ([a-zA-Z0-9._-]+)(?: hash:\S+)?(?: owner:\S+)?[ \t]*$/gm;
   let match: RegExpExecArray | null;
 
   while ((match = startRe.exec(result)) !== null) {
