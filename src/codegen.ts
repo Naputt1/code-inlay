@@ -208,27 +208,62 @@ export function generateCode(
     const regionId = `${moduleName}.repository`;
     const moduleSvcs = getModuleServices(moduleName);
     const dbProvider = moduleSvcs.find((s) => s.dbAccessor);
-    const repoContent = generateRepository(routes, moduleName, dbProvider, ast.serviceExtensions);
-    add(repoFile, {
-      id: regionId,
-      stableHash: `${regionId}:${moduleName}:${routes.length}routes`,
-      owner: "code-inlay",
-      language: "go",
-      content: repoContent,
-    });
+    const repoParts = generateRepository(routes, moduleName, dbProvider, ast.serviceExtensions);
+    const suffixForPart = (part: ScaffoldPart): string => {
+      if (part.kind === "imports") return ".0imports";
+      if (part.kind === "interface") return "";
+      if (part.kind === "struct") return ".1struct";
+      if (part.kind === "function") return ".2ctor";
+      const methodName = part.symbolName.split(".").pop();
+      return `.3${methodName}`;
+    };
+    for (const part of repoParts) {
+      const suffix = suffixForPart(part);
+      add(repoFile, {
+        id: regionId + suffix,
+        stableHash: `${regionId}:${moduleName}:${routes.length}routes${suffix}`,
+        owner: "code-inlay",
+        language: "go",
+        content: part.content,
+        symbolName: part.symbolName,
+        kind: part.kind,
+        signature: part.signature,
+        receiver: part.receiver,
+        expectsUserCode: part.expectsUserCode,
+        isStub: part.isStub,
+        imports: part.imports,
+      });
+    }
   }
 
   // Generate service files at internal/service/<name>.go
   for (const svc of ast.services) {
     const svcFile = serviceFilePath(svc.name);
-    const content = generateServiceFile(svc, ast.serviceExtensions);
-    add(svcFile, {
-      id: serviceRegionId(svc.name),
-      stableHash: `service:${svc.name}`,
-      owner: "code-inlay",
-      language: "go",
-      content,
-    });
+    const svcParts = generateServiceFile(svc, ast.serviceExtensions);
+    const svcSuffix = (part: ScaffoldPart): string => {
+      if (part.kind === "imports") return ".0imports";
+      if (part.kind === "interface") return "";
+      if (part.kind === "struct") return ".1struct";
+      if (part.kind === "function") return ".2ctor";
+      const methodName = part.symbolName.split(".").pop();
+      return `.3${methodName}`;
+    };
+    for (const part of svcParts) {
+      add(svcFile, {
+        id: serviceRegionId(svc.name) + svcSuffix(part),
+        stableHash: `service:${svc.name}${svcSuffix(part)}`,
+        owner: "code-inlay",
+        language: "go",
+        content: part.content,
+        symbolName: part.symbolName,
+        kind: part.kind,
+        signature: part.signature,
+        receiver: part.receiver,
+        expectsUserCode: part.expectsUserCode,
+        isStub: part.isStub,
+        imports: part.imports,
+      });
+    }
   }
 
   const groupMwByPrefix = new Map<string, Set<string>>();
@@ -667,7 +702,7 @@ function generateRepository(
   moduleName: string,
   dbProvider: AppServiceDef | undefined,
   extensions: BackendExtension[],
-): string {
+): ScaffoldPart[] {
   const typeName = pascalCase(moduleName);
   const baseEntity = typeName;
   const implName = `${lowerIdent(moduleName)}RepositoryImpl`;
@@ -685,84 +720,120 @@ function generateRepository(
     }
   }
 
-  const parts: string[] = [];
+  const parts: ScaffoldPart[] = [];
 
   if (dbProvider) {
-    parts.push(`import (`);
-    parts.push(`\t"context"`);
-    if (dbTypePkg) {
-      parts.push(`\t"${dbTypePkg}"`);
-    }
-    parts.push(`)`);
-    parts.push(``);
+    const importLines = [`import (`, `\t"context"`];
+    if (dbTypePkg) importLines.push(`\t"${dbTypePkg}"`);
+    importLines.push(`)`);
+    parts.push({
+      kind: "imports" as const,
+      symbolName: "",
+      content: importLines.join("\n"),
+      expectsUserCode: false,
+      isStub: false,
+      imports: [...(dbTypePkg ? ["context", dbTypePkg] : ["context"])],
+    });
   }
 
   if (seen.size === 0) {
-    parts.push(`type ${typeName}Repository interface {`);
-    parts.push(`\t// Add developer-owned persistence methods outside generated regions as needed.`);
-    parts.push(`}`);
+    const content = [
+      `type ${typeName}Repository interface {`,
+      `\t// Add developer-owned persistence methods outside generated regions as needed.`,
+      `}`,
+    ].join("\n");
+    parts.push({
+      kind: "interface" as const,
+      symbolName: `${typeName}Repository`,
+      content,
+      expectsUserCode: false,
+      isStub: false,
+    });
   } else {
     const body = [...seen.values()].map((m) => `\t${m.name}(${m.params}) ${m.results}`).join("\n");
-    parts.push(`type ${typeName}Repository interface {`);
-    parts.push(body);
-    parts.push(`}`);
-  }
+    const content = [`type ${typeName}Repository interface {`, body, `}`].join("\n");
+    parts.push({
+      kind: "interface" as const,
+      symbolName: `${typeName}Repository`,
+      content,
+      expectsUserCode: false,
+      isStub: false,
+    });
 
-  if (!dbProvider || seen.size === 0) {
-    return parts.join("\n");
-  }
+    const structContent = [`type ${implName} struct {`, `\tdb ${dbType}`, `}`].join("\n");
+    parts.push({
+      kind: "struct" as const,
+      symbolName: implName,
+      content: structContent,
+      expectsUserCode: false,
+      isStub: false,
+    });
 
-  parts.push(``);
-  parts.push(`type ${implName} struct {`);
-  parts.push(`\tdb ${dbType}`);
-  parts.push(`}`);
-  parts.push(``);
-  parts.push(`func New${typeName}Repository(db ${dbType}) *${implName} {`);
-  parts.push(`\treturn &${implName}{db: db}`);
-  parts.push(`}`);
+    const ctorSig = `func New${typeName}Repository(db ${dbType}) *${implName}`;
+    parts.push({
+      kind: "function" as const,
+      symbolName: `New${typeName}Repository`,
+      signature: ctorSig,
+      content: `\treturn &${implName}{db: db}`,
+      expectsUserCode: false,
+      isStub: false,
+    });
 
-  for (const method of seen.values()) {
-    parts.push(``);
-    parts.push(
-      generateDialectMethod(
+    for (const method of seen.values()) {
+      const methodPart = generateDialectMethodPart(
         method,
         baseEntity,
         implName,
         dialect,
         extensions,
         dbProvider?.extensionOptions,
-      ),
-    );
+      );
+      if (methodPart) parts.push(methodPart);
+    }
   }
 
-  return parts.join("\n");
+  return parts;
 }
 
-function generateDialectMethod(
+function generateDialectMethodPart(
   method: RepositoryMethod,
   baseEntity: string,
   implName: string,
   dialect?: string,
   extensions?: BackendExtension[],
   extensionOptions?: Record<string, unknown>,
-): string {
+): ScaffoldPart | null {
   if (dialect && extensions) {
     const ext = extensions.find((e) => e.name === dialect);
     if (ext?.service?.generateDialectMethod) {
       const ctx = { method, baseEntity, implName, options: extensionOptions ?? {} };
-      return ext.service.generateDialectMethod(ctx);
+      const content = ext.service.generateDialectMethod(ctx);
+      return {
+        kind: "method" as const,
+        symbolName: `${implName}.${method.name}`,
+        receiver: `*${implName}`,
+        content,
+        expectsUserCode: false,
+        isStub: true,
+      };
     }
   }
-  return generateDefaultStub(method, implName);
+  return generateDefaultStubPart(method, implName);
 }
 
-function generateDefaultStub(method: RepositoryMethod, implName: string): string {
-  return [
-    `func (r *${implName}) ${method.name}(${method.params}) ${method.results} {`,
-    `\t// TODO: implement ${method.name}`,
-    `\treturn ${getZeroValue(method.results)}`,
-    `}`,
-  ].join("\n");
+function generateDefaultStubPart(method: RepositoryMethod, implName: string): ScaffoldPart {
+  const sigBase = `func (r *${implName}) ${method.name}(${method.params})`;
+  const sig = `${sigBase} ${method.results}`;
+  const content = `\t// TODO: implement ${method.name}\n\treturn ${getZeroValue(method.results)}`;
+  return {
+    kind: "method" as const,
+    symbolName: `${implName}.${method.name}`,
+    receiver: `*${implName}`,
+    signature: sig,
+    content,
+    expectsUserCode: false,
+    isStub: true,
+  };
 }
 
 function getZeroValue(results: string): string {
@@ -783,7 +854,7 @@ function generateUsecase(route: RouteAst): string {
   ].join("\n");
 }
 
-function generateServiceFile(svc: AppServiceDef, extensions?: BackendExtension[]): string {
+function generateServiceFile(svc: AppServiceDef, extensions?: BackendExtension[]): ScaffoldPart[] {
   const typeName = serviceTypeName(svc.name);
   const implName = serviceImplName(svc.name);
   const ctorName = serviceConstructorName(svc.name);
@@ -791,63 +862,109 @@ function generateServiceFile(svc: AppServiceDef, extensions?: BackendExtension[]
   if (svc.extension && extensions) {
     const ext = extensions.find((e) => e.name === svc.extension);
     if (ext?.service?.generateFile) {
-      return ext.service.generateFile({
-        name: svc.name,
-        options: svc.extensionOptions ?? {},
-        typeName,
-        implName,
-        ctorName,
-        close: svc.close,
-      });
+      return [
+        {
+          kind: "interface" as const,
+          symbolName: typeName,
+          content: ext.service.generateFile({
+            name: svc.name,
+            options: svc.extensionOptions ?? {},
+            typeName,
+            implName,
+            ctorName,
+            close: svc.close,
+          }),
+          expectsUserCode: false,
+          isStub: false,
+        },
+      ];
     }
   }
 
-  const lines: string[] = [];
+  const parts: ScaffoldPart[] = [];
 
   if (svc.dbTypePkg) {
-    lines.push(`import "${svc.dbTypePkg}"`);
-    lines.push(``);
+    parts.push({
+      kind: "imports" as const,
+      symbolName: "",
+      content: `import "${svc.dbTypePkg}"`,
+      expectsUserCode: false,
+      isStub: false,
+      imports: [svc.dbTypePkg],
+    });
   }
 
-  lines.push(`type ${typeName} interface {`);
+  const ifaceLines: string[] = [`type ${typeName} interface {`];
   if (svc.dbAccessor && svc.dbType) {
-    lines.push(`\t${svc.dbAccessor}() ${svc.dbType}`);
+    ifaceLines.push(`\t${svc.dbAccessor}() ${svc.dbType}`);
   }
   if (svc.close) {
-    lines.push(`\tClose() error`);
+    ifaceLines.push(`\tClose() error`);
   }
-  lines.push(`}`);
-  lines.push(``);
-  lines.push(`type ${implName} struct {}`);
-  lines.push(``);
-  lines.push(`func ${ctorName}() (*${implName}, error) {`);
-  lines.push(`\treturn &${implName}{}, nil`);
-  lines.push(`}`);
+  ifaceLines.push(`}`);
+  parts.push({
+    kind: "interface" as const,
+    symbolName: typeName,
+    content: ifaceLines.join("\n"),
+    expectsUserCode: false,
+    isStub: false,
+  });
+
+  parts.push({
+    kind: "struct" as const,
+    symbolName: implName,
+    content: `type ${implName} struct {}`,
+    expectsUserCode: false,
+    isStub: false,
+  });
+
+  const ctorSig = `func ${ctorName}() (*${implName}, error)`;
+  parts.push({
+    kind: "function" as const,
+    symbolName: ctorName,
+    signature: ctorSig,
+    content: `\treturn &${implName}{}, nil`,
+    expectsUserCode: false,
+    isStub: false,
+  });
+
   if (svc.dbAccessor && svc.dbType) {
-    lines.push(``);
-    lines.push(`func (s *${implName}) ${svc.dbAccessor}() ${svc.dbType} {`);
-    lines.push(`\t// TODO: return initialized ${svc.dbType}`);
-    lines.push(`\treturn nil`);
-    lines.push(`}`);
-  }
-  if (svc.close) {
-    lines.push(``);
-    lines.push(`func (s *${implName}) Close() error {`);
-    lines.push(`\treturn nil`);
-    lines.push(`}`);
+    const accessorName = svc.dbAccessor;
+    parts.push({
+      kind: "method" as const,
+      symbolName: `${implName}.${accessorName}`,
+      receiver: `*${implName}`,
+      signature: `func (s *${implName}) ${accessorName}() ${svc.dbType}`,
+      content: `\t// TODO: return initialized ${svc.dbType}\n\treturn nil`,
+      expectsUserCode: false,
+      isStub: true,
+    });
   }
 
-  return lines.join("\n");
+  if (svc.close) {
+    parts.push({
+      kind: "method" as const,
+      symbolName: `${implName}.Close`,
+      receiver: `*${implName}`,
+      signature: `func (s *${implName}) Close() error`,
+      content: `\treturn nil`,
+      expectsUserCode: false,
+      isStub: false,
+    });
+  }
+
+  return parts;
 }
 
 type ScaffoldPart = {
-  kind: "struct" | "function" | "method";
+  kind: "struct" | "function" | "method" | "interface" | "type" | "imports";
   symbolName: string;
   signature?: string;
   receiver?: string;
   content: string;
   expectsUserCode: boolean;
   isStub: boolean;
+  imports?: string[];
 };
 
 function generateUsecaseScaffold(
@@ -1016,25 +1133,28 @@ function generateMiddlewareFiles(ast: AppAst): GeneratedFilePatch[] {
   return mws.map((mw) => {
     const fileName = snakeCase(mw.name);
     const funcName = mw.handler ?? mw.name;
-    const content = [
-      `import "github.com/gin-gonic/gin"`,
-      ``,
-      `func ${funcName}(c *gin.Context) {`,
-      `\t// TODO: implement ${funcName}`,
-      `\tc.Next()`,
-      `}`,
-      ``,
-    ].join("\n");
+    const funcSig = `func ${funcName}(c *gin.Context)`;
 
     return {
       path: `internal/middleware/${fileName}.go`,
       regions: [
         {
-          id: `middleware.${mw.name}`,
-          stableHash: `middleware:${mw.name}`,
+          id: `middleware.${mw.name}.0imports`,
+          stableHash: `middleware:${mw.name}:imports`,
           owner: "code-inlay",
           language: "go",
-          content,
+          content: `import "github.com/gin-gonic/gin"`,
+        },
+        {
+          id: `middleware.${mw.name}.1func`,
+          stableHash: `middleware:${mw.name}:func`,
+          owner: "code-inlay",
+          language: "go",
+          content: `\t// TODO: implement ${funcName}\n\tc.Next()`,
+          symbolName: funcName,
+          kind: "function",
+          signature: funcSig,
+          isStub: true,
         },
       ],
     };
@@ -1074,7 +1194,12 @@ function enrichRegion(region: GeneratedRegion): GeneratedRegion {
     const lines = content.split("\n");
     for (const line of lines) {
       const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith("import") || /^\s*\)/.test(trimmed)) continue;
+      if (!trimmed || /^\s*\)/.test(trimmed)) continue;
+      if (trimmed.startsWith("import")) {
+        const m = trimmed.match(/"([^"]+)"/);
+        if (m) imports.push(`"${m[1]}"`);
+        continue;
+      }
       imports.push(trimmed);
     }
     return {

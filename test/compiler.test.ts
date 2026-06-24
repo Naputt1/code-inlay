@@ -777,20 +777,29 @@ describe("compiler", () => {
 
       const repoFile = result.generation.files.find((f) => f.path.endsWith("ticket/repo.go"));
       expect(repoFile).toBeDefined();
-      const repoContent = repoFile!.regions.find((r) => r.id === "ticket.repository")!.content;
-      expect(repoContent).toContain("import");
-      expect(repoContent).toContain('"context"');
-      expect(repoContent).toContain('"gorm.io/gorm"');
-      expect(repoContent).toContain("type ticketRepositoryImpl struct");
-      expect(repoContent).toContain("func NewTicketRepository(db *gorm.DB) *ticketRepositoryImpl");
+      const importsRegion = repoFile!.regions.find((r) => r.id === "ticket.repository.0imports");
+      expect(importsRegion).toBeDefined();
+      expect(importsRegion!.content).toContain("import");
+      expect(importsRegion!.content).toContain('"context"');
+      expect(importsRegion!.content).toContain('"gorm.io/gorm"');
+      const structRegion = repoFile!.regions.find((r) => r.id === "ticket.repository.1struct");
+      expect(structRegion).toBeDefined();
+      expect(structRegion!.content).toContain("type ticketRepositoryImpl struct");
+      const ctorRegion = repoFile!.regions.find((r) => r.id === "ticket.repository.2ctor");
+      expect(ctorRegion).toBeDefined();
+      expect(ctorRegion!.signature).toBe("func NewTicketRepository(db *gorm.DB) *ticketRepositoryImpl");
 
       const svcFile = result.generation.files.find((f) => f.path.endsWith("service/mygorm.go"));
       expect(svcFile).toBeDefined();
-      const svcContent = svcFile!.regions.find((r) => r.id === "service.mygorm")!.content;
-      expect(svcContent).toContain('import "gorm.io/gorm"');
-      expect(svcContent).toContain("MygormService interface");
-      expect(svcContent).toContain("DB() *gorm.DB");
-      expect(svcContent).toContain("func (s *mygormServiceImpl) DB() *gorm.DB");
+      const importRegion = svcFile!.regions.find((r) => r.id === "service.mygorm.0imports");
+      expect(importRegion).toBeDefined();
+      expect(importRegion!.content).toContain('import "gorm.io/gorm"');
+      const ifaceRegion = svcFile!.regions.find((r) => r.id === "service.mygorm");
+      expect(ifaceRegion).toBeDefined();
+      expect(ifaceRegion!.content).toContain("DB() *gorm.DB");
+      const dbMethodRegion = svcFile!.regions.find((r) => r.id === "service.mygorm.3DB");
+      expect(dbMethodRegion).toBeDefined();
+      expect(dbMethodRegion!.content).toContain("// TODO: return initialized");
     });
 
     it("keeps nil /*repo TODO*/ when module has no DB provider", async () => {
@@ -949,7 +958,7 @@ describe("compiler", () => {
     expect(ctorRegion).toBeDefined();
     expect(execRegion).toBeDefined();
 
-    expect(structRegion!.content).toContain("type loginUsecaseImpl struct{}");
+    expect(structRegion!.content).toContain("type loginUsecaseImpl struct");
     expect(structRegion!.content).not.toContain("Repository");
     expect(ctorRegion!.signature).toBe("func NewLoginUsecase() *loginUsecaseImpl");
     expect(execRegion!.content).toContain("// TODO: implement LoginUsecase");

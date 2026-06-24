@@ -121,6 +121,22 @@ export function injectGoFile(
     }
   }
 
+  // Adopt user-modified stubs: if a stub function's body differs from the
+  // generated scaffold, treat it as user code so no markers or stub appear.
+  const adoptedSymbols = new Set<string>();
+  for (let i = existingGen.length - 1; i >= 0; i--) {
+    const { decl, region } = existingGen[i];
+    if (!region.isStub) continue;
+    const existingBody = extractExistingBody(fileText, region);
+    if (existingBody === null) continue;
+    const norm = (s: string) => s.replace(/\s/g, "");
+    if (norm(existingBody) !== norm(region.content)) {
+      userDecls.push(decl);
+      adoptedSymbols.add(decl.symbolName);
+      existingGen.splice(i, 1);
+    }
+  }
+
   const isOutOfOrder = (() => {
     const orderMap = new Map(symbolRegions.map((r, i) => [r.symbolName!, i]));
     let prev = -1;
@@ -149,6 +165,9 @@ export function injectGoFile(
     newLines.push("");
   }
 
+  const genByName = new Map(existingGen.map((e) => [e.decl.symbolName, e]));
+  const userNames = new Set(userDecls.map((d) => d.symbolName));
+
   if (isOutOfOrder) {
     for (const decl of userDecls) {
       const start = decl.startLine - 1;
@@ -162,26 +181,36 @@ export function injectGoFile(
       appendGenerated(newLines, region, fileText);
     }
   } else {
-    const plannedSet = new Set<string>();
-    for (const { decl, region } of existingGen) {
-      appendGenerated(newLines, region, fileText);
-      plannedSet.add(decl.symbolName);
+    // Walk declarations in file order, preserving positions
+    for (const decl of declarations) {
+      if (decl.kind === "imports" || decl.symbolName === "") continue;
+      if (isInsideBlob(decl)) continue;
+
+      const genEntry = genByName.get(decl.symbolName);
+      if (genEntry) {
+        appendGenerated(newLines, genEntry.region, fileText);
+        continue;
+      }
+
+      if (userNames.has(decl.symbolName) || orphanSymbols.includes(decl.symbolName)) {
+        if (orphanSymbols.includes(decl.symbolName)) continue;
+        const start = decl.startLine - 1;
+        const end = decl.endLine;
+        for (let i = start; i < end && i < lines.length; i++) {
+          newLines.push(lines[i]);
+        }
+        newLines.push("");
+        continue;
+      }
     }
 
+    // Add any planned regions that weren't found in the file (new symbols)
+    const placedNames = new Set([...genByName.keys(), ...userNames]);
     for (const region of symbolRegions) {
-      if (region.symbolName && !plannedSet.has(region.symbolName)) {
+      if (region.symbolName && !placedNames.has(region.symbolName)) {
         newLines.push("");
         newLines.push(buildDeclarationText(region, buildBody(region, fileText)));
       }
-    }
-
-    for (const decl of userDecls) {
-      const start = decl.startLine - 1;
-      const end = decl.endLine;
-      for (let i = start; i < end && i < lines.length; i++) {
-        newLines.push(lines[i]);
-      }
-      newLines.push("");
     }
   }
 
@@ -274,8 +303,13 @@ function appendGenerated(out: string[], region: GeneratedRegion, fileText: strin
 function buildBody(region: GeneratedRegion, fileText: string): string {
   let body = region.content;
 
+  const existingBody = extractExistingBody(fileText, region);
+
+  if (region.isStub && existingBody !== null) {
+    return region.content;
+  }
+
   if (region.expectsUserCode && !region.isStub && body.trim()) {
-    const existingBody = extractExistingBody(fileText, region);
     if (existingBody !== null) {
       body = applyInnerMarkers(region, existingBody, body);
     } else {
@@ -324,7 +358,7 @@ function applyInnerMarkers(
     return `${beforeStart}${nl}\t// @gen:start ${sh}${nl}${newGeneratedBody}`;
   }
 
-  return `${newGeneratedBody}${nl}\t// @gen:end ${sh}`;
+  return `${newGeneratedBody}${nl}\t// @gen:end ${sh}${nl}${existingBody.trimEnd()}`;
 }
 
 function buildDeclarationText(region: GeneratedRegion, body: string): string {
@@ -374,7 +408,7 @@ function mergeImports(text: string, patch: GeneratedFilePatch, fileText: string)
   const allSpecs = [...plannedSpecs, ...existingSpecs].sort();
   if (allSpecs.length === 0) return text;
 
-  const importBlockRe = /^([ \t]*)import\s*\([^)]*\)[ \t]*$/m;
+  const importBlockRe = /^([ \t]*)import\s*\([\s\S]*?\)[ \t]*$/m;
   const importBlockExists = importBlockRe.test(text);
 
   if (importBlockExists) {
@@ -398,7 +432,7 @@ function mergeImports(text: string, patch: GeneratedFilePatch, fileText: string)
       lines.push(`\t${spec}`);
     }
     lines.push(")");
-    return text.slice(0, insertAt) + lines.join("\n") + text.slice(insertAt);
+    return text.slice(0, insertAt) + lines.join("\n") + "\n" + text.slice(insertAt);
   }
 
   return text;

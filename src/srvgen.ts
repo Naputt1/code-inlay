@@ -25,47 +25,48 @@ export function generateServer(
     imports.push(svcPath);
   }
 
-  const content: string[] = [];
-  content.push(`import (`);
-  for (const imp of [...new Set(imports)].sort()) {
-    content.push(`\t${imp}`);
-  }
-  content.push(`)`);
-  content.push("");
-  content.push("func main() {");
-
   const routeArgs = ["api"];
+  const mainBody: string[] = [];
   for (const svc of ast.services) {
     const ctorName = serviceConstructorName(svc.name);
     const varName = lowerSvcVar(svc.name);
-    content.push(`\t${varName}, err := service.${ctorName}()`);
-    content.push(`\tif err != nil {`);
-    content.push(`\t\tpanic(err)`);
-    content.push(`\t}`);
+    mainBody.push(`\t${varName}, err := service.${ctorName}()`);
+    mainBody.push(`\tif err != nil {`);
+    mainBody.push(`\t\tpanic(err)`);
+    mainBody.push(`\t}`);
     if (svc.close) {
-      content.push(`\tdefer ${varName}.Close()`);
+      mainBody.push(`\tdefer ${varName}.Close()`);
     }
     routeArgs.push(varName);
   }
 
-  content.push(``);
-  content.push(`\tr := gin.Default()`);
-  content.push(`\tapi := r.Group("${ast.router.prefix}")`);
-  content.push(`\t${routesPkg}.RegisterRoutes(${routeArgs.join(", ")})`);
-  content.push(`\tif err := r.Run(); err != nil {`);
-  content.push(`\t\tpanic(err)`);
-  content.push(`\t}`);
-  content.push(`}`);
+  mainBody.push(``);
+  mainBody.push(`\tr := gin.Default()`);
+  mainBody.push(`\tapi := r.Group("${ast.router.prefix}")`);
+  mainBody.push(`\t${routesPkg}.RegisterRoutes(${routeArgs.join(", ")})`);
+  mainBody.push(`\tif err := r.Run(); err != nil {`);
+  mainBody.push(`\t\tpanic(err)`);
+  mainBody.push(`\t}`);
 
   return {
     path: serverFilePath,
     regions: [
       {
-        id: serverMainRegionId,
-        stableHash: `${serverFilePath}:${serverMainRegionId}:${adapter?.name ?? "code-inlay"}`,
+        id: `${serverMainRegionId}.0imports`,
+        stableHash: `${serverFilePath}:${serverMainRegionId}:imports`,
         owner: adapter?.name ?? "code-inlay",
         language: "go",
-        content: content.join("\n"),
+        content: `import (\n${[...new Set(imports)].sort().map((i) => `\t${i}`).join("\n")}\n)`,
+      },
+      {
+        id: `${serverMainRegionId}.1main`,
+        stableHash: `${serverFilePath}:${serverMainRegionId}:main:${adapter?.name ?? "code-inlay"}`,
+        owner: adapter?.name ?? "code-inlay",
+        language: "go",
+        content: mainBody.join("\n"),
+        symbolName: "main",
+        kind: "function",
+        signature: "func main()",
       },
     ],
   };
