@@ -92,33 +92,30 @@ export function validateBeforeWrite(
   return valid;
 }
 
-const orphanPattern =
-  /^([ \t]*)\/\/ @gen:start ([a-zA-Z0-9._-]+)(?: hash:(\S+))?(?: owner:(\S+))?[ \t]*$/gm;
-
-export function removeOrphanedRegions(
+export function removeOrphanRegions(
   fileText: string,
   plannedRegionIds: Set<string>,
   diagnostics: Diagnostic[],
   file?: string,
+  safeSuffixes?: string[],
 ): string {
-  const planned = new Set(plannedRegionIds);
   let result = fileText;
 
   const orphans: Array<{ id: string; start: number; end: number }> = [];
   const starts: Array<{ id: string; index: number; lineEnd: number }> = [];
+  const startRe = /^([ \t]*)\/\/ @gen:start ([a-zA-Z0-9._-]+)(?: hash:\S+)?(?: owner:\S+)?[ \t]*$/gm;
   let match: RegExpExecArray | null;
 
-  const localStart = new RegExp(orphanPattern.source, orphanPattern.flags);
-  while ((match = localStart.exec(result)) !== null) {
+  while ((match = startRe.exec(result)) !== null) {
     const id = match[2];
-    if (planned.has(id)) continue;
-    if (!id.endsWith(".usecase") && !id.endsWith(".0usecase.imports")) continue;
+    if (plannedRegionIds.has(id)) continue;
+    if (safeSuffixes && !safeSuffixes.some((s) => id.endsWith(s))) continue;
     starts.push({ id, index: match.index, lineEnd: lineEndIndex(result, match.index) });
   }
 
-  const localEnd = new RegExp(endPattern.source, endPattern.flags);
+  const endRe = /^[ \t]*\/\/ @gen:end ([a-zA-Z0-9._-]+)(?: hash:\S+)?[ \t]*$/gm;
   const ends: Array<{ id: string; index: number; lineEnd: number }> = [];
-  while ((match = localEnd.exec(result)) !== null) {
+  while ((match = endRe.exec(result)) !== null) {
     ends.push({ id: match[2], index: match.index, lineEnd: lineEndIndex(result, match.index) });
   }
 
@@ -142,11 +139,8 @@ export function removeOrphanedRegions(
     const before = result.slice(0, orphan.start);
     const after = result.slice(orphan.end);
     const beforeTrimmed = before.replace(/\n+$/, "");
-    const gap = before.length - beforeTrimmed.length;
     const afterTrimmed = after.replace(/^\n+/, "");
-    const afterGap = after.length - afterTrimmed.length;
-    const separator = gap > 0 && afterGap > 0 ? "\n" : "\n\n";
-    result = beforeTrimmed + separator + afterTrimmed;
+    result = beforeTrimmed + "\n\n" + afterTrimmed;
   }
 
   return result;
@@ -158,12 +152,13 @@ export function atomicWritePatches(
   fileCreation: "disabled" | "markers-only" | "skeleton",
   diagnostics: Diagnostic[],
   cache?: CompilerCache,
+  dryRun?: boolean,
 ): WriteResult {
   const changedFiles: string[] = [];
   const diffs: FileDiff[] = [];
   const writtenPaths: string[] = [];
 
-  const snapshots = snapshotFiles(patches, cwd);
+  const snapshots = dryRun ? [] : snapshotFiles(patches, cwd);
 
   for (const patch of patches) {
     const absolutePath = resolve(cwd, patch.path);
@@ -202,15 +197,17 @@ export function atomicWritePatches(
       changedFiles.push(patch.path);
       diffs.push({ path: patch.path, before, after });
 
-      writeAtomic(absolutePath, after, diagnostics);
-      if (!hasErrorsForFile(diagnostics, patch.path)) {
-        formatFile(absolutePath, diagnostics);
-        writtenPaths.push(patch.path);
+      if (!dryRun) {
+        writeAtomic(absolutePath, after, diagnostics);
+        if (!hasErrorsForFile(diagnostics, patch.path)) {
+          formatFile(absolutePath, diagnostics);
+          writtenPaths.push(patch.path);
+        }
       }
       continue;
     }
 
-    const statBefore = statSync(absolutePath);
+    const statBefore = dryRun ? undefined : statSync(absolutePath);
     const before = readFileSync(absolutePath, "utf8");
 
     let after: string;
@@ -219,41 +216,47 @@ export function atomicWritePatches(
     } else {
       after = injectContent(before, patch.regions, diagnostics, patch.path);
       const plannedIds = new Set(patch.regions.map((r) => r.id));
-      after = removeOrphanedRegions(after, plannedIds, diagnostics, patch.path);
+      after = removeOrphanRegions(after, plannedIds, diagnostics, patch.path);
     }
 
     if (before !== after) {
-      const statAfter = statSync(absolutePath);
-      if (statAfter.mtimeMs !== statBefore.mtimeMs || statAfter.size !== statBefore.size) {
-        diagnostics.push({
-          level: "warning",
-          code: "concurrent-edit",
-          message: `File "${patch.path}" changed between read and write. Skipping this file.`,
-          file: patch.path,
-        });
-        continue;
+      if (!dryRun) {
+        const statAfter = statSync(absolutePath);
+        if (statAfter.mtimeMs !== statBefore!.mtimeMs || statAfter.size !== statBefore!.size) {
+          diagnostics.push({
+            level: "warning",
+            code: "concurrent-edit",
+            message: `File "${patch.path}" changed between read and write. Skipping this file.`,
+            file: patch.path,
+          });
+          continue;
+        }
       }
 
       changedFiles.push(patch.path);
       diffs.push({ path: patch.path, before, after });
 
-      writeAtomic(absolutePath, after, diagnostics);
-      if (!hasErrorsForFile(diagnostics, patch.path)) {
-        formatFile(absolutePath, diagnostics);
-        writtenPaths.push(patch.path);
+      if (!dryRun) {
+        writeAtomic(absolutePath, after, diagnostics);
+        if (!hasErrorsForFile(diagnostics, patch.path)) {
+          formatFile(absolutePath, diagnostics);
+          writtenPaths.push(patch.path);
+        }
       }
     }
   }
 
-  const hasFailures = patches.some((patch) =>
-    diagnostics.some(
-      (d) => d.file === patch.path && d.level === "error" && d.code === "file-not-found",
-    ),
-  );
+  if (!dryRun) {
+    const hasFailures = patches.some((patch) =>
+      diagnostics.some(
+        (d) => d.file === patch.path && d.level === "error" && d.code === "file-not-found",
+      ),
+    );
 
-  if (hasFailures) {
-    const writtenSet = new Set(writtenPaths);
-    restoreFromSnapshot(snapshots, cwd, writtenSet);
+    if (hasFailures) {
+      const writtenSet = new Set(writtenPaths);
+      restoreFromSnapshot(snapshots, cwd, writtenSet);
+    }
   }
 
   return { changedFiles, diffs, writtenPaths };
@@ -506,56 +509,6 @@ function lineEndIndex(fileText: string, index: number): number {
   return nextLine === -1 ? fileText.length : nextLine + 1;
 }
 
-export function upgradeLegacyMarkers(
-  fileText: string,
-  plannedRegions: Array<{ id: string; stableHash?: string; owner?: string; contentHash?: string }>,
-  cache?: Record<string, { contentHash: string }>,
-  diagnostics?: Diagnostic[],
-): string {
-  let next = fileText;
-  const legacyPattern = /^([ \t]*)\/\/ @gen:start ([a-zA-Z0-9._-]+)[ \t]*$/gm;
-  const legacyMarkers = [...fileText.matchAll(legacyPattern)];
-
-  for (const match of legacyMarkers) {
-    const regionId = match[2];
-    const planned = plannedRegions.find((r) => r.id === regionId);
-    if (!planned) continue;
-
-    const startIndex = match.index ?? 0;
-    const lineEnd = lineEndIndex(fileText, startIndex);
-
-    const regionContent = extractRegionContent(fileText, regionId);
-    const cached = cache?.[regionId];
-
-    const shouldUpgrade =
-      !regionContent ||
-      (cached && cached.contentHash === planned.contentHash) ||
-      (cached && regionContent === cached.contentHash);
-
-    if (shouldUpgrade) {
-      const hash = planned.stableHash ? ` hash:${planned.stableHash}` : "";
-      const newStart = `// @gen:start ${regionId}${hash}`;
-      next = `${next.slice(0, startIndex)}${newStart}\n${next.slice(lineEnd)}`;
-
-      const endMarker = `// @gen:end ${regionId}`;
-      const endIdx = next.lastIndexOf(endMarker);
-      if (endIdx !== -1) {
-        const endLineEnd = lineEndIndex(next, endIdx);
-        next = `${next.slice(0, endIdx)}${endMarker}${next.slice(endLineEnd)}`;
-      }
-    } else if (diagnostics) {
-      diagnostics.push({
-        level: "warning",
-        code: "legacy-region-drift",
-        message: `Region "${regionId}" has legacy markers with manual content. Run with --force-region ${regionId} to overwrite.`,
-        regionId,
-      });
-    }
-  }
-
-  return next;
-}
-
 function extractRegionContent(fileText: string, regionId: string): string {
   const startPat = new RegExp(`// @gen:start ${escapeRegex(regionId)}`);
   const endPat = new RegExp(`// @gen:end ${escapeRegex(regionId)}`);
@@ -571,6 +524,52 @@ function extractRegionContent(fileText: string, regionId: string): string {
 
 function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function simpleHash(content: string): string {
+  let hash = 0;
+  for (let i = 0; i < content.length; i++) {
+    const char = content.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash |= 0;
+  }
+  return hash.toString(36);
+}
+
+export function detectDrift(
+  fileText: string,
+  regions: Array<{ id: string; content: string; stableHash?: string; contentHash?: string }>,
+  cache: Record<string, { contentHash: string }>,
+  diagnostics: Diagnostic[],
+  file?: string,
+  forceRegions?: string[],
+): boolean {
+  const forceSet = new Set(forceRegions ?? []);
+  let hasDrift = false;
+
+  for (const region of regions) {
+    if (forceSet.has(region.id)) continue;
+
+    const cached = cache[region.id];
+    if (!cached) continue;
+
+    const currentContent = extractRegionContent(fileText, region.id);
+    if (!currentContent) continue;
+
+    const currentContentHash = simpleHash(currentContent);
+    if (currentContentHash !== cached.contentHash) {
+      diagnostics.push({
+        level: "warning",
+        code: "region-drift",
+        message: `Region "${region.id}" has been manually edited. Run --force-region ${region.id} to overwrite.`,
+        file,
+        regionId: region.id,
+      });
+      hasDrift = true;
+    }
+  }
+
+  return hasDrift;
 }
 
 function emptyCache(): CompilerCache {

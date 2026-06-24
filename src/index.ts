@@ -2,7 +2,6 @@ export { z } from "./zod-extras.js";
 export * from "./types.js";
 export * from "./dsl.js";
 export * from "./compiler.js";
-export * from "./region.js";
 export * from "./schema.js";
 export * from "./architecture.js";
 export * from "./adapters.js";

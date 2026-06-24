@@ -13,7 +13,6 @@ import type {
 import { buildAst } from "./ast.js";
 import { applyArchitecture } from "./architecture.js";
 import { generateCode } from "./codegen.js";
-import { applyPatches, detectDrift } from "./region.js";
 import { formatGoSnippet } from "./format.js";
 import { checkGoEnvironment } from "./env.js";
 import { createPluginRegistry, runTransformerStage, runTargets, runValidators } from "./plugins.js";
@@ -25,7 +24,7 @@ import {
   validateCache,
   writeCache,
 } from "./cache.js";
-import { atomicWritePatches, removeOrphanedRegions, validateBeforeWrite } from "./writer.js";
+import { atomicWritePatches, removeOrphanRegions, validateBeforeWrite } from "./writer.js";
 
 export async function compile(options: CompileOptions): Promise<CompileResult> {
   const cwd = options.cwd ?? process.cwd();
@@ -126,22 +125,6 @@ export async function compile(options: CompileOptions): Promise<CompileResult> {
   }
 
   const cache = readCache(cwd);
-  if (cache) {
-    for (const file of generation.files) {
-      for (const region of file.regions) {
-        if (region.stableHash && cache.regions[region.stableHash]) {
-          detectDrift(
-            "",
-            [region],
-            { [region.stableHash]: cache.regions[region.stableHash] },
-            diagnostics,
-            file.path,
-            options.forceRegions ?? (options.forceRegion ? [options.forceRegion] : undefined),
-          );
-        }
-      }
-    }
-  }
 
   if (options.dryRun || hasErrors(diagnostics)) {
     return {
@@ -155,13 +138,14 @@ export async function compile(options: CompileOptions): Promise<CompileResult> {
   }
 
   if (options.check) {
-    const dryInjected = applyPatches({
+    const dryInjected = atomicWritePatches(
+      generation.files,
       cwd,
-      patches: generation.files,
+      app.options.fileCreation,
       diagnostics,
-      write: false,
-      fileCreation: app.options.fileCreation,
-    });
+      undefined,
+      true,
+    );
     return {
       ast,
       architecture,
@@ -208,7 +192,7 @@ export async function compile(options: CompileOptions): Promise<CompileResult> {
               if (currentPatchFiles.has(relPath)) continue;
               const content = readFileSync(abs, "utf8");
               if (!content.includes("// @gen:start")) continue;
-              const after = removeOrphanedRegions(content, currentRegionIds, diagnostics, relPath);
+              const after = removeOrphanRegions(content, currentRegionIds, diagnostics, relPath, [".usecase", ".0usecase.imports"]);
               if (content !== after) {
                 writeFileSync(abs, after, "utf8");
                 injected.changedFiles.push(relPath);

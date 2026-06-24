@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { atomicWritePatches, validateBeforeWrite } from "../src/index.js";
+import { atomicWritePatches, validateBeforeWrite, injectContent, detectDrift } from "../src/index.js";
 import type { Diagnostic, GeneratedFilePatch } from "../src/index.js";
 
 describe("atomic write + rollback", () => {
@@ -151,5 +151,86 @@ describe("pre-write validation", () => {
 
     expect(valid).toBe(false);
     expect(diagnostics.some((d) => d.code === "duplicate-region-hash")).toBe(true);
+  });
+});
+
+describe("injectContent", () => {
+  it("injects content with stable hash markers", () => {
+    const fileText = [
+      "package test",
+      "",
+      "// @gen:start test.region",
+      "// @gen:end test.region",
+      "",
+    ].join("\n");
+
+    const result = injectContent(
+      fileText,
+      [
+        {
+          id: "test.region",
+          content: "type Foo struct{}",
+          stableHash: "abc123",
+          owner: "gin",
+          language: "go",
+        },
+      ],
+      [],
+    );
+
+    expect(result).toContain("// @gen:start test.region hash:abc123");
+    expect(result).toContain("// @gen:end test.region");
+    expect(result).toContain("type Foo struct{}");
+  });
+});
+
+describe("detectDrift", () => {
+  it("detects region drift", () => {
+    const fileText = [
+      "// @gen:start test.region",
+      "manual content",
+      "// @gen:end test.region",
+    ].join("\n");
+
+    const diagnostics: Diagnostic[] = [];
+    const cache: Record<string, { contentHash: string }> = {
+      "test.region": { contentHash: "generated-hash" },
+    };
+
+    const hasDrift = detectDrift(
+      fileText,
+      [{ id: "test.region", content: "generated content", contentHash: "generated-hash" }],
+      cache,
+      diagnostics,
+      "test.go",
+    );
+
+    expect(hasDrift).toBe(true);
+    expect(diagnostics.some((d) => d.code === "region-drift")).toBe(true);
+  });
+
+  it("skips drift detection with force region", () => {
+    const fileText = [
+      "// @gen:start test.region",
+      "manual content",
+      "// @gen:end test.region",
+    ].join("\n");
+
+    const diagnostics: Diagnostic[] = [];
+    const cache: Record<string, { contentHash: string }> = {
+      "test.region": { contentHash: "generated-hash" },
+    };
+
+    const hasDrift = detectDrift(
+      fileText,
+      [{ id: "test.region", content: "generated content", contentHash: "generated-hash" }],
+      cache,
+      diagnostics,
+      "test.go",
+      ["test.region"],
+    );
+
+    expect(hasDrift).toBe(false);
+    expect(diagnostics.some((d) => d.code === "region-drift")).toBe(false);
   });
 });
