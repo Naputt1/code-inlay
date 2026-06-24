@@ -2,7 +2,16 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { compile, defineApp, defineModule, defineRoute, defineRouter, defineService, defineServiceExtension, z } from "../src/index.js";
+import {
+  compile,
+  defineApp,
+  defineModule,
+  defineRoute,
+  defineRouter,
+  defineService,
+  defineServiceExtension,
+  z,
+} from "../src/index.js";
 
 describe("compiler", () => {
   it("generates deterministic clean architecture patches", async () => {
@@ -53,13 +62,7 @@ describe("compiler", () => {
     );
     writeFileSync(
       join(cwd, "internal/user/domain.go"),
-      [
-        "package user",
-        "",
-        "// @gen:start user.domain",
-        "// @gen:end user.domain",
-        "",
-      ].join("\n"),
+      ["package user", "", "// @gen:start user.domain", "// @gen:end user.domain", ""].join("\n"),
     );
     writeFileSync(
       join(cwd, "internal/user/repo.go"),
@@ -745,7 +748,12 @@ describe("compiler", () => {
             routes: [
               defineRoute({ id: "list", method: "GET", path: "", handler: "ListTicket" }),
               defineRoute({ id: "get", method: "GET", path: "/:id", handler: "GetTicket" }),
-              defineRoute({ id: "create", method: "POST", path: "/create", handler: "CreateTicket" }),
+              defineRoute({
+                id: "create",
+                method: "POST",
+                path: "/create",
+                handler: "CreateTicket",
+              }),
             ],
           }),
         ],
@@ -761,7 +769,9 @@ describe("compiler", () => {
       expect(routeRegion).toBeDefined();
 
       const content = routeRegion!.content;
-      expect(content).toContain("func registerTicketRoutes(api *gin.RouterGroup, mygormSvc service.MygormService, dbSvc service.DbService)");
+      expect(content).toContain(
+        "func registerTicketRoutes(api *gin.RouterGroup, mygormSvc service.MygormService, dbSvc service.DbService)",
+      );
       expect(content).not.toContain("nil /*repo TODO*/");
       expect(content).toContain("ticket.NewTicketRepository(mygormSvc.DB())");
 
@@ -792,9 +802,7 @@ describe("compiler", () => {
           defineModule({
             name: "ticket",
             services: ["db"],
-            routes: [
-              defineRoute({ id: "list", method: "GET", path: "", handler: "ListTicket" }),
-            ],
+            routes: [defineRoute({ id: "list", method: "GET", path: "", handler: "ListTicket" })],
           }),
         ],
       });

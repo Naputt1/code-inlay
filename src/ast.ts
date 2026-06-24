@@ -31,11 +31,11 @@ export function buildAst(app: AppDefinition, diagnostics: Diagnostic[]): AppAst 
   const appAdapters = normalizeAdapterSelection(app.adapters ?? [router.adapter]);
   const appResponseFormat = app.options.responseFormat;
 
-  const extMap = new Map<string, BackendExtension>(
-    (app.extensions ?? []).map((e) => [e.name, e]),
-  );
+  const extMap = new Map<string, BackendExtension>((app.extensions ?? []).map((e) => [e.name, e]));
 
-  const toAppService = (s: ServiceDefinition | ServiceExtensionResult): AppAst["services"][number] => {
+  const toAppService = (
+    s: ServiceDefinition | ServiceExtensionResult,
+  ): AppAst["services"][number] => {
     if (s.kind === "ServiceExtensionResult") {
       const ext = extMap.get(s.extension);
       return {

@@ -110,10 +110,7 @@ export function defineModule(input: {
   };
 }
 
-export function defineService(input: {
-  name: string;
-  close?: boolean;
-}): ServiceDefinition {
+export function defineService(input: { name: string; close?: boolean }): ServiceDefinition {
   return {
     kind: "ServiceDefinition",
     name: input.name,
@@ -121,21 +118,20 @@ export function defineService(input: {
   };
 }
 
-export function defineServiceExtension<TOptions extends Record<string, unknown>>(
-  input: {
-    name: string;
-    service: {
-      provides?: "database";
-      optionsSchema: z.ZodType<TOptions>;
-      dbAccessor?: string;
-      dbType?: string;
-      dbTypePkg?: string;
-      goModules?: string[] | ((options: TOptions) => string[]);
-      generateFile?: (ctx: ServiceFileCtx<TOptions>) => string;
-      generateDialectMethod?: (ctx: DialectMethodCtx<TOptions>) => string;
-    };
-  },
-): BackendExtension & ((opts: { name: string; close?: boolean } & TOptions) => ServiceExtensionResult) {
+export function defineServiceExtension<TOptions extends Record<string, unknown>>(input: {
+  name: string;
+  service: {
+    provides?: "database";
+    optionsSchema: z.ZodType<TOptions>;
+    dbAccessor?: string;
+    dbType?: string;
+    dbTypePkg?: string;
+    goModules?: string[] | ((options: TOptions) => string[]);
+    generateFile?: (ctx: ServiceFileCtx<TOptions>) => string;
+    generateDialectMethod?: (ctx: DialectMethodCtx<TOptions>) => string;
+  };
+}): BackendExtension &
+  ((opts: { name: string; close?: boolean } & TOptions) => ServiceExtensionResult) {
   const factory = (opts: { name: string; close?: boolean } & TOptions): ServiceExtensionResult => ({
     kind: "ServiceExtensionResult",
     name: opts.name,
@@ -146,7 +142,8 @@ export function defineServiceExtension<TOptions extends Record<string, unknown>>
   return Object.defineProperties(factory, {
     name: { value: input.name, writable: false },
     service: { value: input.service, writable: false },
-  }) as BackendExtension & ((opts: { name: string; close?: boolean } & TOptions) => ServiceExtensionResult);
+  }) as BackendExtension &
+    ((opts: { name: string; close?: boolean } & TOptions) => ServiceExtensionResult);
 }
 
 export function defineRouter(input: {

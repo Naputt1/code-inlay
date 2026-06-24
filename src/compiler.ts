@@ -62,9 +62,7 @@ export async function compile(options: CompileOptions): Promise<CompileResult> {
       const ext = ast.serviceExtensions.find((e) => e.name === svc.extension);
       const gm = ext?.service?.goModules;
       if (!gm) continue;
-      const modules = typeof gm === "function"
-        ? gm(svc.extensionOptions ?? {})
-        : gm;
+      const modules = typeof gm === "function" ? gm(svc.extensionOptions ?? {}) : gm;
       for (const mod of modules) {
         const result = spawnSync("go", ["get", mod], { cwd, stdio: "pipe", encoding: "utf8" });
         if (result.status !== 0) {

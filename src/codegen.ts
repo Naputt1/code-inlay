@@ -712,7 +712,16 @@ function generateRepository(
 
   for (const method of seen.values()) {
     parts.push(``);
-    parts.push(generateDialectMethod(method, baseEntity, implName, dialect, extensions, dbProvider?.extensionOptions));
+    parts.push(
+      generateDialectMethod(
+        method,
+        baseEntity,
+        implName,
+        dialect,
+        extensions,
+        dbProvider?.extensionOptions,
+      ),
+    );
   }
 
   return parts.join("\n");
