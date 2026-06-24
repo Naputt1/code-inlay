@@ -2,7 +2,12 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { atomicWritePatches, validateBeforeWrite, injectContent, detectDrift } from "../src/index.js";
+import {
+  atomicWritePatches,
+  validateBeforeWrite,
+  injectContent,
+  detectDrift,
+} from "../src/index.js";
 import type { Diagnostic, GeneratedFilePatch } from "../src/index.js";
 
 describe("atomic write + rollback", () => {

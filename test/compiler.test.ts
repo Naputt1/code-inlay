@@ -787,7 +787,9 @@ describe("compiler", () => {
       expect(structRegion!.content).toContain("type ticketRepositoryImpl struct");
       const ctorRegion = repoFile!.regions.find((r) => r.id === "ticket.repository.2ctor");
       expect(ctorRegion).toBeDefined();
-      expect(ctorRegion!.signature).toBe("func NewTicketRepository(db *gorm.DB) *ticketRepositoryImpl");
+      expect(ctorRegion!.signature).toBe(
+        "func NewTicketRepository(db *gorm.DB) *ticketRepositoryImpl",
+      );
 
       const svcFile = result.generation.files.find((f) => f.path.endsWith("service/mygorm.go"));
       expect(svcFile).toBeDefined();

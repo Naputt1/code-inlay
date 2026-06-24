@@ -56,7 +56,10 @@ export function generateServer(
         stableHash: `${serverFilePath}:${serverMainRegionId}:imports`,
         owner: adapter?.name ?? "code-inlay",
         language: "go",
-        content: `import (\n${[...new Set(imports)].sort().map((i) => `\t${i}`).join("\n")}\n)`,
+        content: `import (\n${[...new Set(imports)]
+          .sort()
+          .map((i) => `\t${i}`)
+          .join("\n")}\n)`,
       },
       {
         id: `${serverMainRegionId}.1main`,
