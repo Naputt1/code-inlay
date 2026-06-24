@@ -111,14 +111,19 @@ describe("service layer", () => {
     const usecaseFile = result.generation.files.find((f) => f.path.endsWith("payment/usecase.go"));
     expect(usecaseFile).toBeDefined();
 
-    const scaffoldRegion = usecaseFile!.regions.find((r) => r.id.endsWith("usecase.impl"));
-    expect(scaffoldRegion).toBeDefined();
-    expect(scaffoldRegion!.content).toContain("paymentSvc service.PaymentService");
-    expect(scaffoldRegion!.content).toContain(
-      "func NewProcessPaymentUsecase(repo PaymentRepository, paymentSvc service.PaymentService)",
+    const structRegion = usecaseFile!.regions.find(
+      (r) =>
+        r.id.endsWith(".usecase.impl") && !r.id.includes(".ctor") && !r.id.includes(".execute"),
     );
-    expect(scaffoldRegion!.content).toContain('panic("service.PaymentService must not be nil")');
-    expect(scaffoldRegion!.content).toContain("paymentSvc: paymentSvc,");
+    const ctorRegion = usecaseFile!.regions.find((r) => r.id.endsWith(".usecase.impl.ctor"));
+    expect(structRegion).toBeDefined();
+    expect(ctorRegion).toBeDefined();
+    expect(structRegion!.content).toContain("paymentSvc service.PaymentService");
+    expect(ctorRegion!.signature).toBe(
+      "func NewProcessPaymentUsecase(repo PaymentRepository, paymentSvc service.PaymentService) *processPaymentUsecaseImpl",
+    );
+    expect(ctorRegion!.content).toContain('panic("service.PaymentService must not be nil")');
+    expect(ctorRegion!.content).toContain("paymentSvc: paymentSvc,");
   });
 
   it("route registration uses service-prefixed types for service params", async () => {
@@ -272,10 +277,12 @@ describe("service layer", () => {
     const usecaseFile = result.generation.files.find((f) => f.path.endsWith("auth/usecase.go"));
     expect(usecaseFile).toBeDefined();
 
-    const scaffoldRegion = usecaseFile!.regions.find((r) => r.id.endsWith("usecase.impl"));
-    expect(scaffoldRegion).toBeDefined();
-    expect(scaffoldRegion!.content).not.toContain("svc");
-    expect(scaffoldRegion!.content).toContain("func NewLoginUsecase(repo AuthRepository)"); // has repo but no service param
+    const ctorRegion = usecaseFile!.regions.find((r) => r.id.endsWith(".usecase.impl.ctor"));
+    expect(ctorRegion).toBeDefined();
+    expect(ctorRegion!.content).not.toContain("svc");
+    expect(ctorRegion!.signature).toBe(
+      "func NewLoginUsecase(repo AuthRepository) *loginUsecaseImpl",
+    ); // has repo but no service param
   });
 
   it("generates service without usecase layer (no injection)", async () => {

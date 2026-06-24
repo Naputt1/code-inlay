@@ -283,15 +283,26 @@ export function generateCode(
       ([, v]) => v.moduleName === route.moduleName && v.groupKey === groupKey,
     );
     const implFile = info?.[0] ?? defaultFileForLayer(route, "usecase", featuresDir);
-    const content = generateUsecaseScaffold(route, route.moduleName, hasRepository, serviceTypes);
-    add(implFile, {
-      id: regionIdForUsecaseImpl(route, groupKey),
-      stableHash: `${route.stableId}:usecase-impl:${implFile}`,
-      owner: "code-inlay",
-      language: "go",
-      content,
-      groupKey,
-    });
+    const parts = generateUsecaseScaffold(route, route.moduleName, hasRepository, serviceTypes);
+    const suffixes = ["", ".ctor", ".execute"];
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i];
+      const suffix = suffixes[i];
+      add(implFile, {
+        id: regionIdForUsecaseImpl(route, groupKey) + suffix,
+        stableHash: `${route.stableId}:usecase-impl:${implFile}${suffix}`,
+        owner: "code-inlay",
+        language: "go",
+        content: part.content,
+        symbolName: part.symbolName,
+        kind: part.kind,
+        signature: part.signature,
+        receiver: part.receiver,
+        expectsUserCode: part.expectsUserCode,
+        isStub: part.isStub,
+        groupKey,
+      });
+    }
   }
 
   const moduleNamesInOrder: string[] = [];
@@ -527,16 +538,16 @@ export function generateCode(
     }
   }
 
-  return {
-    files: [...files.entries()]
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(
-        ([path, regions]): GeneratedFilePatch => ({
-          path,
-          regions: regions.sort((a, b) => a.id.localeCompare(b.id)),
-        }),
-      ),
-  };
+  const result = [...files.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(
+      ([path, regions]): GeneratedFilePatch => ({
+        path,
+        regions: regions.sort((a, b) => a.id.localeCompare(b.id)).map(enrichRegion),
+      }),
+    );
+
+  return { files: result };
 }
 
 function generateLayerContent(
@@ -829,18 +840,27 @@ function generateServiceFile(svc: AppServiceDef, extensions?: BackendExtension[]
   return lines.join("\n");
 }
 
+type ScaffoldPart = {
+  kind: "struct" | "function" | "method";
+  symbolName: string;
+  signature?: string;
+  receiver?: string;
+  content: string;
+  expectsUserCode: boolean;
+  isStub: boolean;
+};
+
 function generateUsecaseScaffold(
   route: RouteAst,
   moduleName: string,
   hasRepository: boolean,
   serviceTypes: string[],
-): string {
+): ScaffoldPart[] {
   const ifaceName = `${route.handlerName}Usecase`;
   const structName = `${lowerIdent(route.handlerName)}UsecaseImpl`;
   const repoType = hasRepository ? `${pascalCase(moduleName)}Repository` : undefined;
   const reqType = requestType(route);
   const respType = responseType(route);
-  const lines: string[] = [];
 
   const structFields: string[] = [];
   const ctorParams: string[] = [];
@@ -867,34 +887,57 @@ function generateUsecaseScaffold(
     assignFields.push(`\t\t${varName}: ${varName}`);
   }
 
-  if (structFields.length === 0) {
-    lines.push(`type ${structName} struct {}`);
-    lines.push(``);
-    lines.push(`func New${ifaceName}() *${structName} {`);
-    lines.push(`\treturn &${structName}{}`);
-    lines.push(`}`);
-  } else {
-    lines.push(`type ${structName} struct {`);
-    lines.push(...structFields);
-    lines.push(`}`);
-    lines.push(``);
-    lines.push(`func New${ifaceName}(${ctorParams.join(", ")}) *${structName} {`);
-    lines.push(...ctorBody);
-    lines.push(`\treturn &${structName}{`);
-    lines.push(assignFields.map((f) => `${f},`).join("\n"));
-    lines.push(`\t}`);
-    lines.push(`}`);
-  }
+  const parts: ScaffoldPart[] = [];
 
-  lines.push(``);
-  lines.push(
-    `func (uc *${structName}) Execute(ctx context.Context, input ${reqType}) (${respType}, error) {`,
-  );
-  lines.push(`\t// TODO: implement ${ifaceName}`);
-  lines.push(`\treturn ${respType}{}, nil`);
-  lines.push(`}`);
+  // Struct declaration
+  const structDecl = (() => {
+    if (structFields.length === 0) {
+      return `type ${structName} struct {}`;
+    }
+    return [`type ${structName} struct {`, ...structFields, `}`].join("\n");
+  })();
+  parts.push({
+    kind: "struct",
+    symbolName: structName,
+    content: structDecl,
+    expectsUserCode: false,
+    isStub: false,
+  });
 
-  return lines.join("\n");
+  // Constructor function
+  const ctorBodyLines =
+    structFields.length === 0
+      ? [`\treturn &${structName}{}`]
+      : [
+          ...ctorBody,
+          `\treturn &${structName}{`,
+          assignFields.map((f) => `${f},`).join("\n"),
+          `\t}`,
+        ];
+  const ctorParamsStr = structFields.length === 0 ? "" : ctorParams.join(", ");
+  const ctorSig = `func New${ifaceName}(${ctorParamsStr}) *${structName}`;
+  parts.push({
+    kind: "function",
+    symbolName: `New${ifaceName}`,
+    signature: ctorSig,
+    content: ctorBodyLines.join("\n"),
+    expectsUserCode: false,
+    isStub: false,
+  });
+
+  // Execute method
+  const executeSig = `func (uc *${structName}) Execute(ctx context.Context, input ${reqType}) (${respType}, error)`;
+  parts.push({
+    kind: "method",
+    symbolName: `${structName}.Execute`,
+    receiver: `*${structName}`,
+    signature: executeSig,
+    content: `\t// TODO: implement ${ifaceName}\n\treturn ${respType}{}, nil`,
+    expectsUserCode: true,
+    isStub: true,
+  });
+
+  return parts;
 }
 
 type HandlerStructOutput = {
@@ -996,4 +1039,100 @@ function generateMiddlewareFiles(ast: AppAst): GeneratedFilePatch[] {
       ],
     };
   });
+}
+
+const funcSignatureRe = /^(func\s+(?:\([^)]*\)\s+)?(\w+)\s*\([^)]*\)(?:\s*\([^)]*\))?)\s*\{/;
+const typeRe = /^type\s+(\w+)\s+/;
+const varRe = /^(?:var|const)\s+(\w+)/;
+
+function hasMultipleDecls(content: string): boolean {
+  const lines = content.split("\n");
+  let count = 0;
+  let braceDepth = 0;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (braceDepth === 0 && /^(func\s|type\s|var\s|const\s)/.test(trimmed)) {
+      count++;
+    }
+    for (const ch of line) {
+      if (ch === "{") braceDepth++;
+      else if (ch === "}") braceDepth--;
+    }
+  }
+  return count > 1;
+}
+
+function enrichRegion(region: GeneratedRegion): GeneratedRegion {
+  if (region.symbolName || region.language !== "go") return region;
+
+  const content = region.content;
+  if (!content) return region;
+  if (hasMultipleDecls(content)) return region;
+
+  if (content.trim().startsWith("import")) {
+    const imports: string[] = [];
+    const lines = content.split("\n");
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("import") || /^\s*\)/.test(trimmed)) continue;
+      imports.push(trimmed);
+    }
+    return {
+      ...region,
+      kind: "imports",
+      imports: imports.length > 0 ? imports : undefined,
+    };
+  }
+
+  const sigMatch = content.match(funcSignatureRe);
+  if (sigMatch) {
+    const signature = sigMatch[1];
+    const methodName = sigMatch[2];
+
+    let symbolName = methodName;
+    if (content.startsWith("func (")) {
+      const recvMatch = content.match(/^func\s+\([^)]*?(\w+)\)/);
+      if (recvMatch) {
+        symbolName = recvMatch[1] + "." + methodName;
+      }
+    }
+
+    const bodyStart = content.indexOf("{");
+    const bodyEnd = content.lastIndexOf("}");
+    const body = bodyStart >= 0 && bodyEnd > bodyStart ? content.slice(bodyStart + 1, bodyEnd) : "";
+
+    return {
+      ...region,
+      content: body,
+      symbolName,
+      signature,
+      kind: content.startsWith("func (") ? "method" : "function",
+      expectsUserCode: region.id.endsWith(".handler"),
+      isStub: region.id.endsWith(".usecase.impl") || region.id.endsWith(".impl"),
+    };
+  }
+
+  const typeMatch = content.match(typeRe);
+  if (typeMatch) {
+    return {
+      ...region,
+      symbolName: typeMatch[1],
+      kind: content.includes(" struct")
+        ? "struct"
+        : content.includes(" interface")
+          ? "interface"
+          : "type",
+    };
+  }
+
+  const varMatch = content.match(varRe);
+  if (varMatch) {
+    return {
+      ...region,
+      symbolName: varMatch[1],
+      kind: content.startsWith("const") ? "const" : "var",
+    };
+  }
+
+  return region;
 }

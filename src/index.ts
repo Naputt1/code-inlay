@@ -10,6 +10,7 @@ export * from "./env.js";
 export * from "./srvgen.js";
 export * from "./cache.js";
 export * from "./writer.js";
+export * from "./go-writer.js";
 export * from "./plugins.js";
 export * from "./sandbox.js";
 export * from "./metadata.js";

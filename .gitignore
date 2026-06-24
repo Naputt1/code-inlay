@@ -4,5 +4,4 @@ dist
 docs/.vitepress/cache
 docs/.vitepress/dist
 test-project/
-*.go
 sample-project/

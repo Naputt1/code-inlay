@@ -348,6 +348,16 @@ export type GenerationAst = {
   files: GeneratedFilePatch[];
 };
 
+export type GoSymKind =
+  | "function"
+  | "method"
+  | "struct"
+  | "interface"
+  | "type"
+  | "const"
+  | "var"
+  | "imports";
+
 export type GeneratedFilePatch = {
   path: string;
   regions: GeneratedRegion[];
@@ -361,6 +371,13 @@ export type GeneratedRegion = {
   language: "go" | "typescript" | "yaml" | "json" | "markdown";
   content: string;
   groupKey?: string;
+  symbolName?: string;
+  kind?: GoSymKind;
+  signature?: string;
+  receiver?: string;
+  imports?: string[];
+  expectsUserCode?: boolean;
+  isStub?: boolean;
 };
 
 export type TargetContext = {
@@ -566,6 +583,7 @@ export type DependencyNodeKind =
   | "architecture-layer"
   | "adapter-target"
   | "generated-region"
+  | "generated-symbol"
   | "file";
 
 export type DependencyNode = {
@@ -585,7 +603,9 @@ export type CompilerCache = {
   pluginManifestHash: string;
   dependencyGraph: DependencyGraph;
   regions: Record<string, CachedRegion>;
-  files: Record<string, { regions: string[] }>;
+  symbols: Record<string, CachedSymbol>;
+  symbolsByFile: Record<string, Record<string, string>>;
+  files: Record<string, { regions: string[]; symbols: string[] }>;
 };
 
 export type CachedRegion = {
@@ -595,4 +615,31 @@ export type CachedRegion = {
   file: string;
   owner?: string;
   groupKey?: string;
+};
+
+export type CachedSymbol = {
+  stableHash: string;
+  shortHash: string;
+  contentHash: string;
+  symbolName: string;
+  kind: GoSymKind;
+  file: string;
+  owner?: string;
+  expectsUserCode?: boolean;
+  isStub?: boolean;
+  imports?: string[];
+  signature?: string;
+  receiver?: string;
+};
+
+export type GoDeclaration = {
+  kind: GoSymKind;
+  symbolName: string;
+  receiver?: string;
+  signature?: string;
+  bodyStart: number;
+  bodyEnd: number;
+  startLine: number;
+  endLine: number;
+  imports?: string[];
 };

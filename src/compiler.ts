@@ -19,10 +19,11 @@ import { checkGoEnvironment } from "./env.js";
 import { createPluginRegistry, runTransformerStage, runTargets, runValidators } from "./plugins.js";
 import {
   buildDependencyGraph,
-  readCache,
-  writeCache,
-  validateCache,
+  buildSymbolsCache,
   invalidateChanged,
+  readCache,
+  validateCache,
+  writeCache,
 } from "./cache.js";
 import { atomicWritePatches, removeOrphanedRegions, validateBeforeWrite } from "./writer.js";
 
@@ -171,7 +172,13 @@ export async function compile(options: CompileOptions): Promise<CompileResult> {
     };
   }
 
-  const injected = atomicWritePatches(generation.files, cwd, app.options.fileCreation, diagnostics);
+  const injected = atomicWritePatches(
+    generation.files,
+    cwd,
+    app.options.fileCreation,
+    diagnostics,
+    cache,
+  );
 
   const currentPatchFiles = new Set(generation.files.map((f) => f.path));
   const currentRegionIds = new Set(generation.files.flatMap((f) => f.regions.map((r) => r.id)));
@@ -230,11 +237,12 @@ export async function compile(options: CompileOptions): Promise<CompileResult> {
         groupKey?: string;
       }
     > = {};
-    const files: Record<string, { regions: string[] }> = {};
+    const files: Record<string, { regions: string[]; symbols: string[] }> = {};
 
     for (const file of generation.files) {
       files[file.path] = {
         regions: file.regions.map((r) => r.stableHash ?? r.id),
+        symbols: file.regions.filter((r) => r.symbolName).map((r) => r.stableHash ?? r.id),
       };
       for (const region of file.regions) {
         const key = region.stableHash ?? region.id;
@@ -249,12 +257,16 @@ export async function compile(options: CompileOptions): Promise<CompileResult> {
       }
     }
 
+    const { symbols, symbolsByFile } = buildSymbolsCache(generation);
+
     writeCache(cwd, {
       compilerVersion: "0.2.0",
       astVersion: "2.0",
       pluginManifestHash,
       dependencyGraph,
       regions,
+      symbols,
+      symbolsByFile,
       files,
     });
   }
