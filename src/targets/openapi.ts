@@ -1,5 +1,6 @@
 import type { CodeTarget, GeneratedRegion } from "../types.js";
 import { pascalCase } from "../naming.js";
+import { mergeEntityIntoWrapper } from "../schema.js";
 
 export const openapiTarget: CodeTarget = {
   name: "openapi",
@@ -58,9 +59,17 @@ export const openapiTarget: CodeTarget = {
           operation.parameters = existing.concat(zodToQueryParams(route.query));
         }
 
-        if (route.response) {
+        const effectiveResponse = route.response
+          ? route.responseFormat
+            ? mergeEntityIntoWrapper(route.responseFormat.wrapper, route.response)
+            : route.response
+          : route.responseFormat
+            ? route.responseFormat.wrapper
+            : undefined;
+
+        if (effectiveResponse) {
           const resName = `${pascalCase(route.id)}${pascalCase(module.name)}Response`;
-          spec.components.schemas[resName] = zodToJsonSchema(route.response);
+          spec.components.schemas[resName] = zodToJsonSchema(effectiveResponse);
           operation.responses = {
             "200": {
               description: "Successful response",
