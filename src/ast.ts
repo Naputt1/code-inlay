@@ -6,11 +6,14 @@ import type {
   AdapterRef,
   AdapterSelection,
   AdapterTarget,
+  BackendExtension,
   Diagnostic,
   MiddlewareAst,
   ModuleAst,
   ResponseFormat,
   RouteAst,
+  ServiceDefinition,
+  ServiceExtensionResult,
 } from "./types.js";
 import { joinPath, serviceTypeName } from "./naming.js";
 import { stableHash } from "./hash.js";
@@ -28,6 +31,32 @@ export function buildAst(app: AppDefinition, diagnostics: Diagnostic[]): AppAst 
   const appAdapters = normalizeAdapterSelection(app.adapters ?? [router.adapter]);
   const appResponseFormat = app.options.responseFormat;
 
+  const extMap = new Map<string, BackendExtension>(
+    (app.extensions ?? []).map((e) => [e.name, e]),
+  );
+
+  const toAppService = (s: ServiceDefinition | ServiceExtensionResult): AppAst["services"][number] => {
+    if (s.kind === "ServiceExtensionResult") {
+      const ext = extMap.get(s.extension);
+      return {
+        name: s.name,
+        close: s.close,
+        typeName: serviceTypeName(s.name),
+        extension: s.extension,
+        extensionOptions: s.options,
+        provides: ext?.service?.provides,
+        dbAccessor: ext?.service?.dbAccessor,
+        dbType: ext?.service?.dbType,
+        dbTypePkg: ext?.service?.dbTypePkg,
+      };
+    }
+    return {
+      name: s.name,
+      close: s.close,
+      typeName: serviceTypeName(s.name),
+    };
+  };
+
   const ast: AppAst = {
     kind: "App",
     id: "app",
@@ -36,12 +65,8 @@ export function buildAst(app: AppDefinition, diagnostics: Diagnostic[]): AppAst 
     pluginData: {},
     architecture: appArchitecture,
     adapters: appAdapters,
-    services:
-      app.services?.map((s) => ({
-        name: s.name,
-        close: s.close,
-        typeName: serviceTypeName(s.name),
-      })) ?? [],
+    services: (app.services ?? []).map(toAppService),
+    serviceExtensions: app.extensions ?? [],
     router: {
       kind: "Router",
       id: "router",

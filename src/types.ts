@@ -94,6 +94,51 @@ export type ServiceDefinition = {
   close?: boolean;
 };
 
+export type ServiceFileCtx<TOptions> = {
+  name: string;
+  options: TOptions;
+  typeName: string;
+  implName: string;
+  ctorName: string;
+  close?: boolean;
+};
+
+export type DialectMethodCtx<TOptions> = {
+  method: RepositoryMethod;
+  baseEntity: string;
+  implName: string;
+  options: TOptions;
+};
+
+export type BackendExtension = {
+  name: string;
+  service?: {
+    provides?: "database";
+    optionsSchema: z.ZodType;
+    dbAccessor?: string;
+    dbType?: string;
+    dbTypePkg?: string;
+    goModules?: string[] | ((options: Record<string, unknown>) => string[]);
+    generateFile?: (ctx: ServiceFileCtx<Record<string, unknown>>) => string;
+    generateDialectMethod?: (ctx: DialectMethodCtx<Record<string, unknown>>) => string;
+  };
+};
+
+export type ServiceExtensionResult = {
+  kind: "ServiceExtensionResult";
+  name: string;
+  extension: string;
+  close?: boolean;
+  options: Record<string, unknown>;
+};
+
+export type RepositoryMethod = {
+  name: string;
+  params: string;
+  results: string;
+  entityName: string;
+};
+
 export type CompileSettings = {
   fileCreation: FileCreationMode;
   usecaseOrganization?: UsecaseOrganization;
@@ -166,7 +211,8 @@ export type AppDefinition = {
   adapters?: AdapterRef[] | AdapterSelection;
   router?: RouterDefinition;
   modules: ModuleDefinition[];
-  services?: ServiceDefinition[];
+  extensions?: BackendExtension[];
+  services?: (ServiceDefinition | ServiceExtensionResult)[];
   transformers: AstTransformer[];
   plugins: BackendCompilerPlugin[];
   targets?: CodeTarget[];
@@ -188,6 +234,12 @@ export type AppServiceDef = {
   name: string;
   close?: boolean;
   typeName: string;
+  extension?: string;
+  extensionOptions?: Record<string, unknown>;
+  provides?: string;
+  dbAccessor?: string;
+  dbType?: string;
+  dbTypePkg?: string;
 };
 
 export type AppAst = AstNodeBase<"App"> & {
@@ -196,6 +248,7 @@ export type AppAst = AstNodeBase<"App"> & {
   router: RouterAst;
   modules: ModuleAst[];
   services: AppServiceDef[];
+  serviceExtensions: BackendExtension[];
   plugins: BackendCompilerPlugin[];
   targets: CodeTarget[];
   options: CompileSettings;

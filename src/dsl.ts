@@ -1,3 +1,4 @@
+import { z } from "zod";
 import type {
   AdapterRef,
   AppDefinition,
@@ -6,8 +7,10 @@ import type {
   ArchitectureSelection,
   AstTransformer,
   BackendCompilerPlugin,
+  BackendExtension,
   CodeTarget,
   CompileSettings,
+  DialectMethodCtx,
   HttpMethod,
   MetadataConfig,
   MiddlewareDefinition,
@@ -20,6 +23,8 @@ import type {
   RuntimeConfig,
   SchemaLike,
   ServiceDefinition,
+  ServiceExtensionResult,
+  ServiceFileCtx,
   TestingConfig,
   AdapterSelection,
   UsecaseOrganization,
@@ -105,12 +110,43 @@ export function defineModule(input: {
   };
 }
 
-export function defineService(input: { name: string; close?: boolean }): ServiceDefinition {
+export function defineService(input: {
+  name: string;
+  close?: boolean;
+}): ServiceDefinition {
   return {
     kind: "ServiceDefinition",
     name: input.name,
     close: input.close,
   };
+}
+
+export function defineServiceExtension<TOptions extends Record<string, unknown>>(
+  input: {
+    name: string;
+    service: {
+      provides?: "database";
+      optionsSchema: z.ZodType<TOptions>;
+      dbAccessor?: string;
+      dbType?: string;
+      dbTypePkg?: string;
+      goModules?: string[] | ((options: TOptions) => string[]);
+      generateFile?: (ctx: ServiceFileCtx<TOptions>) => string;
+      generateDialectMethod?: (ctx: DialectMethodCtx<TOptions>) => string;
+    };
+  },
+): BackendExtension & ((opts: { name: string; close?: boolean } & TOptions) => ServiceExtensionResult) {
+  const factory = (opts: { name: string; close?: boolean } & TOptions): ServiceExtensionResult => ({
+    kind: "ServiceExtensionResult",
+    name: opts.name,
+    extension: input.name,
+    close: opts.close,
+    options: input.service.optionsSchema.parse(opts) as Record<string, unknown>,
+  });
+  return Object.defineProperties(factory, {
+    name: { value: input.name, writable: false },
+    service: { value: input.service, writable: false },
+  }) as BackendExtension & ((opts: { name: string; close?: boolean } & TOptions) => ServiceExtensionResult);
 }
 
 export function defineRouter(input: {
@@ -132,7 +168,8 @@ export function defineApp(input: {
   adapters?: AdapterRef[] | AdapterSelection;
   router?: RouterDefinition;
   modules: ModuleDefinition[];
-  services?: ServiceDefinition[];
+  extensions?: BackendExtension[];
+  services?: (ServiceDefinition | ServiceExtensionResult)[];
   transformers?: AstTransformer[];
   plugins?: BackendCompilerPlugin[];
   targets?: CodeTarget[];
@@ -148,6 +185,7 @@ export function defineApp(input: {
     adapters: input.adapters,
     router: input.router,
     modules: input.modules,
+    extensions: input.extensions,
     services: input.services ?? [],
     transformers: input.transformers ?? [],
     plugins: input.plugins ?? [],

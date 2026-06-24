@@ -1,9 +1,8 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { z } from "zod";
 import { describe, expect, it } from "vitest";
-import { compile, defineApp, defineModule, defineRoute, defineRouter } from "../src/index.js";
+import { compile, defineApp, defineModule, defineRoute, defineRouter, defineService, defineServiceExtension, z } from "../src/index.js";
 
 describe("compiler", () => {
   it("generates deterministic clean architecture patches", async () => {
@@ -592,6 +591,9 @@ describe("compiler", () => {
         "Update(ctx context.Context, id StaffID, entity Staff) (Staff, error)",
       );
       expect(content).toContain("Delete(ctx context.Context, id StaffID) error");
+      expect(content).not.toContain("import (");
+      expect(content).not.toContain("gorm.io/gorm");
+      expect(content).not.toContain("staffRepositoryImpl");
     });
 
     it("infers sub-entity methods for context-prefixed route ids", async () => {
@@ -644,6 +646,7 @@ describe("compiler", () => {
         "UpdateTime(ctx context.Context, id BusID, entity BusTime) (BusTime, error)",
       );
       expect(content).toContain("DeleteTime(ctx context.Context, id BusID) error");
+      expect(content).not.toContain("busRepositoryImpl");
     });
 
     it("deduplicates identical methods across routes", async () => {
@@ -670,8 +673,12 @@ describe("compiler", () => {
       expect(repoRegion).toBeDefined();
 
       const content = repoRegion!.content;
-      const occurrences = content.split("FindAll").length - 1;
-      expect(occurrences).toBe(1);
+      expect(content).toContain("type ItemRepository interface");
+      expect(content).not.toContain("itemRepositoryImpl");
+      const interfaceMatch = content.match(/interface \{[\s\S]*?\n\}/);
+      expect(interfaceMatch).toBeDefined();
+      const findAllInInterface = interfaceMatch![0].match(/FindAll/g);
+      expect(findAllInInterface).toEqual(["FindAll"]);
     });
 
     it("skips non-CRUD handlers without generating a method", async () => {
@@ -698,11 +705,113 @@ describe("compiler", () => {
       expect(repoRegion).toBeDefined();
 
       const content = repoRegion!.content;
+      expect(content).toContain("type AuthRepository interface");
       expect(content).toContain(
         "// Add developer-owned persistence methods outside generated regions as needed.",
       );
       expect(content).not.toContain("Login");
       expect(content).not.toContain("Logout");
+      expect(content).not.toContain("authRepositoryImpl");
+    });
+  });
+
+  describe("gorm repository integration", () => {
+    it("wires repo constructor via dbProvider service accessor and generates GORM impl", async () => {
+      const gorm = defineServiceExtension({
+        name: "gorm",
+        service: {
+          provides: "database",
+          optionsSchema: z.object({
+            driver: z.enum(["mysql", "postgres", "sqlite"]),
+          }),
+          dbAccessor: "DB",
+          dbType: "*gorm.DB",
+          dbTypePkg: "gorm.io/gorm",
+        },
+      });
+
+      const app = defineApp({
+        architecture: "clean",
+        router: defineRouter({ adapter: "gin" }),
+        extensions: [gorm],
+        services: [
+          gorm({ name: "mygorm", driver: "mysql", close: true }),
+          defineService({ name: "db", close: true }),
+        ],
+        modules: [
+          defineModule({
+            name: "ticket",
+            services: ["db", "mygorm"],
+            routes: [
+              defineRoute({ id: "list", method: "GET", path: "", handler: "ListTicket" }),
+              defineRoute({ id: "get", method: "GET", path: "/:id", handler: "GetTicket" }),
+              defineRoute({ id: "create", method: "POST", path: "/create", handler: "CreateTicket" }),
+            ],
+          }),
+        ],
+      });
+
+      const result = await compile({ app, dryRun: true });
+      expect(result.diagnostics.filter((d) => d.level === "error")).toEqual([]);
+
+      const routeFile = result.generation.files.find((f) => f.path.endsWith("ticket_routes.go"));
+      expect(routeFile).toBeDefined();
+
+      const routeRegion = routeFile!.regions.find((r) => r.id.startsWith("routes.register"));
+      expect(routeRegion).toBeDefined();
+
+      const content = routeRegion!.content;
+      expect(content).toContain("func registerTicketRoutes(api *gin.RouterGroup, mygormSvc service.MygormService, dbSvc service.DbService)");
+      expect(content).not.toContain("nil /*repo TODO*/");
+      expect(content).toContain("ticket.NewTicketRepository(mygormSvc.DB())");
+
+      const repoFile = result.generation.files.find((f) => f.path.endsWith("ticket/repo.go"));
+      expect(repoFile).toBeDefined();
+      const repoContent = repoFile!.regions.find((r) => r.id === "ticket.repository")!.content;
+      expect(repoContent).toContain("import");
+      expect(repoContent).toContain('"context"');
+      expect(repoContent).toContain('"gorm.io/gorm"');
+      expect(repoContent).toContain("type ticketRepositoryImpl struct");
+      expect(repoContent).toContain("func NewTicketRepository(db *gorm.DB) *ticketRepositoryImpl");
+
+      const svcFile = result.generation.files.find((f) => f.path.endsWith("service/mygorm.go"));
+      expect(svcFile).toBeDefined();
+      const svcContent = svcFile!.regions.find((r) => r.id === "service.mygorm")!.content;
+      expect(svcContent).toContain('import "gorm.io/gorm"');
+      expect(svcContent).toContain("MygormService interface");
+      expect(svcContent).toContain("DB() *gorm.DB");
+      expect(svcContent).toContain("func (s *mygormServiceImpl) DB() *gorm.DB");
+    });
+
+    it("keeps nil /*repo TODO*/ when module has no DB provider", async () => {
+      const app = defineApp({
+        architecture: "clean",
+        router: defineRouter({ adapter: "gin" }),
+        services: [defineService({ name: "db", close: true })],
+        modules: [
+          defineModule({
+            name: "ticket",
+            services: ["db"],
+            routes: [
+              defineRoute({ id: "list", method: "GET", path: "", handler: "ListTicket" }),
+            ],
+          }),
+        ],
+      });
+
+      const result = await compile({ app, dryRun: true });
+      expect(result.diagnostics.filter((d) => d.level === "error")).toEqual([]);
+
+      const routeFile = result.generation.files.find((f) => f.path.endsWith("ticket_routes.go"));
+      expect(routeFile).toBeDefined();
+      const routeRegion = routeFile!.regions.find((r) => r.id.startsWith("routes.register"));
+      expect(routeRegion).toBeDefined();
+      expect(routeRegion!.content).toContain("nil /*repo TODO*/");
+
+      const repoFile = result.generation.files.find((f) => f.path.endsWith("ticket/repo.go"));
+      expect(repoFile).toBeDefined();
+      const repoContent = repoFile!.regions.find((r) => r.id === "ticket.repository")!.content;
+      expect(repoContent).not.toContain("ticketRepositoryImpl");
     });
   });
 

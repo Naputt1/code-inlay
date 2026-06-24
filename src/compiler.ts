@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync, readdirSync, statSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { resolve } from "node:path";
@@ -54,6 +55,29 @@ export async function compile(options: CompileOptions): Promise<CompileResult> {
   }
 
   let generation = generateCode(ast, architecture, diagnostics, moduleInfo);
+
+  if (moduleInfo) {
+    for (const svc of ast.services) {
+      if (!svc.extension) continue;
+      const ext = ast.serviceExtensions.find((e) => e.name === svc.extension);
+      const gm = ext?.service?.goModules;
+      if (!gm) continue;
+      const modules = typeof gm === "function"
+        ? gm(svc.extensionOptions ?? {})
+        : gm;
+      for (const mod of modules) {
+        const result = spawnSync("go", ["get", mod], { cwd, stdio: "pipe", encoding: "utf8" });
+        if (result.status !== 0) {
+          diagnostics.push({
+            level: "error",
+            code: "go-get-failed",
+            message: `Failed to run "go get ${mod}": ${(result.stderr || result.stdout || "unknown error").trim()}`,
+          });
+        }
+      }
+    }
+  }
+
   ast = await runTransformerStage("codegen", ast, registry, diagnostics);
   ast = await runTransformerStage("postTransform", ast, registry, diagnostics);
 

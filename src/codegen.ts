@@ -2,10 +2,12 @@ import type {
   AppAst,
   AppServiceDef,
   ArchitectureAst,
+  BackendExtension,
   Diagnostic,
   GeneratedFilePatch,
   GeneratedRegion,
   GenerationAst,
+  RepositoryMethod,
   RouteAst,
 } from "./types.js";
 import type { GoModuleInfo } from "./env.js";
@@ -182,19 +184,6 @@ export function generateCode(
     });
   }
 
-  for (const [moduleName, routes] of repositoryRoutesByModule) {
-    const repoFile = featuresPath(`internal/${moduleName}/repo.go`, featuresDir);
-    const regionId = `${moduleName}.repository`;
-    const repoContent = generateRepository(routes, moduleName);
-    add(repoFile, {
-      id: regionId,
-      stableHash: `${regionId}:${moduleName}:${routes.length}routes`,
-      owner: "code-inlay",
-      language: "go",
-      content: repoContent,
-    });
-  }
-
   // Resolve services for a module: by name match + explicit module.services config
   const getModuleServices = (moduleName: string): AppServiceDef[] => {
     const mod = ast.modules.find((m) => m.name === moduleName);
@@ -214,10 +203,25 @@ export function generateCode(
     return services;
   };
 
+  for (const [moduleName, routes] of repositoryRoutesByModule) {
+    const repoFile = featuresPath(`internal/${moduleName}/repo.go`, featuresDir);
+    const regionId = `${moduleName}.repository`;
+    const moduleSvcs = getModuleServices(moduleName);
+    const dbProvider = moduleSvcs.find((s) => s.dbAccessor);
+    const repoContent = generateRepository(routes, moduleName, dbProvider, ast.serviceExtensions);
+    add(repoFile, {
+      id: regionId,
+      stableHash: `${regionId}:${moduleName}:${routes.length}routes`,
+      owner: "code-inlay",
+      language: "go",
+      content: repoContent,
+    });
+  }
+
   // Generate service files at internal/service/<name>.go
   for (const svc of ast.services) {
     const svcFile = serviceFilePath(svc.name);
-    const content = generateServiceFile(svc);
+    const content = generateServiceFile(svc, ast.serviceExtensions);
     add(svcFile, {
       id: serviceRegionId(svc.name),
       stableHash: `service:${svc.name}`,
@@ -273,7 +277,8 @@ export function generateCode(
     const groupKey = resolveUsecaseGroupKey(route, org);
     const hasRepository = repositoryModules.has(route.moduleName);
     const moduleServices = getModuleServices(route.moduleName);
-    const serviceTypes = moduleServices.map((s) => serviceTypeName(s.name));
+    const nonDbServices = moduleServices.filter((s) => !s.dbAccessor);
+    const serviceTypes = nonDbServices.map((s) => serviceTypeName(s.name));
     const info = [...usecaseFileInfo.entries()].find(
       ([, v]) => v.moduleName === route.moduleName && v.groupKey === groupKey,
     );
@@ -322,14 +327,29 @@ export function generateCode(
           moduleImports.push(`"${moduleInfo.modulePath}/internal/service"`);
         }
         const usecaseFields: string[] = [];
+        const dbProvider = moduleServices.find((s) => s.dbAccessor);
+        const nonDbSvcs = dbProvider
+          ? moduleServices.filter((s) => s !== dbProvider)
+          : moduleServices;
+        const repoVarName = `${lowerIdent(modPkg)}Repo`;
+        if (repositoryModules.has(modPkg) && dbProvider) {
+          handlerInitLines.push(
+            `\t${repoVarName} := ${modPkg}.New${pascalCase(modPkg)}Repository(${lowerIdent(dbProvider.name)}Svc.${dbProvider.dbAccessor}())`,
+          );
+          handlerInitLines.push(``);
+        }
         for (const expansion of architecture.routes) {
           if (expansion.route.moduleName !== modPkg) continue;
           const layers = new Set(expansion.layers.map((l) => l.kind));
           if (!layers.has("handler") && !layers.has("usecase")) continue;
           const handlerName = expansion.route.handlerName;
           if (moduleServices.length > 0) {
-            const repoArg = repositoryModules.has(modPkg) ? "nil /*repo TODO*/, " : "";
-            const svcArgs = moduleServices.map((s) => `${lowerIdent(s.name)}Svc`).join(", ");
+            const repoArg = repositoryModules.has(modPkg)
+              ? dbProvider
+                ? `${repoVarName}, `
+                : "nil /*repo TODO*/, "
+              : "";
+            const svcArgs = nonDbSvcs.map((s) => `${lowerIdent(s.name)}Svc`).join(", ");
             usecaseFields.push(
               `\t\t${handlerName}Usecase: ${modPkg}.New${handlerName}Usecase(${repoArg}${svcArgs}),`,
             );
@@ -467,7 +487,6 @@ export function generateCode(
       combinedBody.push(`\t${funcName}(${callArgs.join(", ")})`);
     }
     combinedBody.push(`}`);
-
     add("internal/http/routes.go", {
       id: "routes.register",
       stableHash: `internal/http/routes.go:register`,
@@ -559,12 +578,6 @@ function generateDomain(moduleName: string, routes: RouteAst[], diagnostics: Dia
   return parts.join("\n\n");
 }
 
-type RepositoryMethod = {
-  name: string;
-  params: string;
-  results: string;
-};
-
 function inferRepositoryMethod(route: RouteAst, moduleName: string): RepositoryMethod | null {
   const handler = route.handlerName;
   const pathParams = extractPathParams(route.path);
@@ -586,6 +599,7 @@ function inferRepositoryMethod(route: RouteAst, moduleName: string): RepositoryM
         name: context ? `FindAll${pascalCase(context)}` : "FindAll",
         params: "ctx context.Context",
         results: `([]${entityName}, error)`,
+        entityName,
       };
     case "Get":
       if (!hasID) return null;
@@ -593,6 +607,7 @@ function inferRepositoryMethod(route: RouteAst, moduleName: string): RepositoryM
         name: context ? `Find${pascalCase(context)}ByID` : "FindByID",
         params: `ctx context.Context, id ${baseEntity}ID`,
         results: `(${entityName}, error)`,
+        entityName,
       };
     case "Create":
     case "New":
@@ -600,6 +615,7 @@ function inferRepositoryMethod(route: RouteAst, moduleName: string): RepositoryM
         name: context ? `Create${pascalCase(context)}` : "Create",
         params: `ctx context.Context, entity ${entityName}`,
         results: `(${entityName}, error)`,
+        entityName,
       };
     case "Update":
     case "Edit":
@@ -608,6 +624,7 @@ function inferRepositoryMethod(route: RouteAst, moduleName: string): RepositoryM
         name: context ? `Update${pascalCase(context)}` : "Update",
         params: `ctx context.Context, id ${baseEntity}ID, entity ${entityName}`,
         results: `(${entityName}, error)`,
+        entityName,
       };
     case "Delete":
     case "Remove":
@@ -616,6 +633,7 @@ function inferRepositoryMethod(route: RouteAst, moduleName: string): RepositoryM
         name: context ? `Delete${pascalCase(context)}` : "Delete",
         params: `ctx context.Context, id ${baseEntity}ID`,
         results: "error",
+        entityName,
       };
     case "Set": {
       let field = entityPart;
@@ -625,6 +643,7 @@ function inferRepositoryMethod(route: RouteAst, moduleName: string): RepositoryM
         name: `Set${field}`,
         params: hasID ? `ctx context.Context, id ${baseEntity}ID` : "ctx context.Context",
         results: "error",
+        entityName,
       };
     }
     default:
@@ -632,8 +651,18 @@ function inferRepositoryMethod(route: RouteAst, moduleName: string): RepositoryM
   }
 }
 
-function generateRepository(routes: RouteAst[], moduleName: string): string {
+function generateRepository(
+  routes: RouteAst[],
+  moduleName: string,
+  dbProvider: AppServiceDef | undefined,
+  extensions: BackendExtension[],
+): string {
   const typeName = pascalCase(moduleName);
+  const baseEntity = typeName;
+  const implName = `${lowerIdent(moduleName)}RepositoryImpl`;
+  const dbType = dbProvider?.dbType ?? "*gorm.DB";
+  const dbTypePkg = dbProvider?.dbTypePkg ?? "";
+  const dialect = dbProvider?.extension;
   const seen = new Map<string, RepositoryMethod>();
 
   for (const route of routes) {
@@ -645,17 +674,85 @@ function generateRepository(routes: RouteAst[], moduleName: string): string {
     }
   }
 
-  if (seen.size === 0) {
-    return [
-      `type ${typeName}Repository interface {`,
-      `\t// Add developer-owned persistence methods outside generated regions as needed.`,
-      `}`,
-    ].join("\n");
+  const parts: string[] = [];
+
+  if (dbProvider) {
+    parts.push(`import (`);
+    parts.push(`\t"context"`);
+    if (dbTypePkg) {
+      parts.push(`\t"${dbTypePkg}"`);
+    }
+    parts.push(`)`);
+    parts.push(``);
   }
 
-  const body = [...seen.values()].map((m) => `\t${m.name}(${m.params}) ${m.results}`).join("\n");
+  if (seen.size === 0) {
+    parts.push(`type ${typeName}Repository interface {`);
+    parts.push(`\t// Add developer-owned persistence methods outside generated regions as needed.`);
+    parts.push(`}`);
+  } else {
+    const body = [...seen.values()].map((m) => `\t${m.name}(${m.params}) ${m.results}`).join("\n");
+    parts.push(`type ${typeName}Repository interface {`);
+    parts.push(body);
+    parts.push(`}`);
+  }
 
-  return [`type ${typeName}Repository interface {`, body, `}`].join("\n");
+  if (!dbProvider || seen.size === 0) {
+    return parts.join("\n");
+  }
+
+  parts.push(``);
+  parts.push(`type ${implName} struct {`);
+  parts.push(`\tdb ${dbType}`);
+  parts.push(`}`);
+  parts.push(``);
+  parts.push(`func New${typeName}Repository(db ${dbType}) *${implName} {`);
+  parts.push(`\treturn &${implName}{db: db}`);
+  parts.push(`}`);
+
+  for (const method of seen.values()) {
+    parts.push(``);
+    parts.push(generateDialectMethod(method, baseEntity, implName, dialect, extensions, dbProvider?.extensionOptions));
+  }
+
+  return parts.join("\n");
+}
+
+function generateDialectMethod(
+  method: RepositoryMethod,
+  baseEntity: string,
+  implName: string,
+  dialect?: string,
+  extensions?: BackendExtension[],
+  extensionOptions?: Record<string, unknown>,
+): string {
+  if (dialect && extensions) {
+    const ext = extensions.find((e) => e.name === dialect);
+    if (ext?.service?.generateDialectMethod) {
+      const ctx = { method, baseEntity, implName, options: extensionOptions ?? {} };
+      return ext.service.generateDialectMethod(ctx);
+    }
+  }
+  return generateDefaultStub(method, implName);
+}
+
+function generateDefaultStub(method: RepositoryMethod, implName: string): string {
+  return [
+    `func (r *${implName}) ${method.name}(${method.params}) ${method.results} {`,
+    `\t// TODO: implement ${method.name}`,
+    `\treturn ${getZeroValue(method.results)}`,
+    `}`,
+  ].join("\n");
+}
+
+function getZeroValue(results: string): string {
+  if (results === "error") return "nil";
+  if (results.startsWith("(") && results.endsWith(", error)")) {
+    const inner = results.slice(1, -", error)".length);
+    if (inner.includes("[]")) return "nil, nil";
+    return `${inner}{}, nil`;
+  }
+  return "nil, nil";
 }
 
 function generateUsecase(route: RouteAst): string {
@@ -666,13 +763,36 @@ function generateUsecase(route: RouteAst): string {
   ].join("\n");
 }
 
-function generateServiceFile(svc: AppServiceDef): string {
+function generateServiceFile(svc: AppServiceDef, extensions?: BackendExtension[]): string {
   const typeName = serviceTypeName(svc.name);
   const implName = serviceImplName(svc.name);
   const ctorName = serviceConstructorName(svc.name);
+
+  if (svc.extension && extensions) {
+    const ext = extensions.find((e) => e.name === svc.extension);
+    if (ext?.service?.generateFile) {
+      return ext.service.generateFile({
+        name: svc.name,
+        options: svc.extensionOptions ?? {},
+        typeName,
+        implName,
+        ctorName,
+        close: svc.close,
+      });
+    }
+  }
+
   const lines: string[] = [];
 
+  if (svc.dbTypePkg) {
+    lines.push(`import "${svc.dbTypePkg}"`);
+    lines.push(``);
+  }
+
   lines.push(`type ${typeName} interface {`);
+  if (svc.dbAccessor && svc.dbType) {
+    lines.push(`\t${svc.dbAccessor}() ${svc.dbType}`);
+  }
   if (svc.close) {
     lines.push(`\tClose() error`);
   }
@@ -683,6 +803,13 @@ function generateServiceFile(svc: AppServiceDef): string {
   lines.push(`func ${ctorName}() (*${implName}, error) {`);
   lines.push(`\treturn &${implName}{}, nil`);
   lines.push(`}`);
+  if (svc.dbAccessor && svc.dbType) {
+    lines.push(``);
+    lines.push(`func (s *${implName}) ${svc.dbAccessor}() ${svc.dbType} {`);
+    lines.push(`\t// TODO: return initialized ${svc.dbType}`);
+    lines.push(`\treturn nil`);
+    lines.push(`}`);
+  }
   if (svc.close) {
     lines.push(``);
     lines.push(`func (s *${implName}) Close() error {`);
