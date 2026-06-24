@@ -105,7 +105,7 @@ export async function compile(options: CompileOptions): Promise<CompileResult> {
         regions: file.regions.map((region) => ({
           ...region,
           content:
-            region.language === "go"
+            region.language === "go" && !region.symbolName
               ? formatGoSnippet(region.content, diagnostics, region.id)
               : region.content,
         })),

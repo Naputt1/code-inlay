@@ -41,12 +41,19 @@ describe("service layer", () => {
     expect(serviceFile).toBeDefined();
     expect(serviceFile!.regions.length).toBeGreaterThan(0);
 
-    const region = serviceFile!.regions[0];
-    expect(region.content).toContain("type PaymentService interface");
-    expect(region.content).toContain("Close() error");
-    expect(region.content).toContain("type paymentServiceImpl struct");
-    expect(region.content).toContain("func NewPaymentService() (*paymentServiceImpl, error)");
-    expect(region.content).toContain("func (s *paymentServiceImpl) Close() error");
+    const ifaceRegion = serviceFile!.regions.find((r) => r.id === "service.payment");
+    expect(ifaceRegion).toBeDefined();
+    expect(ifaceRegion!.content).toContain("type PaymentService interface");
+    expect(ifaceRegion!.content).toContain("Close() error");
+    const structRegion = serviceFile!.regions.find((r) => r.id === "service.payment.1struct");
+    expect(structRegion).toBeDefined();
+    expect(structRegion!.content).toContain("type paymentServiceImpl struct");
+    const ctorRegion = serviceFile!.regions.find((r) => r.id === "service.payment.2ctor");
+    expect(ctorRegion).toBeDefined();
+    expect(ctorRegion!.signature).toBe("func NewPaymentService() (*paymentServiceImpl, error)");
+    const closeRegion = serviceFile!.regions.find((r) => r.id === "service.payment.3Close");
+    expect(closeRegion).toBeDefined();
+    expect(closeRegion!.content).toContain("return nil");
   });
 
   it("generates service without Close when close is false", async () => {
@@ -77,11 +84,16 @@ describe("service layer", () => {
     );
     expect(serviceFile).toBeDefined();
 
-    const region = serviceFile!.regions[0];
-    expect(region.content).toContain("type SearchService interface");
-    expect(region.content).not.toContain("Close()");
-    expect(region.content).toContain("type searchServiceImpl struct");
-    expect(region.content).toContain("func NewSearchService() (*searchServiceImpl, error)");
+    const ifaceRegion = serviceFile!.regions.find((r) => r.id === "service.search");
+    expect(ifaceRegion).toBeDefined();
+    expect(ifaceRegion!.content).toContain("type SearchService interface");
+    expect(ifaceRegion!.content).not.toContain("Close()");
+    const structRegion = serviceFile!.regions.find((r) => r.id === "service.search.1struct");
+    expect(structRegion).toBeDefined();
+    expect(structRegion!.content).toContain("type searchServiceImpl struct");
+    const ctorRegion = serviceFile!.regions.find((r) => r.id === "service.search.2ctor");
+    expect(ctorRegion).toBeDefined();
+    expect(ctorRegion!.signature).toBe("func NewSearchService() (*searchServiceImpl, error)");
   });
 
   it("injects service into usecase scaffold constructor", async () => {
