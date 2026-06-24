@@ -7,6 +7,7 @@ import type {
 } from "../types.js";
 import { extractPathParams, pascalCase } from "../naming.js";
 import { contentHash } from "../hash.js";
+import { mergeEntityIntoWrapper } from "../schema.js";
 
 export const tsClientTarget: CodeTarget = {
   name: "ts-client",
@@ -198,9 +199,17 @@ function generateTypesForRoute(route: RouteAst, moduleName: string): GeneratedRe
     });
   }
 
-  if (route.response) {
+  const effectiveResponse = route.response
+    ? route.responseFormat
+      ? mergeEntityIntoWrapper(route.responseFormat.wrapper, route.response)
+      : route.response
+    : route.responseFormat
+      ? route.responseFormat.wrapper
+      : undefined;
+
+  if (effectiveResponse) {
     const name = routeTypeName(route, "Response");
-    const interfaceStr = generateObjectInterface(name, route.response);
+    const interfaceStr = generateObjectInterface(name, effectiveResponse);
     regions.push({
       id: `client.types.${moduleName}.${route.id}.response`,
       stableHash: `ts-client:types:${moduleName}:${route.id}:response`,

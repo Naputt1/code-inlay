@@ -491,7 +491,7 @@ export function extractEntityContext(routeId: string): string {
   return "";
 }
 
-function mergeEntityIntoWrapper(wrapperSchema: SchemaLike, entitySchema: SchemaLike): SchemaLike {
+export function mergeEntityIntoWrapper(wrapperSchema: SchemaLike, entitySchema: SchemaLike): SchemaLike {
   return replaceEntity(wrapperSchema, entitySchema);
 }
 
