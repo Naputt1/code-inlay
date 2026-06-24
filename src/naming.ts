@@ -42,7 +42,7 @@ export function defaultFileForLayer(route: RouteAst, layer: string, featuresDir?
       case "handler":
         return `internal/${route.moduleName}/handler.go`;
       case "usecase":
-        return fileForUsecaseGroup(route.moduleName, "default", featuresDir);
+        return fileForUsecaseGroup(route.moduleName, "default");
       case "repository":
         return `internal/${route.moduleName}/repo.go`;
       case "route":

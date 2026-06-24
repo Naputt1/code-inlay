@@ -972,3 +972,124 @@ describe("compiler", () => {
     expect(scaffoldRegions.length).toBe(0);
   });
 });
+
+describe("multi-architecture", () => {
+  it("composes layers from multiple architectures in append mode", async () => {
+    const route = defineRoute({
+      id: "create",
+      method: "POST",
+      path: "/users",
+      handler: "CreateUser",
+    });
+
+    const app = defineApp({
+      architecture: "clean",
+      modules: [
+        defineModule({
+          name: "user",
+          architecture: { mode: "append", refs: ["atomic"] },
+          routes: [route],
+        }),
+      ],
+    });
+
+    const result = await compile({ app, dryRun: true });
+    const expansion = result.architecture?.routes[0];
+    const layerKinds = expansion?.layers.map((l) => `${l.kind}:${l.owner}`) ?? [];
+
+    expect(layerKinds.some((k) => k.startsWith("entity:"))).toBe(true);
+    expect(layerKinds.some((k) => k.startsWith("handler:"))).toBe(true);
+    const dupSymbols = result.diagnostics.filter((d) => d.code === "duplicate-symbol");
+    expect(dupSymbols.length).toBeGreaterThanOrEqual(1);
+    const dupRegionIds = result.diagnostics.filter((d) => d.code === "duplicate-region-id");
+    expect(dupRegionIds.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("detects duplicate symbols across architectures", async () => {
+    const route = defineRoute({
+      id: "create",
+      method: "POST",
+      path: "/users",
+      handler: "CreateUser",
+    });
+
+    const app = defineApp({
+      architecture: "minimal",
+      modules: [
+        defineModule({
+          name: "user",
+          architecture: { mode: "append", refs: ["layered"] },
+          routes: [route],
+        }),
+      ],
+    });
+
+    const result = await compile({ app, dryRun: true });
+    const hasDupSymbol = result.diagnostics.some((d) => d.code === "duplicate-symbol");
+    expect(hasDupSymbol).toBe(true);
+  });
+});
+
+describe("multi-adapter", () => {
+  it("handles multiple adapters per route", async () => {
+    const route = defineRoute({
+      id: "get",
+      method: "GET",
+      path: "/users/:id",
+      handler: "GetUser",
+    });
+
+    const app = defineApp({
+      architecture: "clean",
+      adapters: ["gin"],
+      modules: [defineModule({ name: "user", routes: [route] })],
+    });
+
+    const result = await compile({ app, dryRun: true });
+    const regionIds = result.generation.files.flatMap((f) => f.regions.map((r) => r.id));
+
+    expect(regionIds.some((id) => id.includes("handler"))).toBe(true);
+    expect(regionIds.some((id) => id.includes("route"))).toBe(true);
+  });
+});
+
+describe("pipeline integration", () => {
+  it("runs full pipeline without errors", async () => {
+    const route = defineRoute({
+      id: "list",
+      method: "GET",
+      path: "/items",
+      handler: "ListItems",
+    });
+
+    const app = defineApp({
+      architecture: "clean",
+      modules: [defineModule({ name: "items", routes: [route] })],
+    });
+
+    const result = await compile({ app, dryRun: true });
+    expect(result.ast).toBeDefined();
+    expect(result.architecture).toBeDefined();
+    expect(result.generation).toBeDefined();
+    expect(result.diagnostics.filter((d) => d.level === "error")).toEqual([]);
+  });
+
+  it("generates deterministic output across runs", async () => {
+    const route = defineRoute({
+      id: "get",
+      method: "GET",
+      path: "/items/:id",
+      handler: "GetItem",
+    });
+
+    const app = defineApp({
+      architecture: "clean",
+      modules: [defineModule({ name: "items", routes: [route] })],
+    });
+
+    const first = await compile({ app, dryRun: true });
+    const second = await compile({ app, dryRun: true });
+
+    expect(first.generation).toEqual(second.generation);
+  });
+});
