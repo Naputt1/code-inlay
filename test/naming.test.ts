@@ -16,7 +16,6 @@ import {
   serviceImplName,
   serviceConstructorName,
   serviceRegionId,
-  serviceCloseRegionId,
   fileForUsecaseGroup,
   regionIdForUsecase,
   fileForModuleRoutes,
@@ -548,12 +547,6 @@ describe("serviceConstructorName", () => {
 describe("serviceRegionId", () => {
   it("formats as service.name", () => {
     expect(serviceRegionId("user")).toBe("service.user");
-  });
-});
-
-describe("serviceCloseRegionId", () => {
-  it("formats as service.name.close", () => {
-    expect(serviceCloseRegionId("user")).toBe("service.user.close");
   });
 });
 

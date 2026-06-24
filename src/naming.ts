@@ -159,10 +159,6 @@ export function serviceRegionId(name: string): string {
   return `service.${name}`;
 }
 
-export function serviceCloseRegionId(name: string): string {
-  return `service.${name}.close`;
-}
-
 export function fileForUsecaseGroup(
   moduleName: string,
   groupKey: string,
