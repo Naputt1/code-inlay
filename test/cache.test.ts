@@ -47,6 +47,8 @@ describe("cache + dependency graph", () => {
       pluginManifestHash: "testhash",
       dependencyGraph: { nodes: {}, edges: [] },
       regions: {},
+      symbols: {},
+      symbolsByFile: {},
       files: {},
     };
 
@@ -64,6 +66,8 @@ describe("cache + dependency graph", () => {
       pluginManifestHash: "abc",
       dependencyGraph: { nodes: {}, edges: [] },
       regions: {},
+      symbols: {},
+      symbolsByFile: {},
       files: {},
     };
 

@@ -850,17 +850,24 @@ describe("compiler", () => {
     const usecaseFile = result.generation.files.find((f) => f.path.endsWith("user/usecase.go"));
     expect(usecaseFile).toBeDefined();
 
-    const scaffoldRegion = usecaseFile!.regions.find((r) => r.id.endsWith("usecase.impl"));
-    expect(scaffoldRegion).toBeDefined();
+    const structRegion = usecaseFile!.regions.find(
+      (r) =>
+        r.id.endsWith(".usecase.impl") && !r.id.includes(".ctor") && !r.id.includes(".execute"),
+    );
+    const ctorRegion = usecaseFile!.regions.find((r) => r.id.endsWith(".usecase.impl.ctor"));
+    const execRegion = usecaseFile!.regions.find((r) => r.id.endsWith(".usecase.impl.execute"));
+    expect(structRegion).toBeDefined();
+    expect(ctorRegion).toBeDefined();
+    expect(execRegion).toBeDefined();
 
-    const content = scaffoldRegion!.content;
-    expect(content).toContain("type createUserUsecaseImpl struct");
-    expect(content).toContain("repo UserRepository");
-    expect(content).toContain("func NewCreateUserUsecase");
-    expect(content).toContain('panic("UserRepository must not be nil")');
-    expect(content).toContain("func (uc *createUserUsecaseImpl) Execute");
-    expect(content).toContain("// TODO: implement CreateUserUsecase");
-    expect(content).toContain("return CreateUserResponse{}, nil");
+    expect(structRegion!.content).toContain("type createUserUsecaseImpl struct");
+    expect(structRegion!.content).toContain("repo UserRepository");
+    expect(ctorRegion!.signature).toBe(
+      "func NewCreateUserUsecase(repo UserRepository) *createUserUsecaseImpl",
+    );
+    expect(ctorRegion!.content).toContain('panic("UserRepository must not be nil")');
+    expect(execRegion!.content).toContain("// TODO: implement CreateUserUsecase");
+    expect(execRegion!.content).toContain("return CreateUserResponse{}, nil");
   });
 
   it("generates usecase scaffold with repo dependency in clean architecture", async () => {
@@ -888,16 +895,23 @@ describe("compiler", () => {
     const usecaseFile = result.generation.files.find((f) => f.path.endsWith("auth/usecase.go"));
     expect(usecaseFile).toBeDefined();
 
-    const scaffoldRegion = usecaseFile!.regions.find((r) => r.id.endsWith("usecase.impl"));
-    expect(scaffoldRegion).toBeDefined();
+    const structRegion = usecaseFile!.regions.find(
+      (r) =>
+        r.id.endsWith(".usecase.impl") && !r.id.includes(".ctor") && !r.id.includes(".execute"),
+    );
+    const ctorRegion = usecaseFile!.regions.find((r) => r.id.endsWith(".usecase.impl.ctor"));
+    const execRegion = usecaseFile!.regions.find((r) => r.id.endsWith(".usecase.impl.execute"));
+    expect(structRegion).toBeDefined();
+    expect(ctorRegion).toBeDefined();
+    expect(execRegion).toBeDefined();
 
-    const content = scaffoldRegion!.content;
-    expect(content).toContain("type loginUsecaseImpl struct");
-    expect(content).toContain("repo AuthRepository");
-    expect(content).toContain('panic("AuthRepository must not be nil")');
-    expect(content).toContain("func NewLoginUsecase");
-    expect(content).toContain("func (uc *loginUsecaseImpl) Execute");
-    expect(content).toContain("// TODO: implement LoginUsecase");
+    expect(structRegion!.content).toContain("type loginUsecaseImpl struct");
+    expect(structRegion!.content).toContain("repo AuthRepository");
+    expect(ctorRegion!.signature).toBe(
+      "func NewLoginUsecase(repo AuthRepository) *loginUsecaseImpl",
+    );
+    expect(ctorRegion!.content).toContain('panic("AuthRepository must not be nil")');
+    expect(execRegion!.content).toContain("// TODO: implement LoginUsecase");
   });
 
   it("generates usecase scaffold without repo dependency in minimal architecture", async () => {
@@ -925,15 +939,20 @@ describe("compiler", () => {
     const usecaseFile = result.generation.files.find((f) => f.path.endsWith("auth/usecase.go"));
     expect(usecaseFile).toBeDefined();
 
-    const scaffoldRegion = usecaseFile!.regions.find((r) => r.id.endsWith("usecase.impl"));
-    expect(scaffoldRegion).toBeDefined();
+    const structRegion = usecaseFile!.regions.find(
+      (r) =>
+        r.id.endsWith(".usecase.impl") && !r.id.includes(".ctor") && !r.id.includes(".execute"),
+    );
+    const ctorRegion = usecaseFile!.regions.find((r) => r.id.endsWith(".usecase.impl.ctor"));
+    const execRegion = usecaseFile!.regions.find((r) => r.id.endsWith(".usecase.impl.execute"));
+    expect(structRegion).toBeDefined();
+    expect(ctorRegion).toBeDefined();
+    expect(execRegion).toBeDefined();
 
-    const content = scaffoldRegion!.content;
-    expect(content).toContain("type loginUsecaseImpl struct{}");
-    expect(content).not.toContain("Repository");
-    expect(content).toContain("func NewLoginUsecase()");
-    expect(content).toContain("func (uc *loginUsecaseImpl) Execute");
-    expect(content).toContain("// TODO: implement LoginUsecase");
+    expect(structRegion!.content).toContain("type loginUsecaseImpl struct{}");
+    expect(structRegion!.content).not.toContain("Repository");
+    expect(ctorRegion!.signature).toBe("func NewLoginUsecase() *loginUsecaseImpl");
+    expect(execRegion!.content).toContain("// TODO: implement LoginUsecase");
   });
 
   it("does not generate scaffold when scaffold is disabled", async () => {
@@ -968,7 +987,7 @@ describe("compiler", () => {
     const usecaseFile = result.generation.files.find((f) => f.path.endsWith("user/usecase.go"));
     expect(usecaseFile).toBeDefined();
 
-    const scaffoldRegions = usecaseFile!.regions.filter((r) => r.id.endsWith("usecase.impl"));
+    const scaffoldRegions = usecaseFile!.regions.filter((r) => r.id.includes(".usecase.impl"));
     expect(scaffoldRegions.length).toBe(0);
   });
 });

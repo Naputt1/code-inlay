@@ -1,7 +1,8 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
-import type { Diagnostic, FileDiff, GeneratedFilePatch } from "./types.js";
+import type { CompilerCache, Diagnostic, FileDiff, GeneratedFilePatch } from "./types.js";
 import { formatFile, formatGoSnippet } from "./format.js";
+import { injectGoFile } from "./go-writer.js";
 
 export type FileSnapshot = {
   path: string;
@@ -156,6 +157,7 @@ export function atomicWritePatches(
   cwd: string,
   fileCreation: "disabled" | "markers-only" | "skeleton",
   diagnostics: Diagnostic[],
+  cache?: CompilerCache,
 ): WriteResult {
   const changedFiles: string[] = [];
   const diffs: FileDiff[] = [];
@@ -166,6 +168,8 @@ export function atomicWritePatches(
   for (const patch of patches) {
     const absolutePath = resolve(cwd, patch.path);
     const fileExists = existsSync(absolutePath);
+    const isGo = patch.path.endsWith(".go");
+    const hasSymbols = patch.regions.some((r) => r.symbolName);
 
     if (!fileExists) {
       if (fileCreation === "disabled") {
@@ -178,12 +182,23 @@ export function atomicWritePatches(
         continue;
       }
 
-      const isGo = patch.path.endsWith(".go");
-      const pkg = isGo ? derivePackage(patch.path) : undefined;
-      const skeleton = buildSkeleton(patch.regions, pkg);
       mkdirSync(dirname(absolutePath), { recursive: true });
       const before = "";
-      const after = injectContent(skeleton, patch.regions, diagnostics, patch.path);
+
+      let after: string;
+      if (isGo && hasSymbols) {
+        const pkg = derivePackage(patch.path);
+        const skeletonText = buildSymbolSkeleton(patch.regions, pkg);
+        after = injectGoFile(skeletonText, patch, cache ?? emptyCache(), diagnostics);
+      } else if (isGo) {
+        const pkg = derivePackage(patch.path);
+        const skeleton = buildSkeleton(patch.regions, pkg);
+        after = injectContent(skeleton, patch.regions, diagnostics, patch.path);
+      } else {
+        const skeleton = buildSkeleton(patch.regions);
+        after = injectContent(skeleton, patch.regions, diagnostics, patch.path);
+      }
+
       changedFiles.push(patch.path);
       diffs.push({ path: patch.path, before, after });
 
@@ -198,9 +213,15 @@ export function atomicWritePatches(
     const statBefore = statSync(absolutePath);
     const before = readFileSync(absolutePath, "utf8");
 
-    let after = injectContent(before, patch.regions, diagnostics, patch.path);
-    const plannedIds = new Set(patch.regions.map((r) => r.id));
-    after = removeOrphanedRegions(after, plannedIds, diagnostics, patch.path);
+    let after: string;
+    if (isGo && hasSymbols) {
+      after = injectGoFile(before, patch, cache ?? emptyCache(), diagnostics);
+    } else {
+      after = injectContent(before, patch.regions, diagnostics, patch.path);
+      const plannedIds = new Set(patch.regions.map((r) => r.id));
+      after = removeOrphanedRegions(after, plannedIds, diagnostics, patch.path);
+    }
+
     if (before !== after) {
       const statAfter = statSync(absolutePath);
       if (statAfter.mtimeMs !== statBefore.mtimeMs || statAfter.size !== statBefore.size) {
@@ -273,6 +294,41 @@ function buildSkeleton(regions: GeneratedFilePatch["regions"], pkg?: string): st
     lines.push(`// @gen:end ${r.id}`);
   }
   lines.push("");
+  return lines.join("\n");
+}
+
+function buildSymbolSkeleton(regions: GeneratedFilePatch["regions"], pkg?: string): string {
+  const lines: string[] = [];
+  if (pkg) {
+    lines.push(`package ${pkg}`);
+    lines.push("");
+  }
+  for (const r of regions) {
+    if (r.language === "json") continue;
+    if (r.kind === "method" || r.kind === "function") {
+      if (r.signature) {
+        lines.push(`${r.signature} {`);
+        lines.push(r.isStub ? `\t${r.content}` : "");
+        lines.push("}");
+        lines.push("");
+      }
+    } else if (r.kind === "imports") {
+      if (r.imports && r.imports.length > 0) {
+        lines.push("import (");
+        for (const imp of r.imports) lines.push(`\t${imp}`);
+        lines.push(")");
+        lines.push("");
+      }
+    } else if (r.symbolName) {
+      lines.push(r.content);
+      lines.push("");
+    } else {
+      lines.push(`// @gen:start ${r.id}`);
+      lines.push(r.content);
+      lines.push(`// @gen:end ${r.id}`);
+      lines.push("");
+    }
+  }
   return lines.join("\n");
 }
 
@@ -515,4 +571,17 @@ function extractRegionContent(fileText: string, regionId: string): string {
 
 function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function emptyCache(): CompilerCache {
+  return {
+    compilerVersion: "",
+    astVersion: "2.0",
+    pluginManifestHash: "",
+    dependencyGraph: { nodes: {}, edges: [] },
+    regions: {},
+    symbols: {},
+    symbolsByFile: {},
+    files: {},
+  };
 }

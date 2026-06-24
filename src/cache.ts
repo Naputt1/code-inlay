@@ -4,6 +4,7 @@ import type {
   AppAst,
   ArchitectureAst,
   CompilerCache,
+  CachedSymbol,
   DependencyGraph,
   DependencyNode,
   GenerationAst,
@@ -26,10 +27,22 @@ export function readCache(cwd: string): CompilerCache | undefined {
   if (!existsSync(path)) return undefined;
   try {
     const raw = readFileSync(path, "utf8");
-    return JSON.parse(raw) as CompilerCache;
+    const parsed = JSON.parse(raw) as CompilerCache;
+    return migrateCache(parsed);
   } catch {
     return undefined;
   }
+}
+
+function migrateCache(cache: CompilerCache): CompilerCache {
+  if (!cache.symbols) cache.symbols = {};
+  if (!cache.symbolsByFile) cache.symbolsByFile = {};
+  if (cache.files) {
+    for (const [, info] of Object.entries(cache.files)) {
+      if (!info.symbols) info.symbols = [];
+    }
+  }
+  return cache;
 }
 
 export function writeCache(cwd: string, cache: CompilerCache): void {
@@ -118,6 +131,12 @@ export function buildDependencyGraph(
       const regionId = region.stableHash ?? `region:${region.id}`;
       addNode(regionId, "generated-region", region.contentHash ?? stableHash(region.content, 16));
       addEdge(fileId, regionId, "contains-region");
+
+      if (region.symbolName) {
+        const symbolId = `symbol:${region.stableHash ?? region.id}`;
+        addNode(symbolId, "generated-symbol", region.contentHash ?? stableHash(region.content, 16));
+        addEdge(regionId, symbolId, "defines-symbol");
+      }
     }
   }
 
@@ -144,6 +163,49 @@ export function buildDependencyGraph(
   }
 
   return { nodes, edges };
+}
+
+export function buildSymbolsCache(generation: GenerationAst): {
+  symbols: Record<string, CachedSymbol>;
+  symbolsByFile: Record<string, Record<string, string>>;
+} {
+  const symbols: Record<string, CachedSymbol> = {};
+  const symbolsByFile: Record<string, Record<string, string>> = {};
+
+  for (const file of generation.files) {
+    for (const region of file.regions) {
+      if (!region.symbolName) continue;
+
+      const shortHash = region.stableHash
+        ? region.stableHash.slice(0, 8)
+        : stableHash(region.id, 8);
+      const key = region.stableHash ?? region.id;
+
+      symbols[key] = {
+        stableHash: region.stableHash ?? key,
+        shortHash,
+        contentHash: region.contentHash ?? "",
+        symbolName: region.symbolName,
+        kind: region.kind ?? "function",
+        file: file.path,
+        owner: region.owner,
+        expectsUserCode: region.expectsUserCode,
+        isStub: region.isStub,
+        imports: region.imports,
+        signature: region.signature,
+        receiver: region.receiver,
+      };
+
+      let byFile = symbolsByFile[file.path];
+      if (!byFile) {
+        byFile = {};
+        symbolsByFile[file.path] = byFile;
+      }
+      byFile[region.symbolName] = key;
+    }
+  }
+
+  return { symbols, symbolsByFile };
 }
 
 export function invalidateChanged(
