@@ -2,6 +2,75 @@
 
 Key TypeScript types used in the public API.
 
+## ServiceDefinition
+
+```ts
+type ServiceDefinition = {
+  kind: "ServiceDefinition";
+  name: string;
+  close?: boolean;
+};
+```
+
+Declares a named service dependency. See [Services](/guide/services).
+
+## ServiceExtensionResult
+
+```ts
+type ServiceExtensionResult = {
+  kind: "ServiceExtensionResult";
+  name: string;
+  extension: string;
+  close?: boolean;
+  options: Record<string, unknown>;
+};
+```
+
+The result of calling a service extension factory. See [Extensions](/guide/extensions).
+
+## BackendExtension
+
+```ts
+type BackendExtension = {
+  name: string;
+  service?: {
+    provides?: "database";
+    optionsSchema: z.ZodType;
+    dbAccessor?: string;
+    dbType?: string;
+    dbTypePkg?: string;
+    goModules?: string[] | ((options: Record<string, unknown>) => string[]);
+    generateFile?: (ctx: ServiceFileCtx) => string;
+    generateDialectMethod?: (ctx: DialectMethodCtx) => string;
+  };
+};
+```
+
+Defines a reusable service extension. See [Extensions](/guide/extensions).
+
+## ResponseFormat
+
+```ts
+type ResponseFormat = {
+  kind: "ResponseFormat";
+  wrapper: SchemaLike;
+};
+```
+
+A response format wrapper containing a `z.entity()` placeholder. Applied at app, module, or route level. See [Schemas & Types](/guide/schemas).
+
+## UsecaseOrganization
+
+```ts
+type UsecaseOrganization = {
+  strategy: "merged" | "single" | "grouped";
+  groupBy?: UsecaseGroupBy;
+  scaffold?: boolean; // default: true
+};
+```
+
+Controls how use case files are organized. When `scaffold: false`, only the interface is generated — no implementation. See [Modules](/guide/modules).
+
 ## RouteDefinition
 
 ```ts
@@ -29,6 +98,8 @@ type ModuleDefinition = {
   architecture?: ArchitectureRef | ArchitectureRef[] | ArchitectureSelection;
   adapters?: AdapterRef[] | AdapterSelection;
   usecaseOrganization?: UsecaseOrganization;
+  responseFormat?: ResponseFormat;
+  services?: string[];
   routes: RouteDefinition[];
   middleware: MiddlewareDefinition[];
 };
@@ -42,6 +113,9 @@ type AppDefinition = {
   architecture?: ArchitectureRef | ArchitectureRef[] | ArchitectureSelection;
   router?: RouterDefinition;
   modules: ModuleDefinition[];
+  services?: (ServiceDefinition | ServiceExtensionResult)[];
+  extensions?: BackendExtension[];
+  responseFormat?: ResponseFormat;
   transformers: AstTransformer[];
   plugins: BackendCompilerPlugin[];
   targets?: CodeTarget[];
@@ -54,6 +128,7 @@ type AppDefinition = {
 ```ts
 type CompileSettings = {
   fileCreation: FileCreationMode; // "disabled" | "markers-only" | "skeleton"
+  featuresDir?: string;          // Optional: nest modules under internal/<featuresDir>/
   usecaseOrganization?: UsecaseOrganization;
   targets?: string[];
   targetOptions?: Record<string, Record<string, unknown>>;

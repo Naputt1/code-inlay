@@ -50,6 +50,40 @@ defineRouter(input: { adapter, prefix?, middleware? }): RouterDefinition
 
 Configures the HTTP router adapter.
 
+### defineService()
+
+```ts
+defineService(input: { name, close? }): ServiceDefinition
+```
+
+Declares an external service dependency (e.g. database, cache). Generates an interface, struct, and constructor in `internal/service/`.
+
+See [Services](/guide/services).
+
+### defineServiceExtension()
+
+```ts
+defineServiceExtension(input: { name, service }): BackendExtension & ((opts) => ServiceExtensionResult)
+```
+
+Creates a reusable service backend with type-safe options, custom code generation, and automatic Go module installation.
+
+See [Extensions](/guide/extensions).
+
+### defineResponseFormat()
+
+```ts
+defineResponseFormat(input: { wrapper }): ResponseFormat
+```
+
+Defines a response format wrapper. Use `z.entity()` as a placeholder that gets replaced with each route's response schema.
+
+```ts
+const stdFormat = defineResponseFormat({
+  wrapper: z.object({ status: z.boolean(), data: z.entity() }),
+});
+```
+
 ### defineMiddleware()
 
 ```ts

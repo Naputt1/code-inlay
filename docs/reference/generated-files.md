@@ -4,11 +4,14 @@
 
 ```
 cmd/server/main.go                    # Server entry point
+internal/service/
+  <name>.go                           # Service interface + implementation
 internal/<module>/
   handler.go                          # Gin HTTP handlers
-  types.go                            # Request/response types
+  types.go                            # HTTP request/response types
+  domain.go                           # Domain entity structs (clean arch only, when responseFormat is used)
   usecase.go                          # Use case interface + implementation
-  repo.go                             # Repository interface
+  repo.go                             # Repository interface + implementation
   <name>_usecase.go                   # Grouped use case (when usecaseOrganization = "grouped")
 internal/http/
   routes.go                           # Route registration
@@ -22,6 +25,16 @@ runtime/
   context.go                          # Request context helpers
   middleware.go                       # Logging/tracing middleware
   main.go                             # DI-wired bootstrap (when runtime enabled)
+```
+
+### Features directory
+
+When `featuresDir: "features"` is set, all module paths are nested:
+
+```
+internal/features/<module>/handler.go
+internal/features/<module>/usecase.go
+# ... instead of internal/<module>/...
 ```
 
 ## TypeScript client (ts-client target)

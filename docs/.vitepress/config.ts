@@ -16,6 +16,8 @@ export default defineConfig({
       "/guide/": [
         { text: "Getting Started", link: "/guide/getting-started" },
         { text: "Configuration", link: "/guide/configuration" },
+        { text: "Services", link: "/guide/services" },
+        { text: "Extensions", link: "/guide/extensions" },
         { text: "Defining Routes", link: "/guide/routes" },
         { text: "Route Groups", link: "/guide/route-groups" },
         { text: "Schemas & Types", link: "/guide/schemas" },

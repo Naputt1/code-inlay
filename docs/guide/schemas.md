@@ -19,16 +19,21 @@ Schemas are defined using Zod and are used to generate Go types, handle request 
 | `z.string().optional()`    | `*string`             | Pointer type              |
 | `z.number().optional()`    | `*int32` / `*float64` | Pointer type              |
 
+| `z.entity()`              | `AnyType`             | Placeholder — replaced by response format wrapper |
+
 ## Custom Zod extensions
 
 ```ts
 import { z } from "@code-inlay/backend-gen";
 
-z.int32(); // maps to Go int32
-z.int64(); // maps to Go int64
-z.float32(); // maps to Go float32
-z.float64(); // maps to Go float64
+z.int32();  // maps to Go int32
+z.int64();  // maps to Go int64
+z.float32();// maps to Go float32
+z.float64();// maps to Go float64
+z.entity(); // placeholder — substituted with the route's response schema
 ```
+
+`z.entity()` is a placeholder type used with [response formats](/guide/extensions). When a route has a `responseFormat`, the `z.entity()` marker in the wrapper is replaced by the route's actual response schema during generation.
 
 ## Required vs optional
 

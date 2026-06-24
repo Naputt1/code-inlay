@@ -88,6 +88,7 @@ Both `ShouldBindQuery` and `ShouldBindJSON` are used, and the request struct mer
 | `body`         | `ZodObject`                                       | Request body schema (POST/PUT/PATCH only) |
 | `response`     | `ZodObject`                                       | Response schema                           |
 | `middleware`   | `MiddlewareDefinition[]`                          | Route-level middleware                    |
+| `responseFormat` | `ResponseFormat`                                | Per-route response format wrapper          |
 | `usecaseGroup` | `string`                                          | Override usecase grouping                 |
 
 ## Generated types

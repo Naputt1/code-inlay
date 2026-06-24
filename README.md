@@ -51,10 +51,14 @@ internal/http/routes.go  # Route registration
 - **Type-safe route definitions** via Zod schemas
 - **Go server generation** with Gin adapter
 - **Clean / Minimal / Atomic / Layered** architectures
+- **Service definitions** — declare external dependencies (DB, cache, etc.)
+- **Service extensions** — reusable backends with typed options and custom code generation
+- **Response format wrappers** — consistent API response envelopes using `z.entity()` placeholders
+- **Domain type separation** — domain entities separated from HTTP request/response types
 - **Input validation** — Zod `.min()`, `.email()`, `.positive()` etc. mapped to `validate` struct tags
 - **OpenAPI 3.0** spec generation
 - **TypeScript client** generation
-- **Plugin system** — custom architectures, transformers, targets
+- **Plugin system** — custom architectures, adapters, transformers, targets
 - **Watch mode** with live code regeneration
 - **Region-based editing** — safe incremental code generation
 

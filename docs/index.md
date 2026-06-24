@@ -27,6 +27,10 @@ backend.config.ts  ──►  backend-gen generate
 - **Type-safe route definitions** via Zod schemas
 - **Go server generation** with Gin adapter
 - **Clean / Minimal / Atomic / Layered** architectures
+- **Service definitions** — declare external dependencies (DB, cache, etc.)
+- **Service extensions** — reusable backends with typed options and custom code generation
+- **Response format wrappers** — consistent API response envelopes
+- **Domain type separation** — domain entities separated from HTTP types
 - **Input validation** — Zod rules mapped to `validate` struct tags
 - **OpenAPI 3.0** spec generation
 - **TypeScript client** generation
