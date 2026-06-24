@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import type {
   AppAst,
@@ -39,7 +39,7 @@ export function writeCache(cwd: string, cache: CompilerCache): void {
   }
   const tmp = cacheFilePath(cwd) + ".tmp";
   writeFileSync(tmp, JSON.stringify(cache, null, 2));
-  writeFileSync(cacheFilePath(cwd), JSON.stringify(cache, null, 2));
+  renameSync(tmp, cacheFilePath(cwd));
 }
 
 export function validateCache(
