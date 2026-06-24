@@ -40,10 +40,10 @@ When `close: true`, the service gets a `Close() error` method. The generated `ma
 
 Services are injected into use case scaffolds based on name matching:
 
-| Match rule | Example |
-| ---------- | ------- |
-| Service name matches module name | Service `db` → module `ticket` when ticket has no explicit `services` |
-| Module has explicit `services: []` | `services: ["mygorm", "redis"]` wins over name matching |
+| Match rule                         | Example                                                               |
+| ---------------------------------- | --------------------------------------------------------------------- |
+| Service name matches module name   | Service `db` → module `ticket` when ticket has no explicit `services` |
+| Module has explicit `services: []` | `services: ["mygorm", "redis"]` wins over name matching               |
 
 ```ts
 defineModule({

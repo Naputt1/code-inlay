@@ -128,7 +128,7 @@ type AppDefinition = {
 ```ts
 type CompileSettings = {
   fileCreation: FileCreationMode; // "disabled" | "markers-only" | "skeleton"
-  featuresDir?: string;          // Optional: nest modules under internal/<featuresDir>/
+  featuresDir?: string; // Optional: nest modules under internal/<featuresDir>/
   usecaseOrganization?: UsecaseOrganization;
   targets?: string[];
   targetOptions?: Record<string, Record<string, unknown>>;

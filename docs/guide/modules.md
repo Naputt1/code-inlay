@@ -71,11 +71,11 @@ defineModule({
 
 ### Usecase organization options
 
-| Option     | Type      | Default  | Description |
-| ---------- | --------- | -------- | ----------- |
-| `strategy` | `string`  | `merged` | `"merged"` \| `"single"` \| `"grouped"` |
+| Option     | Type      | Default  | Description                                            |
+| ---------- | --------- | -------- | ------------------------------------------------------ |
+| `strategy` | `string`  | `merged` | `"merged"` \| `"single"` \| `"grouped"`                |
 | `groupBy`  | `string`  | —        | `"path"` \| `"operation"` \| `"handler"` \| `"module"` |
-| `scaffold` | `boolean` | `true`   | Generate implementation scaffolds |
+| `scaffold` | `boolean` | `true`   | Generate implementation scaffolds                      |
 
 When `scaffold: false`, only the use case interface is generated — no implementation struct or constructor.
 

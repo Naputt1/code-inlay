@@ -26,16 +26,16 @@ const mygorm = defineServiceExtension({
 
 ## Extension options
 
-| Option | Type | Description |
-| ------ | ---- | ----------- |
-| `provides` | `"database"` | Service capability (future: cache, queue, etc.) |
-| `optionsSchema` | `z.ZodType` | Schema for user-supplied options |
-| `dbAccessor` | `string` | Repository field name for the db accessor (e.g. `"DB"`) |
-| `dbType` | `string` | Go type for db accessor (e.g. `"*gorm.DB"`) |
-| `dbTypePkg` | `string` | Import path for the db type |
-| `goModules` | `string[] \| (opts) => string[]` | Go modules to `go get` |
-| `generateFile` | `(ctx) => string` | Custom service file generator |
-| `generateDialectMethod` | `(ctx) => string` | Custom repository dialect method generator |
+| Option                  | Type                             | Description                                             |
+| ----------------------- | -------------------------------- | ------------------------------------------------------- |
+| `provides`              | `"database"`                     | Service capability (future: cache, queue, etc.)         |
+| `optionsSchema`         | `z.ZodType`                      | Schema for user-supplied options                        |
+| `dbAccessor`            | `string`                         | Repository field name for the db accessor (e.g. `"DB"`) |
+| `dbType`                | `string`                         | Go type for db accessor (e.g. `"*gorm.DB"`)             |
+| `dbTypePkg`             | `string`                         | Import path for the db type                             |
+| `goModules`             | `string[] \| (opts) => string[]` | Go modules to `go get`                                  |
+| `generateFile`          | `(ctx) => string`                | Custom service file generator                           |
+| `generateDialectMethod` | `(ctx) => string`                | Custom repository dialect method generator              |
 
 ## Using extensions
 
