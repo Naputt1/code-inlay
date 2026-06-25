@@ -1,36 +1,137 @@
-import { z as zod, type ZodNumber, type ZodTypeAny } from "zod";
+import {
+  z as zod,
+  ZodType,
+  type ZodTypeDef,
+  type ZodTypeAny,
+  OK,
+  INVALID,
+  addIssueToContext,
+  ZodIssueCode,
+  ZodParsedType,
+  type ParseInput,
+  type ParseReturnType,
+} from "zod";
 import type { SchemaLike } from "./types.js";
 
-function int32(): ZodNumber {
-  const s = zod.number().int();
-  (s._def as { checks: Array<{ kind: string }> }).checks.push({ kind: "int32" });
-  return s;
+interface ZodEntityDef extends ZodTypeDef {
+  typeName: "ZodEntity";
 }
 
-function int64(): ZodNumber {
-  const s = zod.number().int();
-  (s._def as { checks: Array<{ kind: string }> }).checks.push({ kind: "int64" });
-  return s;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- matches Zod's ZodAny pattern
+class ZodEntity extends ZodType<any, ZodEntityDef, any> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- matches Zod's ZodAny pattern
+  _parse(input: ParseInput): ParseReturnType<any> {
+    return OK(input.data);
+  }
+  static create(): ZodEntity {
+    return new ZodEntity({ typeName: "ZodEntity" });
+  }
 }
 
-function float32(): ZodNumber {
-  const s = zod.number();
-  (s._def as { checks: Array<{ kind: string }> }).checks.push({ kind: "float32" });
-  return s;
+interface ZodInt32Def extends ZodTypeDef {
+  typeName: "ZodInt32";
 }
 
-function float64(): ZodNumber {
+class ZodInt32 extends ZodType<number, ZodInt32Def, number> {
+  _parse(input: ParseInput): ParseReturnType<number> {
+    const ctx = this._getOrReturnCtx(input);
+    if (ctx.parsedType !== ZodParsedType.number) {
+      addIssueToContext(ctx, {
+        code: ZodIssueCode.invalid_type,
+        expected: ZodParsedType.number,
+        received: ctx.parsedType,
+      });
+      return INVALID;
+    }
+    if (!Number.isInteger(input.data)) {
+      addIssueToContext(ctx, {
+        code: ZodIssueCode.invalid_type,
+        expected: ZodParsedType.integer,
+        received: ZodParsedType.float,
+      });
+      return INVALID;
+    }
+    return OK(input.data);
+  }
+  static create(): ZodInt32 {
+    return new ZodInt32({ typeName: "ZodInt32" });
+  }
+}
+
+interface ZodInt64Def extends ZodTypeDef {
+  typeName: "ZodInt64";
+}
+
+class ZodInt64 extends ZodType<number, ZodInt64Def, number> {
+  _parse(input: ParseInput): ParseReturnType<number> {
+    const ctx = this._getOrReturnCtx(input);
+    if (ctx.parsedType !== ZodParsedType.number) {
+      addIssueToContext(ctx, {
+        code: ZodIssueCode.invalid_type,
+        expected: ZodParsedType.number,
+        received: ctx.parsedType,
+      });
+      return INVALID;
+    }
+    if (!Number.isInteger(input.data)) {
+      addIssueToContext(ctx, {
+        code: ZodIssueCode.invalid_type,
+        expected: ZodParsedType.integer,
+        received: ZodParsedType.float,
+      });
+      return INVALID;
+    }
+    return OK(input.data);
+  }
+  static create(): ZodInt64 {
+    return new ZodInt64({ typeName: "ZodInt64" });
+  }
+}
+
+interface ZodFloat32Def extends ZodTypeDef {
+  typeName: "ZodFloat32";
+}
+
+class ZodFloat32 extends ZodType<number, ZodFloat32Def, number> {
+  _parse(input: ParseInput): ParseReturnType<number> {
+    const ctx = this._getOrReturnCtx(input);
+    if (ctx.parsedType !== ZodParsedType.number) {
+      addIssueToContext(ctx, {
+        code: ZodIssueCode.invalid_type,
+        expected: ZodParsedType.number,
+        received: ctx.parsedType,
+      });
+      return INVALID;
+    }
+    return OK(input.data);
+  }
+  static create(): ZodFloat32 {
+    return new ZodFloat32({ typeName: "ZodFloat32" });
+  }
+}
+
+function int32(): ZodInt32 {
+  return ZodInt32.create();
+}
+
+function int64(): ZodInt64 {
+  return ZodInt64.create();
+}
+
+function float32(): ZodFloat32 {
+  return ZodFloat32.create();
+}
+
+function float64(): ZodTypeAny {
   return zod.number();
 }
 
 function entity(): ZodTypeAny {
-  const s = zod.any();
-  (s._def as unknown as Record<string, unknown>).typeName = "ZodEntity";
-  return s;
+  return ZodEntity.create();
 }
 
 function isEntityPlaceholder(schema: SchemaLike): boolean {
-  return (schema._def as unknown as Record<string, unknown>).typeName === "ZodEntity";
+  return (schema._def as { typeName?: string }).typeName === "ZodEntity";
 }
 
 function hasEntityPlaceholder(schema: SchemaLike): boolean {

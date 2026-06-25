@@ -56,6 +56,18 @@ function isZodEntity(schema: SchemaLike): boolean {
   return typeName(schema) === "ZodEntity";
 }
 
+function isZodInt32(schema: SchemaLike): boolean {
+  return typeName(schema) === "ZodInt32";
+}
+
+function isZodInt64(schema: SchemaLike): boolean {
+  return typeName(schema) === "ZodInt64";
+}
+
+function isZodFloat32(schema: SchemaLike): boolean {
+  return typeName(schema) === "ZodFloat32";
+}
+
 function extractValidations(schema: SchemaLike): string[] {
   const validations: string[] = [];
   const inner = unwrap(schema);
@@ -543,6 +555,12 @@ function schemaToGoType(schema: SchemaLike, diagnostics: Diagnostic[]): string {
 
   if (isZodString(unwrapped) || isZodEnum(unwrapped)) {
     type = "string";
+  } else if (isZodInt32(unwrapped)) {
+    type = "int32";
+  } else if (isZodInt64(unwrapped)) {
+    type = "int64";
+  } else if (isZodFloat32(unwrapped)) {
+    type = "float32";
   } else if (isZodNumber(unwrapped)) {
     const checks = (
       (unwrapped as unknown as Record<string, unknown>)._def as Record<string, unknown>
