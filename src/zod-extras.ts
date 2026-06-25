@@ -1,13 +1,13 @@
 import {
   z as zod,
   ZodType,
+  type ZodParsedType,
   type ZodTypeDef,
   type ZodTypeAny,
   OK,
   INVALID,
   addIssueToContext,
   ZodIssueCode,
-  ZodParsedType,
   type ParseInput,
   type ParseReturnType,
 } from "zod";
@@ -17,10 +17,8 @@ interface ZodEntityDef extends ZodTypeDef {
   typeName: "ZodEntity";
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- matches Zod's ZodAny pattern
-class ZodEntity extends ZodType<any, ZodEntityDef, any> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- matches Zod's ZodAny pattern
-  _parse(input: ParseInput): ParseReturnType<any> {
+class ZodEntity extends ZodType<unknown, ZodEntityDef, unknown> {
+  _parse(input: ParseInput): ParseReturnType<unknown> {
     return OK(input.data);
   }
   static create(): ZodEntity {
@@ -34,20 +32,22 @@ interface ZodInt32Def extends ZodTypeDef {
 
 class ZodInt32 extends ZodType<number, ZodInt32Def, number> {
   _parse(input: ParseInput): ParseReturnType<number> {
-    const ctx = this._getOrReturnCtx(input);
-    if (ctx.parsedType !== ZodParsedType.number) {
+    const parsedType = this._getType(input) as ZodParsedType;
+    if (parsedType !== "number") {
+      const ctx = this._getOrReturnCtx(input);
       addIssueToContext(ctx, {
         code: ZodIssueCode.invalid_type,
-        expected: ZodParsedType.number,
-        received: ctx.parsedType,
+        expected: "number",
+        received: parsedType,
       });
       return INVALID;
     }
     if (!Number.isInteger(input.data)) {
+      const ctx = this._getOrReturnCtx(input);
       addIssueToContext(ctx, {
         code: ZodIssueCode.invalid_type,
-        expected: ZodParsedType.integer,
-        received: ZodParsedType.float,
+        expected: "integer",
+        received: "float",
       });
       return INVALID;
     }
@@ -64,20 +64,22 @@ interface ZodInt64Def extends ZodTypeDef {
 
 class ZodInt64 extends ZodType<number, ZodInt64Def, number> {
   _parse(input: ParseInput): ParseReturnType<number> {
-    const ctx = this._getOrReturnCtx(input);
-    if (ctx.parsedType !== ZodParsedType.number) {
+    const parsedType = this._getType(input) as ZodParsedType;
+    if (parsedType !== "number") {
+      const ctx = this._getOrReturnCtx(input);
       addIssueToContext(ctx, {
         code: ZodIssueCode.invalid_type,
-        expected: ZodParsedType.number,
-        received: ctx.parsedType,
+        expected: "number",
+        received: parsedType,
       });
       return INVALID;
     }
     if (!Number.isInteger(input.data)) {
+      const ctx = this._getOrReturnCtx(input);
       addIssueToContext(ctx, {
         code: ZodIssueCode.invalid_type,
-        expected: ZodParsedType.integer,
-        received: ZodParsedType.float,
+        expected: "integer",
+        received: "float",
       });
       return INVALID;
     }
@@ -94,12 +96,13 @@ interface ZodFloat32Def extends ZodTypeDef {
 
 class ZodFloat32 extends ZodType<number, ZodFloat32Def, number> {
   _parse(input: ParseInput): ParseReturnType<number> {
-    const ctx = this._getOrReturnCtx(input);
-    if (ctx.parsedType !== ZodParsedType.number) {
+    const parsedType = this._getType(input) as ZodParsedType;
+    if (parsedType !== "number") {
+      const ctx = this._getOrReturnCtx(input);
       addIssueToContext(ctx, {
         code: ZodIssueCode.invalid_type,
-        expected: ZodParsedType.number,
-        received: ctx.parsedType,
+        expected: "number",
+        received: parsedType,
       });
       return INVALID;
     }

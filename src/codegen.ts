@@ -39,6 +39,7 @@ import {
 } from "./schema.js";
 import { generateGinHandler, resolveAdapters } from "./adapters.js";
 import { generateServer, serverFilePath } from "./srvgen.js";
+import { batchEnrichGoRegions } from "./enrich.js";
 export function generateCode(
   ast: AppAst,
   architecture: ArchitectureAst,
@@ -581,12 +582,14 @@ export function generateCode(
     }
   }
 
+  batchEnrichGoRegions(files);
+
   const result = [...files.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
     .map(
       ([path, regions]): GeneratedFilePatch => ({
         path,
-        regions: regions.sort((a, b) => a.id.localeCompare(b.id)).map(enrichRegion),
+        regions: regions.sort((a, b) => a.id.localeCompare(b.id)),
       }),
     );
 
@@ -1362,103 +1365,4 @@ function generateMiddlewareFiles(ast: AppAst): GeneratedFilePatch[] {
   });
 }
 
-const funcSignatureRe = /^(func\s+(?:\([^)]*\)\s+)?(\w+)\s*\([^)]*\)(?:\s*\([^)]*\))?)\s*\{/;
-const typeRe = /^type\s+(\w+)\s+/;
-const varRe = /^(?:var|const)\s+(\w+)/;
-
-function hasMultipleDecls(content: string): boolean {
-  const lines = content.split("\n");
-  let count = 0;
-  let braceDepth = 0;
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (braceDepth === 0 && /^(func\s|type\s|var\s|const\s)/.test(trimmed)) {
-      count++;
-    }
-    for (const ch of line) {
-      if (ch === "{") braceDepth++;
-      else if (ch === "}") braceDepth--;
-    }
-  }
-  return count > 1;
-}
-
-function enrichRegion(region: GeneratedRegion): GeneratedRegion {
-  if (region.symbolName || region.language !== "go") return region;
-
-  const content = region.content;
-  if (!content) return region;
-  if (hasMultipleDecls(content)) return region;
-
-  if (content.trim().startsWith("import")) {
-    const imports: string[] = [];
-    const lines = content.split("\n");
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed || /^\s*\)/.test(trimmed)) continue;
-      if (trimmed.startsWith("import")) {
-        const m = trimmed.match(/"([^"]+)"/);
-        if (m) imports.push(`"${m[1]}"`);
-        continue;
-      }
-      imports.push(trimmed);
-    }
-    return {
-      ...region,
-      kind: "imports",
-      imports: imports.length > 0 ? imports : undefined,
-    };
-  }
-
-  const sigMatch = content.match(funcSignatureRe);
-  if (sigMatch) {
-    const signature = sigMatch[1];
-    const methodName = sigMatch[2];
-
-    let symbolName = methodName;
-    if (content.startsWith("func (")) {
-      const recvMatch = content.match(/^func\s+\([^)]*?(\w+)\)/);
-      if (recvMatch) {
-        symbolName = recvMatch[1] + "." + methodName;
-      }
-    }
-
-    const bodyStart = content.indexOf("{");
-    const bodyEnd = content.lastIndexOf("}");
-    const body = bodyStart >= 0 && bodyEnd > bodyStart ? content.slice(bodyStart + 1, bodyEnd) : "";
-
-    return {
-      ...region,
-      content: body,
-      symbolName,
-      signature,
-      kind: content.startsWith("func (") ? "method" : "function",
-      expectsUserCode: region.id.endsWith(".handler"),
-      isStub: region.id.endsWith(".usecase.impl") || region.id.endsWith(".impl"),
-    };
-  }
-
-  const typeMatch = content.match(typeRe);
-  if (typeMatch) {
-    return {
-      ...region,
-      symbolName: typeMatch[1],
-      kind: content.includes(" struct")
-        ? "struct"
-        : content.includes(" interface")
-          ? "interface"
-          : "type",
-    };
-  }
-
-  const varMatch = content.match(varRe);
-  if (varMatch) {
-    return {
-      ...region,
-      symbolName: varMatch[1],
-      kind: content.startsWith("const") ? "const" : "var",
-    };
-  }
-
-  return region;
-}
+// enrichRegion logic moved to src/enrich.ts (batch AST + regex fallback)

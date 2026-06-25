@@ -637,6 +637,7 @@ export type GoDeclaration = {
   symbolName: string;
   receiver?: string;
   signature?: string;
+  body?: string;
   bodyStart: number;
   bodyEnd: number;
   startLine: number;
