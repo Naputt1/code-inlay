@@ -16,6 +16,7 @@ type Declaration struct {
 	SymbolName string   `json:"symbolName"`
 	Receiver   string   `json:"receiver,omitempty"`
 	Signature  string   `json:"signature,omitempty"`
+	Body       string   `json:"body,omitempty"`
 	BodyStart  int      `json:"bodyStart,omitempty"`
 	BodyEnd    int      `json:"bodyEnd,omitempty"`
 	StartLine  int      `json:"startLine"`
@@ -105,20 +106,33 @@ func main() {
 				}
 				receiver = recvName + recvType
 				recvBase := strings.TrimLeft(recvType, "*")
+				if idx := strings.IndexAny(recvBase, "["); idx >= 0 {
+					recvBase = recvBase[:idx]
+				}
 				symbolName = recvBase + "." + d.Name.Name
 			}
-			sig := sourceBetween(source, d.Pos(), d.End(), fset)
+			var sig string
+			var body string
 			bodyStart := 0
 			bodyEnd := 0
 			if d.Body != nil {
+				sig = sourceBetween(source, d.Pos(), d.Type.End(), fset)
 				bodyStart = fset.Position(d.Body.Lbrace).Line
 				bodyEnd = fset.Position(d.Body.Rbrace).Line
+				bodyOff := fset.Position(d.Body.Lbrace).Offset + 1
+				bodyEndOff := fset.Position(d.Body.Rbrace).Offset
+				if bodyOff >= 0 && bodyEndOff <= len(source) && bodyOff < bodyEndOff {
+					body = string(source[bodyOff:bodyEndOff])
+				}
+			} else {
+				sig = sourceBetween(source, d.Pos(), d.End(), fset)
 			}
 			decls = append(decls, Declaration{
 				Kind:       kind,
 				SymbolName: symbolName,
 				Receiver:   receiver,
 				Signature:  sig,
+				Body:       body,
 				BodyStart:  bodyStart,
 				BodyEnd:    bodyEnd,
 				StartLine:  start.Line,
