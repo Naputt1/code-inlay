@@ -1,5 +1,18 @@
 import type { Diagnostic, ResponseFormat, RouteAst, SchemaLike } from "./types.js";
 import { extractPathParams, pascalCase, routeTypeName } from "./naming.js";
+import {
+  typeName,
+  isZodOptional,
+  isZodNullable,
+  isZodObject,
+  isZodString,
+  isZodEnum,
+  isZodNumber,
+  isZodBoolean,
+  isZodArray,
+  isZodEntity,
+  unwrap,
+} from "./zod-extras.js";
 
 export type GoField = {
   name: string;
@@ -13,48 +26,6 @@ export type GoStruct = {
   name: string;
   fields: GoField[];
 };
-
-function typeName(schema: SchemaLike): string {
-  return (schema._def as { typeName?: string }).typeName ?? "";
-}
-
-function isZodOptional(schema: SchemaLike): schema is SchemaLike & { unwrap(): SchemaLike } {
-  return typeName(schema) === "ZodOptional";
-}
-
-function isZodNullable(schema: SchemaLike): schema is SchemaLike & { unwrap(): SchemaLike } {
-  return typeName(schema) === "ZodNullable";
-}
-
-function isZodObject(
-  schema: SchemaLike,
-): schema is SchemaLike & { shape: Record<string, SchemaLike> } {
-  return typeName(schema) === "ZodObject";
-}
-
-function isZodString(schema: SchemaLike): boolean {
-  return typeName(schema) === "ZodString";
-}
-
-function isZodEnum(schema: SchemaLike): boolean {
-  return typeName(schema) === "ZodEnum";
-}
-
-function isZodNumber(schema: SchemaLike): boolean {
-  return typeName(schema) === "ZodNumber";
-}
-
-function isZodBoolean(schema: SchemaLike): boolean {
-  return typeName(schema) === "ZodBoolean";
-}
-
-function isZodArray(schema: SchemaLike): schema is SchemaLike & { element: SchemaLike } {
-  return typeName(schema) === "ZodArray";
-}
-
-function isZodEntity(schema: SchemaLike): boolean {
-  return typeName(schema) === "ZodEntity";
-}
 
 function isZodInt32(schema: SchemaLike): boolean {
   return typeName(schema) === "ZodInt32";
@@ -635,12 +606,4 @@ function numberType(checks: Array<{ kind: string }> | undefined): string {
   if (has("int64")) return "int64";
   if (has("int")) return "int64";
   return "float64";
-}
-
-function unwrap(schema: SchemaLike): SchemaLike {
-  let current = schema;
-  while (isZodOptional(current) || isZodNullable(current)) {
-    current = current.unwrap();
-  }
-  return current;
 }
