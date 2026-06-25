@@ -17,6 +17,7 @@ import type {
 } from "./types.js";
 import { joinPath, serviceTypeName } from "./naming.js";
 import { stableHash } from "./hash.js";
+import { hasEntityPlaceholder } from "./zod-extras.js";
 
 export function buildAst(app: AppDefinition, diagnostics: Diagnostic[]): AppAst {
   const router = app.router ?? {
@@ -267,6 +268,15 @@ function validateAst(ast: AppAst, diagnostics: Diagnostic[]): void {
       });
     }
 
+    if (module.responseFormat && !hasEntityPlaceholder(module.responseFormat.wrapper)) {
+      diagnostics.push({
+        level: "warning",
+        code: "response-format-no-entity",
+        message: `Module "${module.name}" has a responseFormat wrapper that does not contain a z.entity() placeholder. The wrapper schema will be used as-is without entity substitution.`,
+        nodeId: module.stableId,
+      });
+    }
+
     const moduleRouteIds = new Set<string>();
     for (const route of module.routes) {
       const key = `${route.moduleName}.${route.id}`;
@@ -294,6 +304,25 @@ function validateAst(ast: AppAst, diagnostics: Diagnostic[]): void {
           code: "body-not-allowed",
           message: `Route "${route.id}" in module "${route.moduleName}" has a body schema but uses method ${route.method}. Body is not allowed on GET or DELETE routes.`,
         });
+      }
+
+      if (route.responseFormat) {
+        if (!hasEntityPlaceholder(route.responseFormat.wrapper)) {
+          diagnostics.push({
+            level: "warning",
+            code: "response-format-no-entity",
+            message: `Route "${route.id}" in module "${route.moduleName}" has a responseFormat wrapper that does not contain a z.entity() placeholder. The wrapper schema will be used as-is without entity substitution.`,
+            nodeId: route.stableId,
+          });
+        }
+        if (!route.response) {
+          diagnostics.push({
+            level: "warning",
+            code: "response-format-no-response",
+            message: `Route "${route.id}" in module "${route.moduleName}" has a responseFormat but no response schema. Domain entity structs will not be generated for this route. Add a response schema to enable entity extraction.`,
+            nodeId: route.stableId,
+          });
+        }
       }
     }
   }
