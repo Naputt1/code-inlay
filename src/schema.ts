@@ -583,7 +583,7 @@ function schemaToGoType(schema: SchemaLike, diagnostics: Diagnostic[]): string {
     });
   }
 
-  if ((optional || nullable) && !type.startsWith("[]")) {
+  if ((optional || nullable) && !/^\**\[/.test(type)) {
     return `*${type}`;
   }
   return type;
