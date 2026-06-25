@@ -5,3 +5,4 @@ docs/.vitepress/cache
 docs/.vitepress/dist
 test-project/
 sample-project/
+coverage/
