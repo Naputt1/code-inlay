@@ -507,12 +507,18 @@ function replaceEntity(schema: SchemaLike, entitySchema: SchemaLike): SchemaLike
     for (const key of Object.keys(shape)) {
       newShape[key] = replaceEntity(shape[key], entitySchema);
     }
-    return { ...inner, shape: newShape } as unknown as SchemaLike;
-  }
-  if (isZodArray(inner)) {
     return {
       ...inner,
-      element: replaceEntity(inner.element, entitySchema),
+      _def: { ...(inner._def as unknown as Record<string, unknown>), shape: () => newShape },
+      shape: newShape,
+    } as unknown as SchemaLike;
+  }
+  if (isZodArray(inner)) {
+    const newElement = replaceEntity(inner.element, entitySchema);
+    return {
+      ...inner,
+      _def: { ...(inner._def as unknown as Record<string, unknown>), type: newElement },
+      element: newElement,
     } as unknown as SchemaLike;
   }
   return schema;

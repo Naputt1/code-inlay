@@ -10,6 +10,10 @@ import {
   defineRouter,
   defineService,
   defineServiceExtension,
+  defineResponseFormat,
+  mergeEntityIntoWrapper,
+  hasEntityPlaceholder,
+  isEntityPlaceholder,
   z,
 } from "../src/index.js";
 
@@ -1121,5 +1125,336 @@ describe("pipeline integration", () => {
     const second = await compile({ app, dryRun: true });
 
     expect(first.generation).toEqual(second.generation);
+  });
+});
+
+describe("responseFormat", () => {
+  it("defineResponseFormat creates a ResponseFormat with a wrapper", () => {
+    const wrapper = z.object({ data: z.entity(), meta: z.object({ page: z.number() }) });
+    const rf = defineResponseFormat({ wrapper });
+    expect(rf.kind).toBe("ResponseFormat");
+    expect(rf.wrapper).toBe(wrapper);
+  });
+
+  it("isEntityPlaceholder detects z.entity()", () => {
+    const entity = z.entity();
+    expect(isEntityPlaceholder(entity)).toBe(true);
+    expect(isEntityPlaceholder(z.string())).toBe(false);
+    expect(isEntityPlaceholder(z.object({}))).toBe(false);
+  });
+
+  it("hasEntityPlaceholder recursively detects z.entity()", () => {
+    const withEntity = z.object({ data: z.entity() });
+    expect(hasEntityPlaceholder(withEntity)).toBe(true);
+    expect(hasEntityPlaceholder(z.object({ name: z.string() }))).toBe(false);
+    expect(hasEntityPlaceholder(z.object({ nested: z.object({ inner: z.entity() }) }))).toBe(true);
+    expect(hasEntityPlaceholder(z.array(z.entity()))).toBe(true);
+    expect(hasEntityPlaceholder(z.array(z.object({ x: z.entity() })))).toBe(true);
+    expect(hasEntityPlaceholder(z.string().optional())).toBe(false);
+    expect(hasEntityPlaceholder(z.entity().optional())).toBe(true);
+    expect(hasEntityPlaceholder(z.string())).toBe(false);
+  });
+
+  it("mergeEntityIntoWrapper replaces z.entity() with response schema", () => {
+    const wrapper = z.object({ data: z.entity(), meta: z.object({ page: z.number() }) });
+    const response = z.object({ id: z.string(), name: z.string() });
+    const merged = mergeEntityIntoWrapper(wrapper, response);
+    expect(hasEntityPlaceholder(merged)).toBe(false);
+    expect(merged).not.toBe(wrapper);
+  });
+
+  it("mergeEntityIntoWrapper replaces nested z.entity() in arrays", () => {
+    const wrapper = z.object({ items: z.array(z.entity()) });
+    const response = z.object({ id: z.string() });
+    const merged = mergeEntityIntoWrapper(wrapper, response);
+    expect(hasEntityPlaceholder(merged)).toBe(false);
+    expect(merged).not.toBe(wrapper);
+  });
+
+  it("mergeEntityIntoWrapper returns result with no entity when no entity present", () => {
+    const wrapper = z.object({ data: z.string() });
+    const response = z.object({ id: z.string() });
+    const merged = mergeEntityIntoWrapper(wrapper, response);
+    expect(hasEntityPlaceholder(merged)).toBe(false);
+  });
+
+  it("responseFormat wraps response in generated Go types (entity layer)", async () => {
+    const rf = defineResponseFormat({
+      wrapper: z.object({ result: z.entity() }),
+    });
+    const route = defineRoute({
+      id: "get",
+      method: "GET",
+      path: "/users/:id",
+      response: z.object({ id: z.string(), name: z.string() }),
+      responseFormat: rf,
+      handler: "GetUser",
+    });
+    const app = defineApp({
+      architecture: "clean",
+      modules: [defineModule({ name: "user", routes: [route] })],
+    });
+
+    const result = await compile({ app, dryRun: true });
+    expect(result.diagnostics.filter((d) => d.level === "error")).toEqual([]);
+
+    const entityRegion = result.generation.files
+      .flatMap((f) => f.regions)
+      .find((r) => r.id === "user.get.entity");
+    expect(entityRegion).toBeDefined();
+
+    const content = entityRegion!.content;
+    expect(content).toContain("type GetUserResponse struct");
+    expect(content).toContain("Result");
+    expect(content).toContain("GetUserResponseResult");
+  });
+
+  it("responseFormat with no response still generates wrapped response (no entity structs)", async () => {
+    const rf = defineResponseFormat({
+      wrapper: z.object({ data: z.entity() }),
+    });
+    const route = defineRoute({
+      id: "get",
+      method: "GET",
+      path: "/users/:id",
+      responseFormat: rf,
+      handler: "GetUser",
+    });
+    const app = defineApp({
+      architecture: "clean",
+      modules: [defineModule({ name: "user", routes: [route] })],
+    });
+
+    const result = await compile({ app, dryRun: true });
+    expect(result.diagnostics.filter((d) => d.level === "error")).toEqual([]);
+
+    const diagCodes = result.diagnostics.map((d) => d.code);
+    expect(diagCodes).toContain("response-format-no-response");
+
+    const entityRegion = result.generation.files
+      .flatMap((f) => f.regions)
+      .find((r) => r.id === "user.get.entity");
+    expect(entityRegion).toBeDefined();
+    expect(entityRegion!.content).toContain("type GetUserResponse struct");
+
+    const domainRegion = result.generation.files
+      .flatMap((f) => f.regions)
+      .find((r) => r.id === "user.domain");
+    expect(domainRegion).toBeDefined();
+    expect(domainRegion!.content).not.toContain("type User struct");
+    expect(domainRegion!.content).not.toContain("type UserGet struct");
+  });
+
+  it("responseFormat wrapper without z.entity() emits diagnostic warning", async () => {
+    const rf = defineResponseFormat({
+      wrapper: z.object({ data: z.string() }),
+    });
+    const route = defineRoute({
+      id: "get",
+      method: "GET",
+      path: "/users/:id",
+      response: z.object({ id: z.string() }),
+      responseFormat: rf,
+      handler: "GetUser",
+    });
+    const app = defineApp({
+      architecture: "clean",
+      modules: [defineModule({ name: "user", routes: [route] })],
+    });
+
+    const result = await compile({ app, dryRun: true });
+    const diagCodes = result.diagnostics.map((d) => d.code);
+    expect(diagCodes).toContain("response-format-no-entity");
+  });
+
+  it("responseFormat inherits from module to route", async () => {
+    const rf = defineResponseFormat({
+      wrapper: z.object({ data: z.entity() }),
+    });
+    const route = defineRoute({
+      id: "get",
+      method: "GET",
+      path: "/users/:id",
+      response: z.object({ id: z.string() }),
+      handler: "GetUser",
+    });
+    const app = defineApp({
+      architecture: "clean",
+      modules: [
+        defineModule({
+          name: "user",
+          responseFormat: rf,
+          routes: [route],
+        }),
+      ],
+    });
+
+    const result = await compile({ app, dryRun: true });
+    expect(result.diagnostics.filter((d) => d.level === "error")).toEqual([]);
+
+    const entityRegion = result.generation.files
+      .flatMap((f) => f.regions)
+      .find((r) => r.id === "user.get.entity");
+    expect(entityRegion).toBeDefined();
+    expect(entityRegion!.content).toContain("type GetUserResponse struct");
+    expect(entityRegion!.content).toContain("Data");
+    expect(entityRegion!.content).toContain("GetUserResponseData");
+  });
+
+  it("route-level responseFormat overrides module-level", async () => {
+    const moduleRf = defineResponseFormat({
+      wrapper: z.object({ moduleWrap: z.entity() }),
+    });
+    const routeRf = defineResponseFormat({
+      wrapper: z.object({ routeWrap: z.entity() }),
+    });
+    const route = defineRoute({
+      id: "get",
+      method: "GET",
+      path: "/users/:id",
+      response: z.object({ id: z.string() }),
+      responseFormat: routeRf,
+      handler: "GetUser",
+    });
+    const app = defineApp({
+      architecture: "clean",
+      modules: [
+        defineModule({
+          name: "user",
+          responseFormat: moduleRf,
+          routes: [route],
+        }),
+      ],
+    });
+
+    const result = await compile({ app, dryRun: true });
+    expect(result.diagnostics.filter((d) => d.level === "error")).toEqual([]);
+
+    const entityRegion = result.generation.files
+      .flatMap((f) => f.regions)
+      .find((r) => r.id === "user.get.entity");
+    expect(entityRegion).toBeDefined();
+    expect(entityRegion!.content).toContain("RouteWrap");
+    expect(entityRegion!.content).not.toContain("ModuleWrap");
+  });
+
+  it("generates domain entity structs when responseFormat and response are present", async () => {
+    const rf = defineResponseFormat({
+      wrapper: z.object({ data: z.entity() }),
+    });
+    const route = defineRoute({
+      id: "get",
+      method: "GET",
+      path: "/users/:id",
+      response: z.object({ id: z.string(), name: z.string() }),
+      responseFormat: rf,
+      handler: "GetUser",
+    });
+    const app = defineApp({
+      architecture: "clean",
+      modules: [defineModule({ name: "user", routes: [route] })],
+    });
+
+    const result = await compile({ app, dryRun: true });
+    expect(result.diagnostics.filter((d) => d.level === "error")).toEqual([]);
+
+    const domainRegion = result.generation.files
+      .flatMap((f) => f.regions)
+      .find((r) => r.id === "user.domain");
+    expect(domainRegion).toBeDefined();
+    expect(domainRegion!.content).toContain("type User struct");
+    expect(domainRegion!.content).toContain("ID string");
+    expect(domainRegion!.content).toContain("Name string");
+  });
+
+  it("generates correct OpenAPI spec with responseFormat", async () => {
+    const rf = defineResponseFormat({
+      wrapper: z.object({ result: z.entity() }),
+    });
+    const route = defineRoute({
+      id: "get",
+      method: "GET",
+      path: "/users/:id",
+      response: z.object({ id: z.string(), name: z.string() }),
+      responseFormat: rf,
+      handler: "GetUser",
+    });
+    const app = defineApp({
+      architecture: "clean",
+      options: { targets: ["openapi"] },
+      modules: [defineModule({ name: "user", routes: [route] })],
+    });
+
+    const result = await compile({ app, dryRun: true });
+    const specFile = result.generation.files.find((f) => f.path.endsWith("openapi.json"));
+    expect(specFile).toBeDefined();
+    const specRegion = specFile!.regions.find((r) => r.id === "openapi.spec");
+    expect(specRegion).toBeDefined();
+    const spec = JSON.parse(specRegion!.content);
+
+    const getPath = spec.paths["/users/:id"];
+    expect(getPath).toBeDefined();
+    const responseSchema = getPath.get.responses["200"].content["application/json"].schema;
+    expect(responseSchema["$ref"]).toContain("GetUserResponse");
+    const resolvedSchema = spec.components.schemas[responseSchema["$ref"].split("/").pop()!];
+    expect(resolvedSchema).toBeDefined();
+    expect(resolvedSchema.properties.result).toBeDefined();
+    expect(resolvedSchema.properties.result.properties.id).toEqual({ type: "string" });
+  });
+
+  it("generates correct TS client types with responseFormat", async () => {
+    const rf = defineResponseFormat({
+      wrapper: z.object({ result: z.entity() }),
+    });
+    const route = defineRoute({
+      id: "get",
+      method: "GET",
+      path: "/users/:id",
+      response: z.object({ id: z.string(), name: z.string() }),
+      responseFormat: rf,
+      handler: "GetUser",
+    });
+    const app = defineApp({
+      architecture: "clean",
+      options: { targets: ["ts-client"] },
+      modules: [defineModule({ name: "user", routes: [route] })],
+    });
+
+    const result = await compile({ app, dryRun: true });
+    const typesFile = result.generation.files.find((f) => f.path.endsWith("clients/types.ts"));
+    expect(typesFile).toBeDefined();
+    const responseRegion = typesFile!.regions.find((r) => r.id.endsWith("user.get.response"));
+    expect(responseRegion).toBeDefined();
+    expect(responseRegion!.content).toContain("result: {");
+    expect(responseRegion!.content).toContain("id: string;");
+    expect(responseRegion!.content).toContain("name: string");
+  });
+
+  it("app-level responseFormat propagates through module to routes", async () => {
+    const rf = defineResponseFormat({
+      wrapper: z.object({ appData: z.entity() }),
+    });
+    const route = defineRoute({
+      id: "list",
+      method: "GET",
+      path: "/items",
+      response: z.object({ title: z.string() }),
+      handler: "ListItems",
+    });
+    const app = defineApp({
+      architecture: "clean",
+      options: { responseFormat: rf },
+      modules: [defineModule({ name: "items", routes: [route] })],
+    });
+
+    const result = await compile({ app, dryRun: true });
+    expect(result.diagnostics.filter((d) => d.level === "error")).toEqual([]);
+
+    const entityRegion = result.generation.files
+      .flatMap((f) => f.regions)
+      .find((r) => r.id === "items.list.entity");
+    expect(entityRegion).toBeDefined();
+    expect(entityRegion!.content).toContain("AppData");
+    expect(entityRegion!.content).toContain("ListItemsResponseAppData");
   });
 });
