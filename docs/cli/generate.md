@@ -23,7 +23,6 @@ This is the primary command. It:
 | `--module <name>`     | Generate only for a specific module             |
 | `--route <id>`        | Generate only for a specific route              |
 | `--force-region <id>` | Override drift protection                       |
-| `--dry-run`           | Compile without writing                         |
 
 ## Examples
 

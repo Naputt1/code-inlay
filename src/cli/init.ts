@@ -35,34 +35,7 @@ export default defineApp({
 });
 `;
 
-  const goModContent = `module ${projectDir === "." ? "my-api" : projectDir}
-
-go 1.26
-`;
-
-  const mainGoContent = `package main
-
-import (
-	"log"
-	"net/http"
-	"github.com/gin-gonic/gin"
-)
-
-func main() {
-	r := gin.Default()
-
-	// Routes will be generated here
-
-	log.Println("Starting server on :8080")
-	if err := http.ListenAndServe(":8080", r); err != nil {
-		log.Fatal(err)
-	}
-}
-`;
-
   const configPath = resolve(targetDir, "backend.config.ts");
-  const goModPath = resolve(targetDir, "go.mod");
-  const mainGoPath = resolve(targetDir, "cmd/server/main.go");
 
   if (!existsSync(configPath)) {
     writeFileSync(configPath, configContent);
@@ -71,21 +44,5 @@ func main() {
     console.log(`Skipped (exists): ${configPath}`);
   }
 
-  if (!existsSync(goModPath)) {
-    writeFileSync(goModPath, goModContent);
-    console.log(`Created: ${goModPath}`);
-  }
-
-  if (!existsSync(mainGoPath)) {
-    const mainDir = resolve(targetDir, "cmd/server");
-    if (!existsSync(mainDir)) mkdirSync(mainDir, { recursive: true });
-    writeFileSync(mainGoPath, mainGoContent);
-    console.log(`Created: ${mainGoPath}`);
-  }
-
-  console.log(`\nProject initialized. Run:
-  cd ${projectDir}
-  go mod init my-api
-  backend-gen generate
-`);
+  console.log(`Config file created. Run \`backend-gen generate\` to generate code.`);
 }
