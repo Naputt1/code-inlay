@@ -298,6 +298,53 @@ describe("compiler", () => {
     ).toBe(false);
   });
 
+  it("does not generate pointer-to-array types for optional/nullable arrays", async () => {
+    const app = defineApp({
+      architecture: "clean",
+      router: defineRouter({ adapter: "gin" }),
+      modules: [
+        defineModule({
+          name: "user",
+          routes: [
+            defineRoute({
+              id: "create",
+              method: "POST",
+              path: "/users",
+              body: z.object({
+                tags: z.array(z.string()).optional(),
+                scores: z.nullable(z.array(z.number())),
+                codes: z.optional(z.nullable(z.array(z.string()))),
+                note: z.string().optional(),
+              }),
+              handler: "CreateUser",
+            }),
+          ],
+        }),
+      ],
+    });
+
+    const result = await compile({ app, dryRun: true });
+    expect(result.diagnostics.filter((d) => d.level === "error")).toEqual([]);
+
+    const typesRegion = result.generation.files
+      .flatMap((f) => f.regions)
+      .find((r) => r.id === "user.create.entity");
+    expect(typesRegion).toBeDefined();
+
+    const content = typesRegion!.content;
+
+    // Array fields should NOT be pointers
+    expect(content).toMatch(/Tags\s+\[\]string/);
+    expect(content).toMatch(/Scores\s+\[\]float64/);
+    expect(content).toMatch(/Codes\s+\[\]string/);
+
+    // Optional non-array fields should still be pointers
+    expect(content).toMatch(/Note\s+\*string/);
+
+    // Confirm no pointer-to-array patterns exist
+    expect(content).not.toMatch(/\*\[\]/);
+  });
+
   it("generates validate tags for string min/max", async () => {
     const app = defineApp({
       architecture: "clean",
