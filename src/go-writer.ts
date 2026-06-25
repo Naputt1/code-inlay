@@ -13,7 +13,7 @@ import type {
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const parserBinary = resolve(__dirname, "../tools/decl-parser/decl-parser");
 
-function shortHash(id: string): string {
+export function shortHash(id: string): string {
   return createHash("sha256").update(id).digest("hex").slice(0, 8);
 }
 
@@ -310,10 +310,16 @@ function buildBody(region: GeneratedRegion, fileText: string): string {
   }
 
   if (region.expectsUserCode && !region.isStub && body.trim()) {
+    const sh = shortHash(region.id);
+    const hasStart = body.includes(`// @gen:start ${sh}`);
+    const hasEnd = body.includes(`// @gen:end ${sh}`);
     if (existingBody !== null) {
-      body = applyInnerMarkers(region, existingBody, body);
-    } else {
-      const sh = shortHash(region.id);
+      if (hasStart || hasEnd) {
+        body = applyInnerMarkers(region, existingBody, body);
+      } else {
+        body = region.content;
+      }
+    } else if (hasStart && !hasEnd) {
       const nl = fileText.includes("\r\n") ? "\r\n" : "\n";
       body = `${body}${nl}\t// @gen:end ${sh}`;
     }
@@ -333,7 +339,32 @@ function extractExistingBody(fileText: string, region: GeneratedRegion): string 
   return lines.slice(startIdx, endIdx).join("\n");
 }
 
-function applyInnerMarkers(
+function collectMarkerPositions(text: string, sh: string): { starts: number[]; ends: number[] } {
+  const starts: number[] = [];
+  const ends: number[] = [];
+  const startRe = new RegExp(`// @gen:start ${escapeRegex(sh)}`, "g");
+  const endRe = new RegExp(`// @gen:end ${escapeRegex(sh)}`, "g");
+  let m: RegExpExecArray | null;
+  while ((m = startRe.exec(text)) !== null) starts.push(m.index);
+  while ((m = endRe.exec(text)) !== null) ends.push(m.index);
+  return { starts, ends };
+}
+
+function extractInner(text: string, startIdx: number, endIdx: number, nl: string): string {
+  const afterStartLine = text.indexOf(nl, startIdx);
+  const innerStart = afterStartLine >= 0 ? afterStartLine + nl.length : 0;
+  const beforeEndLine = text.lastIndexOf(nl, endIdx);
+  const innerEnd =
+    beforeEndLine >= 0 && beforeEndLine + nl.length === endIdx ? beforeEndLine : endIdx;
+  return text.slice(innerStart, innerEnd);
+}
+
+function markerLine(text: string, idx: number, nl: string): string {
+  const lineEnd = text.indexOf(nl, idx);
+  return lineEnd >= 0 ? text.slice(idx, lineEnd + nl.length) : text.slice(idx) + nl;
+}
+
+export function applyInnerMarkers(
   region: GeneratedRegion,
   existingBody: string,
   newGeneratedBody: string,
@@ -341,24 +372,93 @@ function applyInnerMarkers(
   const sh = shortHash(region.id);
   const nl = existingBody.includes("\r\n") ? "\r\n" : "\n";
 
-  const endIdx = existingBody.search(new RegExp(`// @gen:end ${escapeRegex(sh)}\\b`));
-  const startIdx = existingBody.search(new RegExp(`// @gen:start ${escapeRegex(sh)}\\b`));
+  const newMP = collectMarkerPositions(newGeneratedBody, sh);
+  const existingMP = collectMarkerPositions(existingBody, sh);
+  const pairCount = Math.min(newMP.starts.length, newMP.ends.length);
 
-  if (endIdx >= 0) {
-    const beforeEnd = existingBody.slice(0, endIdx).replace(/\s+$/, "");
-    const afterEndLine = existingBody.indexOf(nl, endIdx);
-    const afterEnd = afterEndLine >= 0 ? existingBody.slice(afterEndLine + nl.length) : "";
-    return `${beforeEnd}${nl}\t// @gen:end ${sh}${nl}${afterEnd}`;
+  if (pairCount === 0) {
+    const endIdx = existingBody.search(new RegExp(`// @gen:end ${escapeRegex(sh)}\\b`));
+    if (endIdx >= 0) {
+      const afterEndLine = existingBody.indexOf(nl, endIdx);
+      const afterEnd = afterEndLine >= 0 ? existingBody.slice(afterEndLine + nl.length) : "";
+      return `${newGeneratedBody}${nl}${afterEnd}`;
+    }
+    const startIdx = existingBody.search(new RegExp(`// @gen:start ${escapeRegex(sh)}\\b`));
+    if (startIdx >= 0) {
+      const beforeStartLine = existingBody.lastIndexOf(nl, startIdx);
+      const beforeStart = beforeStartLine >= 0 ? existingBody.slice(0, beforeStartLine) : "";
+      return `${beforeStart}${nl}\t// @gen:start ${sh}${nl}${newGeneratedBody}`;
+    }
+    return newGeneratedBody;
   }
 
-  if (startIdx >= 0) {
-    const beforeStartLine = existingBody.lastIndexOf(nl, startIdx);
-    const beforeStart =
-      beforeStartLine >= 0 ? existingBody.slice(0, beforeStartLine).replace(/\s+$/, "") : "";
-    return `${beforeStart}${nl}\t// @gen:start ${sh}${nl}${newGeneratedBody}`;
+  let result = "";
+  let lastNewPos = 0;
+
+  for (let i = 0; i < pairCount; i++) {
+    const ns = newMP.starts[i];
+    const ne = newMP.ends[i];
+    if (ne <= ns) continue;
+
+    // Content before start: preserve user code from existing before first marker
+    if (i === 0 && existingMP.starts.length > 0 && existingMP.starts[0] > 0) {
+      result += existingBody.slice(0, existingMP.starts[0]);
+    } else {
+      result += newGeneratedBody.slice(lastNewPos, ns);
+    }
+    // Start marker line
+    result += markerLine(newGeneratedBody, ns, nl);
+
+    // Content between markers: user edits from existing, or default from new
+    if (
+      i < existingMP.starts.length &&
+      i < existingMP.ends.length &&
+      existingMP.ends[i] > existingMP.starts[i]
+    ) {
+      const inner = extractInner(existingBody, existingMP.starts[i], existingMP.ends[i], nl);
+      if (inner) result += inner + nl;
+    } else {
+      const inner = extractInner(newGeneratedBody, ns, ne, nl);
+      if (inner) result += inner + nl;
+    }
+
+    // End marker line
+    result += markerLine(newGeneratedBody, ne, nl);
+    const afterNewEndLine = newGeneratedBody.indexOf(nl, ne);
+    lastNewPos = afterNewEndLine >= 0 ? afterNewEndLine + nl.length : newGeneratedBody.length;
   }
 
-  return `${newGeneratedBody}${nl}\t// @gen:end ${sh}${nl}${existingBody.trimEnd()}`;
+  // Preserve extra marker pairs in existing (more pairs than new body has)
+  if (existingMP.starts.length > pairCount) {
+    for (let i = pairCount; i < existingMP.starts.length && i < existingMP.ends.length; i++) {
+      const es = existingMP.starts[i];
+      const ee = existingMP.ends[i];
+      if (ee <= es) continue;
+      result += markerLine(existingBody, es, nl);
+      const inner = extractInner(existingBody, es, ee, nl);
+      if (inner) result += inner + nl;
+      result += markerLine(existingBody, ee, nl);
+    }
+  }
+
+  // Content after last pair: user additions from existing after last end marker, or new generated
+  let hasUserAfter = false;
+  if (existingMP.ends.length > 0) {
+    const le = existingMP.ends[existingMP.ends.length - 1];
+    const afterLastEnd = existingBody.indexOf(nl, le);
+    if (afterLastEnd >= 0) {
+      const userAfter = existingBody.slice(afterLastEnd + nl.length);
+      if (userAfter.length > 0) {
+        result += userAfter;
+        hasUserAfter = true;
+      }
+    }
+  }
+  if (!hasUserAfter) {
+    result += newGeneratedBody.slice(lastNewPos);
+  }
+
+  return result;
 }
 
 function buildDeclarationText(region: GeneratedRegion, body: string): string {

@@ -1,4 +1,5 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -7,8 +8,198 @@ import {
   validateBeforeWrite,
   injectContent,
   detectDrift,
+  applyInnerMarkers,
+  shortHash,
 } from "../src/index.js";
-import type { Diagnostic, GeneratedFilePatch } from "../src/index.js";
+import type { Diagnostic, GeneratedFilePatch, GeneratedRegion } from "../src/index.js";
+
+const nl = "\n";
+const rid = "test.module.route.handler";
+const sh = shortHash(rid);
+const startMkr = `// @gen:start ${sh}`;
+const endMkr = `// @gen:end ${sh}`;
+const region: GeneratedRegion = { id: rid, content: "", language: "go" };
+const tab = "\t";
+
+describe("applyInnerMarkers", () => {
+  // ── No markers in newGeneratedBody ──────────────────────────
+
+  it("returns new body verbatim when neither body has markers", () => {
+    const existing = "some existing code";
+    const newBody = "entirely new code";
+    expect(applyInnerMarkers(region, existing, newBody)).toBe("entirely new code");
+  });
+
+  it("preserves content after legacy @gen:end when new body has no markers", () => {
+    const existing = `old code${nl}${tab}${endMkr}${nl}user addition`;
+    const newBody = "new generated";
+    expect(applyInnerMarkers(region, existing, newBody)).toBe(`new generated${nl}user addition`);
+  });
+
+  it("preserves content before legacy @gen:start when new body has no markers", () => {
+    const existing = `user code${nl}${tab}${startMkr}${nl}old generated`;
+    const newBody = "new generated content";
+    expect(applyInnerMarkers(region, existing, newBody)).toBe(
+      `user code${nl}${tab}${startMkr}${nl}new generated content`,
+    );
+  });
+
+  // ── 1 pair in new, no markers in existing ──────────────────
+
+  it("uses default inner content when existing has no markers", () => {
+    const existing = "no markers here at all";
+    const newBody = `outer${nl}${startMkr}${nl}default inner${nl}${endMkr}${nl}after`;
+    expect(applyInnerMarkers(region, existing, newBody)).toBe(newBody);
+  });
+
+  // ── 1 pair in both — user edits preserved ──────────────────
+
+  it("preserves user edits between markers", () => {
+    const existing = `outer${nl}${startMkr}${nl}USER EDITED INNER${nl}${endMkr}${nl}after`;
+    const newBody = `outer${nl}${startMkr}${nl}default inner${nl}${endMkr}${nl}after`;
+    const expected = `outer${nl}${startMkr}${nl}USER EDITED INNER${nl}${endMkr}${nl}after`;
+    expect(applyInnerMarkers(region, existing, newBody)).toBe(expected);
+  });
+
+  it("refreshes outer content while preserving user inner edits", () => {
+    const existing = `OLD outer${nl}${startMkr}${nl}USER EDITED${nl}${endMkr}${nl}OLD after`;
+    const newBody = `NEW outer${nl}${startMkr}${nl}default inner${nl}${endMkr}${nl}NEW after`;
+    // Content before first marker is preserved from existing: "OLD outer"
+    // Content after last marker is preserved from existing: "OLD after"
+    // Inner content is preserved from existing: "USER EDITED"
+    const expected = `OLD outer${nl}${startMkr}${nl}USER EDITED${nl}${endMkr}${nl}OLD after`;
+    expect(applyInnerMarkers(region, existing, newBody)).toBe(expected);
+  });
+
+  // ── Content after last marker ──────────────────────────────
+
+  it("preserves user additions after last @gen:end", () => {
+    const existing = `${startMkr}${nl}inner${nl}${endMkr}${nl}USER ADDED AFTER`;
+    const newBody = `${startMkr}${nl}default inner${nl}${endMkr}`;
+    const expected = `${startMkr}${nl}inner${nl}${endMkr}${nl}USER ADDED AFTER`;
+    expect(applyInnerMarkers(region, existing, newBody)).toBe(expected);
+  });
+
+  // ── User code before first marker ──────────────────────────
+
+  it("preserves user code before first @gen:start", () => {
+    const existing = `USER CODE AT TOP${nl}${startMkr}${nl}inner${nl}${endMkr}`;
+    const newBody = `${startMkr}${nl}default inner${nl}${endMkr}`;
+    const expected = `USER CODE AT TOP${nl}${startMkr}${nl}inner${nl}${endMkr}${nl}`;
+    expect(applyInnerMarkers(region, existing, newBody)).toBe(expected);
+  });
+
+  it("does not add stray newline when no user code before first marker", () => {
+    const existing = `${startMkr}${nl}inner${nl}${endMkr}`;
+    const newBody = `${startMkr}${nl}default inner${nl}${endMkr}`;
+    const expected = `${startMkr}${nl}inner${nl}${endMkr}${nl}`;
+    expect(applyInnerMarkers(region, existing, newBody)).toBe(expected);
+  });
+
+  it("preserves user code before and after simultaneously", () => {
+    const existing = `TOP${nl}${startMkr}${nl}inner${nl}${endMkr}${nl}BOTTOM`;
+    const newBody = `${startMkr}${nl}default inner${nl}${endMkr}`;
+    const expected = `TOP${nl}${startMkr}${nl}inner${nl}${endMkr}${nl}BOTTOM`;
+    expect(applyInnerMarkers(region, existing, newBody)).toBe(expected);
+  });
+
+  it("ignores new outer sections when user code exists before and after", () => {
+    const existing = `TOP${nl}${startMkr}${nl}inner${nl}${endMkr}${nl}BOTTOM`;
+    const newBody = `NEW TOP${nl}${startMkr}${nl}default inner${nl}${endMkr}${nl}NEW BOTTOM`;
+    const expected = `TOP${nl}${startMkr}${nl}inner${nl}${endMkr}${nl}BOTTOM`;
+    expect(applyInnerMarkers(region, existing, newBody)).toBe(expected);
+  });
+
+  // ── Extra / unmatched marker pairs ─────────────────────────
+
+  it("preserves extra existing marker pairs at end", () => {
+    const existing = `${startMkr}${nl}user pair1${nl}${endMkr}${nl}${startMkr}${nl}user pair2${nl}${endMkr}`;
+    const newBody = `${startMkr}${nl}default pair1${nl}${endMkr}`;
+    const expected = `${startMkr}${nl}user pair1${nl}${endMkr}${nl}${startMkr}${nl}user pair2${nl}${endMkr}${nl}`;
+    expect(applyInnerMarkers(region, existing, newBody)).toBe(expected);
+  });
+
+  it("uses default for unmatched new pairs when existing has fewer", () => {
+    const existing = `${startMkr}${nl}user pair1${nl}${endMkr}`;
+    const newBody = `${startMkr}${nl}default pair1${nl}${endMkr}${nl}${startMkr}${nl}default pair2${nl}${endMkr}`;
+    const expected = `${startMkr}${nl}user pair1${nl}${endMkr}${nl}${startMkr}${nl}default pair2${nl}${endMkr}${nl}`;
+    expect(applyInnerMarkers(region, existing, newBody)).toBe(expected);
+  });
+
+  it("preserves user code before first marker alongside extra existing pairs", () => {
+    const existing = `TOP${nl}${startMkr}${nl}p1${nl}${endMkr}${nl}${startMkr}${nl}p2${nl}${endMkr}${nl}BOTTOM`;
+    const newBody = `${startMkr}${nl}def1${nl}${endMkr}`;
+    const expected = `TOP${nl}${startMkr}${nl}p1${nl}${endMkr}${nl}${startMkr}${nl}p2${nl}${endMkr}${nl}BOTTOM`;
+    expect(applyInnerMarkers(region, existing, newBody)).toBe(expected);
+  });
+
+  // ── Multiple pairs — full refresh ──────────────────────────
+
+  it("handles 2 matched pairs: preserves outer and inner from existing", () => {
+    const existing = [
+      `OLD before`,
+      `${startMkr}`,
+      `user inner 1`,
+      `${endMkr}`,
+      `OLD between`,
+      `${startMkr}`,
+      `user inner 2`,
+      `${endMkr}`,
+      `OLD after`,
+    ].join(nl);
+    const newBody = [
+      `NEW before`,
+      `${startMkr}`,
+      `default 1`,
+      `${endMkr}`,
+      `NEW between`,
+      `${startMkr}`,
+      `default 2`,
+      `${endMkr}`,
+      `NEW after`,
+    ].join(nl);
+    // Content before first marker preserved: "OLD before"
+    // Content between pair1 end and pair2 start: refreshed from new body "NEW between"
+    // Content after last marker preserved: "OLD after"
+    // Inner of pair1: user inner 1
+    // Inner of pair2: user inner 2
+    const expected = [
+      `OLD before`,
+      `${startMkr}`,
+      `user inner 1`,
+      `${endMkr}`,
+      `NEW between`,
+      `${startMkr}`,
+      `user inner 2`,
+      `${endMkr}`,
+      `OLD after`,
+    ].join(nl);
+    expect(applyInnerMarkers(region, existing, newBody)).toBe(expected);
+  });
+
+  // ── Edge cases ─────────────────────────────────────────────
+
+  it("preserves empty inner content (user cleared it)", () => {
+    const existing = `${startMkr}${nl}${endMkr}`;
+    const newBody = `${startMkr}${nl}default${nl}${endMkr}`;
+    const expected = `${startMkr}${nl}${endMkr}${nl}`;
+    expect(applyInnerMarkers(region, existing, newBody)).toBe(expected);
+  });
+
+  it("preserves indented inner content as-is", () => {
+    const existing = `${startMkr}${nl}  indented user${nl}  code  ${nl}${endMkr}${nl}after`;
+    const newBody = `${startMkr}${nl}default${nl}${endMkr}${nl}after`;
+    const expected = `${startMkr}${nl}  indented user${nl}  code  ${nl}${endMkr}${nl}after`;
+    expect(applyInnerMarkers(region, existing, newBody)).toBe(expected);
+  });
+
+  it("preserves trailing whitespace after last marker", () => {
+    const existing = `${startMkr}${nl}${endMkr}${nl}   ${nl}`;
+    const newBody = `${startMkr}${nl}default${nl}${endMkr}`;
+    const expected = `${startMkr}${nl}${endMkr}${nl}   ${nl}`;
+    expect(applyInnerMarkers(region, existing, newBody)).toBe(expected);
+  });
+});
 
 describe("atomic write + rollback", () => {
   it("writes files atomically via temp file", async () => {
