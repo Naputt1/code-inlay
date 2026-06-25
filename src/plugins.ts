@@ -32,6 +32,32 @@ export type PluginRegistry = {
   manifestHash: string;
 };
 
+export function computePluginManifestHash(app: AppDefinition): string {
+  const builtInPlugin: BackendCompilerPlugin = {
+    name: "@backend-gen/builtin",
+    version: "0.3.0",
+    apiVersion: "2",
+    architectures: Object.values(architectureRegistry),
+    adapters: Object.values(adapterRegistry),
+  };
+
+  const plugins = [builtInPlugin, ...app.plugins];
+
+  return stableHash(
+    [
+      ...plugins.map((plugin) => ({
+        name: plugin.name,
+        version: plugin.version,
+        apiVersion: plugin.apiVersion,
+        architectures: plugin.architectures?.map((item) => item.name).sort(),
+        adapters: plugin.adapters?.map((item) => item.name).sort(),
+      })),
+      ...(app.targets?.map((t) => ({ name: t.name, version: t.version })) ?? []),
+    ],
+    16,
+  );
+}
+
 export function createPluginRegistry(
   app: AppDefinition,
   diagnostics: Diagnostic[],
@@ -108,19 +134,7 @@ export function createPluginRegistry(
     validators,
     targets,
     packages,
-    manifestHash: stableHash(
-      [
-        ...plugins.map((plugin) => ({
-          name: plugin.name,
-          version: plugin.version,
-          apiVersion: plugin.apiVersion,
-          architectures: plugin.architectures?.map((item) => item.name).sort(),
-          adapters: plugin.adapters?.map((item) => item.name).sort(),
-        })),
-        ...(app.targets?.map((t) => ({ name: t.name, version: t.version })) ?? []),
-      ],
-      16,
-    ),
+    manifestHash: computePluginManifestHash(app),
   };
 }
 

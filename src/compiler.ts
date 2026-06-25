@@ -15,7 +15,13 @@ import { applyArchitecture } from "./architecture.js";
 import { generateCode } from "./codegen.js";
 import { formatGoSnippet } from "./format.js";
 import { checkGoEnvironment } from "./env.js";
-import { createPluginRegistry, runTransformerStage, runTargets, runValidators } from "./plugins.js";
+import {
+  computePluginManifestHash,
+  createPluginRegistry,
+  runTransformerStage,
+  runTargets,
+  runValidators,
+} from "./plugins.js";
 import {
   buildDependencyGraph,
   buildSymbolsCache,
@@ -271,10 +277,17 @@ export async function compile(options: CompileOptions): Promise<CompileResult> {
 
 export async function compileIncremental(options: CompileOptions): Promise<CompileResult> {
   const cwd = options.cwd ?? process.cwd();
+  const diagnostics: Diagnostic[] = [];
+  const app = options.app ?? (await loadConfig(options.configFile, cwd, diagnostics));
+
+  if (!app) {
+    return compile(options);
+  }
 
   const cache = readCache(cwd);
+  const pluginManifestHash = computePluginManifestHash(app);
 
-  if (cache && validateCache(cache, "0.2.0", "2.0", "")) {
+  if (cache && validateCache(cache, "0.2.0", "2.0", pluginManifestHash)) {
     if (options.changedFiles && options.changedFiles.length > 0) {
       const invalidated = invalidateChanged(cache, cache.dependencyGraph, options.changedFiles);
       if (invalidated.size === 0 && !options.watch) {
