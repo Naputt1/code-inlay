@@ -67,6 +67,7 @@ export function generateCode(
 
   for (const expansion of architecture.routes) {
     const route = expansion.route;
+    const hasDomainLayer = expansion.layers.some((l) => l.kind === "domain");
 
     for (const layer of expansion.layers) {
       if (layer.kind === "domain") {
@@ -102,7 +103,7 @@ export function generateCode(
           });
         }
       }
-      const content = generateLayerContent(route, layer.kind, diagnostics);
+      const content = generateLayerContent(route, layer.kind, diagnostics, hasDomainLayer);
       if (content !== undefined) {
         add(layer.file, {
           id: layer.regionId,
@@ -134,7 +135,7 @@ export function generateCode(
           });
         }
         add(handlerFile, {
-          ...generateGinHandler(route, diagnostics, adapter.name),
+          ...generateGinHandler(route, diagnostics, adapter.name, hasDomainLayer),
           stableHash: `${route.stableId}:${adapter.name}:handler:${handlerFile}`,
           owner: adapter.name,
         });
@@ -304,6 +305,7 @@ export function generateCode(
   // Usecase scaffold implementations (default: on)
   for (const expansion of architecture.routes) {
     const route = expansion.route;
+    const hasDomainLayer = expansion.layers.some((l) => l.kind === "domain");
     const usecaseLayers = expansion.layers.filter((l) => l.kind === "usecase");
     if (usecaseLayers.length === 0) continue;
     const mod = ast.modules.find((m) => m.name === route.moduleName);
@@ -318,7 +320,13 @@ export function generateCode(
       ([, v]) => v.moduleName === route.moduleName && v.groupKey === groupKey,
     );
     const implFile = info?.[0] ?? defaultFileForLayer(route, "usecase", featuresDir);
-    const parts = generateUsecaseScaffold(route, route.moduleName, hasRepository, serviceTypes);
+    const parts = generateUsecaseScaffold(
+      route,
+      route.moduleName,
+      hasRepository,
+      serviceTypes,
+      hasDomainLayer,
+    );
     const suffixes = ["", ".ctor", ".execute"];
     for (let i = 0; i < parts.length; i++) {
       const part = parts[i];
@@ -589,6 +597,7 @@ function generateLayerContent(
   route: RouteAst,
   layer: string,
   diagnostics: Diagnostic[],
+  hasDomain?: boolean,
 ): string | undefined {
   switch (layer) {
     case "entity":
@@ -598,7 +607,7 @@ function generateLayerContent(
     case "repository":
       return undefined;
     case "usecase":
-      return generateUsecase(route);
+      return generateUsecase(route, hasDomain);
     case "handler":
       return undefined;
     default:
@@ -846,12 +855,64 @@ function getZeroValue(results: string): string {
   return "nil, nil";
 }
 
-function generateUsecase(route: RouteAst): string {
-  return [
-    `type ${route.handlerName}Usecase interface {`,
-    `\tExecute(ctx context.Context, input ${requestType(route)}) (${responseType(route)}, error)`,
-    `}`,
-  ].join("\n");
+function usecaseDomainInputParams(
+  route: RouteAst,
+  moduleName: string,
+): { params: string; paramNames: string[] } | null {
+  const verb = ["List", "Get", "Create", "New", "Update", "Edit", "Delete", "Remove", "Set"].find(
+    (v) => route.handlerName.startsWith(v),
+  );
+  if (!verb) return null;
+
+  const baseID = `${pascalCase(moduleName)}ID`;
+  const baseEntity = pascalCase(moduleName);
+  const context = extractEntityContext(route.id);
+  const entityName = context ? `${baseEntity}${pascalCase(context)}` : baseEntity;
+
+  switch (verb) {
+    case "List": {
+      const hasParams = !!route.query || !!route.body || extractPathParams(route.path).length > 0;
+      if (hasParams) return null;
+      return { params: "", paramNames: [] };
+    }
+    case "Get":
+      return { params: `id ${baseID}`, paramNames: ["id"] };
+    case "Create":
+    case "New":
+      return { params: `entity ${entityName}`, paramNames: ["entity"] };
+    case "Update":
+    case "Edit":
+      return { params: `id ${baseID}, entity ${entityName}`, paramNames: ["id", "entity"] };
+    case "Delete":
+    case "Remove":
+      return { params: `id ${baseID}`, paramNames: ["id"] };
+    case "Set":
+      return { params: `id ${baseID}`, paramNames: ["id"] };
+    default:
+      return null;
+  }
+}
+
+function generateUsecase(route: RouteAst, hasDomain?: boolean): string {
+  const respType = responseType(route);
+  let executeParams: string;
+  if (hasDomain) {
+    const domainParams = usecaseDomainInputParams(route, route.moduleName);
+    if (domainParams) {
+      if (domainParams.params === "") {
+        executeParams = `ctx context.Context) (${respType}, error`;
+      } else {
+        executeParams = `ctx context.Context, ${domainParams.params}) (${respType}, error`;
+      }
+    } else {
+      executeParams = `ctx context.Context, input ${requestType(route)}) (${respType}, error`;
+    }
+  } else {
+    executeParams = `ctx context.Context, input ${requestType(route)}) (${respType}, error`;
+  }
+  return [`type ${route.handlerName}Usecase interface {`, `\tExecute(${executeParams})`, `}`].join(
+    "\n",
+  );
 }
 
 function generateServiceFile(svc: AppServiceDef, extensions?: BackendExtension[]): ScaffoldPart[] {
@@ -967,11 +1028,110 @@ type ScaffoldPart = {
   imports?: string[];
 };
 
+function repoMethodName(
+  verb: string,
+  context: string,
+  baseEntity: string,
+  handlerName: string,
+): string {
+  switch (verb) {
+    case "List":
+      return context ? `FindAll${pascalCase(context)}` : "FindAll";
+    case "Get":
+      return context ? `Find${pascalCase(context)}ByID` : "FindByID";
+    case "Create":
+    case "New":
+      return context ? `Create${pascalCase(context)}` : "Create";
+    case "Update":
+    case "Edit":
+      return context ? `Update${pascalCase(context)}` : "Update";
+    case "Delete":
+    case "Remove":
+      return context ? `Delete${pascalCase(context)}` : "Delete";
+    case "Set": {
+      let field = handlerName.slice("Set".length);
+      if (field.startsWith(baseEntity)) field = field.slice(baseEntity.length);
+      if (!field) field = handlerName.slice("Set".length);
+      return `Set${field}`;
+    }
+    default:
+      return "";
+  }
+}
+
+function scaffoldExecuteContent(
+  verb: string,
+  context: string,
+  baseEntity: string,
+  handlerName: string,
+  respType: string,
+): string {
+  const rmn = repoMethodName(verb, context, baseEntity, handlerName);
+  switch (verb) {
+    case "Get":
+      return [
+        `\tresult, err := uc.repo.${rmn}(ctx, id)`,
+        `\tif err != nil {`,
+        `\t\treturn ${respType}{}, err`,
+        `\t}`,
+        `\t// TODO: map result to ${respType}`,
+        `\treturn ${respType}{}, nil`,
+      ].join("\n");
+    case "Create":
+    case "New":
+      return [
+        `\tcreated, err := uc.repo.${rmn}(ctx, entity)`,
+        `\tif err != nil {`,
+        `\t\treturn ${respType}{}, err`,
+        `\t}`,
+        `\t// TODO: map created to ${respType}`,
+        `\treturn ${respType}{}, nil`,
+      ].join("\n");
+    case "Update":
+    case "Edit":
+      return [
+        `\tupdated, err := uc.repo.${rmn}(ctx, id, entity)`,
+        `\tif err != nil {`,
+        `\t\treturn ${respType}{}, err`,
+        `\t}`,
+        `\t// TODO: map updated to ${respType}`,
+        `\treturn ${respType}{}, nil`,
+      ].join("\n");
+    case "Delete":
+    case "Remove":
+      return [
+        `\tif err := uc.repo.${rmn}(ctx, id); err != nil {`,
+        `\t\treturn ${respType}{}, err`,
+        `\t}`,
+        `\treturn ${respType}{}, nil`,
+      ].join("\n");
+    case "List":
+      return [
+        `\tresults, err := uc.repo.${rmn}(ctx)`,
+        `\tif err != nil {`,
+        `\t\treturn ${respType}{}, err`,
+        `\t}`,
+        `\t// TODO: map results to ${respType}`,
+        `\treturn ${respType}{}, nil`,
+      ].join("\n");
+    case "Set":
+      return [
+        `\tif err := uc.repo.${rmn}(ctx, id); err != nil {`,
+        `\t\treturn ${respType}{}, err`,
+        `\t}`,
+        `\treturn ${respType}{}, nil`,
+      ].join("\n");
+    default:
+      return `\t// TODO: implement\n\treturn ${respType}{}, nil`;
+  }
+}
+
 function generateUsecaseScaffold(
   route: RouteAst,
   moduleName: string,
   hasRepository: boolean,
   serviceTypes: string[],
+  hasDomain?: boolean,
 ): ScaffoldPart[] {
   const ifaceName = `${route.handlerName}Usecase`;
   const structName = `${lowerIdent(route.handlerName)}UsecaseImpl`;
@@ -1043,13 +1203,54 @@ function generateUsecaseScaffold(
   });
 
   // Execute method
-  const executeSig = `func (uc *${structName}) Execute(ctx context.Context, input ${reqType}) (${respType}, error)`;
+  let executeSig: string;
+  let executeContent: string;
+  if (hasDomain && repoType) {
+    const domainParams = usecaseDomainInputParams(route, moduleName);
+    if (domainParams) {
+      const context = extractEntityContext(route.id);
+      const baseEntity = pascalCase(moduleName);
+      const verb = [
+        "List",
+        "Get",
+        "Create",
+        "New",
+        "Update",
+        "Edit",
+        "Delete",
+        "Remove",
+        "Set",
+      ].find((v) => route.handlerName.startsWith(v));
+      if (domainParams.params === "") {
+        executeSig = `func (uc *${structName}) Execute(ctx context.Context) (${respType}, error)`;
+      } else {
+        executeSig = `func (uc *${structName}) Execute(ctx context.Context, ${domainParams.params}) (${respType}, error)`;
+      }
+      if (verb) {
+        executeContent = scaffoldExecuteContent(
+          verb,
+          context,
+          baseEntity,
+          route.handlerName,
+          respType,
+        );
+      } else {
+        executeContent = `\t// TODO: implement ${ifaceName}\n\treturn ${respType}{}, nil`;
+      }
+    } else {
+      executeSig = `func (uc *${structName}) Execute(ctx context.Context, input ${reqType}) (${respType}, error)`;
+      executeContent = `\t// TODO: implement ${ifaceName}\n\treturn ${respType}{}, nil`;
+    }
+  } else {
+    executeSig = `func (uc *${structName}) Execute(ctx context.Context, input ${reqType}) (${respType}, error)`;
+    executeContent = `\t// TODO: implement ${ifaceName}\n\treturn ${respType}{}, nil`;
+  }
   parts.push({
     kind: "method",
     symbolName: `${structName}.Execute`,
     receiver: `*${structName}`,
     signature: executeSig,
-    content: `\t// TODO: implement ${ifaceName}\n\treturn ${respType}{}, nil`,
+    content: executeContent,
     expectsUserCode: true,
     isStub: true,
   });
