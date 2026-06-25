@@ -1,6 +1,16 @@
-import type { CodeTarget, GeneratedRegion } from "../types.js";
+import type { CodeTarget, GeneratedRegion, SchemaLike } from "../types.js";
 import { pascalCase } from "../naming.js";
 import { mergeEntityIntoWrapper } from "../schema.js";
+import {
+  isZodString,
+  isZodNumber,
+  isZodBoolean,
+  isZodEnum,
+  isZodArray,
+  isZodObject,
+  isZodOptional,
+  isZodNullable,
+} from "../zod-extras.js";
 
 export const openapiTarget: CodeTarget = {
   name: "openapi",
@@ -118,76 +128,54 @@ function getOrCreate(obj: Record<string, unknown>, key: string, fallback: unknow
 
 function zodToJsonSchema(schema: unknown): Record<string, unknown> {
   if (!schema || typeof schema !== "object") return {};
-  const def = (schema as Record<string, unknown>)._def as Record<string, unknown> | undefined;
-  if (!def) return {};
-  const typeName = def.typeName as string | undefined;
-
-  switch (typeName) {
-    case "ZodString":
-      return { type: "string" };
-    case "ZodNumber":
-      return { type: "number" };
-    case "ZodBoolean":
-      return { type: "boolean" };
-    case "ZodEnum": {
-      const values = def.values as string[] | undefined;
-      return { type: "string", enum: values ?? [] };
-    }
-    case "ZodArray": {
-      const element = ((def as Record<string, unknown>).type as unknown) ?? undefined;
-      return { type: "array", items: zodToJsonSchema(element) };
-    }
-    case "ZodObject": {
-      const shapeFn = def.shape as (() => Record<string, unknown>) | undefined;
-      if (!shapeFn) return { type: "object" };
-      const shape = shapeFn();
-      const properties: Record<string, unknown> = {};
-      const required: string[] = [];
-      for (const [key, val] of Object.entries(shape)) {
-        const fieldDef = (val as Record<string, unknown>)._def as
-          | Record<string, unknown>
-          | undefined;
-        const isOptional = fieldDef?.typeName === "ZodOptional";
-        properties[key] = zodToJsonSchema(val);
-        if (!isOptional) required.push(key);
-      }
-      return {
-        type: "object",
-        properties,
-        ...(required.length > 0 ? { required } : {}),
-      };
-    }
-    case "ZodOptional": {
-      const inner = ((def as Record<string, unknown>).innerType as unknown) ?? undefined;
-      return zodToJsonSchema(inner);
-    }
-    case "ZodNullable": {
-      const inner2 = ((def as Record<string, unknown>).innerType as unknown) ?? undefined;
-      const base = zodToJsonSchema(inner2);
-      return { ...base, nullable: true };
-    }
-    default:
-      return {};
+  const s = schema as SchemaLike;
+  if (isZodString(s)) return { type: "string" };
+  if (isZodNumber(s)) return { type: "number" };
+  if (isZodBoolean(s)) return { type: "boolean" };
+  if (isZodEnum(s)) {
+    const values = (s._def as { values?: string[] }).values;
+    return { type: "string", enum: values ?? [] };
   }
+  if (isZodArray(s)) {
+    return { type: "array", items: zodToJsonSchema(s.element) };
+  }
+  if (isZodObject(s)) {
+    const properties: Record<string, unknown> = {};
+    const required: string[] = [];
+    for (const [key, val] of Object.entries(s.shape)) {
+      const field = val as SchemaLike;
+      properties[key] = zodToJsonSchema(field);
+      if (!isZodOptional(field)) required.push(key);
+    }
+    return {
+      type: "object",
+      properties,
+      ...(required.length > 0 ? { required } : {}),
+    };
+  }
+  if (isZodOptional(s)) {
+    return zodToJsonSchema(s.unwrap());
+  }
+  if (isZodNullable(s)) {
+    const base = zodToJsonSchema(s.unwrap());
+    return { ...base, nullable: true };
+  }
+  return {};
 }
 
 function zodToQueryParams(schema: unknown): Array<Record<string, unknown>> {
   if (!schema || typeof schema !== "object") return [];
-  const def = (schema as Record<string, unknown>)._def as Record<string, unknown> | undefined;
-  if (!def) return [];
-  const shapeFn = def.shape as (() => Record<string, unknown>) | undefined;
-  if (!shapeFn) return [];
+  const s = schema as SchemaLike;
+  if (!isZodObject(s)) return [];
 
   const params: Array<Record<string, unknown>> = [];
-  for (const [key, val] of Object.entries(shapeFn())) {
-    const fieldDef = (val as Record<string, unknown>)._def as Record<string, unknown> | undefined;
-    const isOptional = fieldDef?.typeName === "ZodOptional";
-    const jsonSchema = zodToJsonSchema(val);
+  for (const [key, val] of Object.entries(s.shape)) {
+    const field = val as SchemaLike;
     params.push({
       name: key,
       in: "query",
-      required: !isOptional,
-      schema: jsonSchema,
+      required: !isZodOptional(field),
+      schema: zodToJsonSchema(field),
     });
   }
   return params;

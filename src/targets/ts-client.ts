@@ -4,10 +4,21 @@ import type {
   GeneratedRegion,
   ModuleAst,
   RouteAst,
+  SchemaLike,
 } from "../types.js";
 import { extractPathParams, pascalCase } from "../naming.js";
 import { contentHash } from "../hash.js";
 import { mergeEntityIntoWrapper } from "../schema.js";
+import {
+  isZodString,
+  isZodNumber,
+  isZodBoolean,
+  isZodEnum,
+  isZodArray,
+  isZodObject,
+  isZodOptional,
+  isZodNullable,
+} from "../zod-extras.js";
 
 export const tsClientTarget: CodeTarget = {
   name: "ts-client",
@@ -99,62 +110,41 @@ function routeTypeName(route: RouteAst, suffix: string): string {
 
 function zodToTypeScript(schema: unknown): string {
   if (!schema || typeof schema !== "object") return "unknown";
-  const def = (schema as Record<string, unknown>)._def as Record<string, unknown> | undefined;
-  if (!def) return "unknown";
-  const typeName = def.typeName as string | undefined;
-
-  switch (typeName) {
-    case "ZodString":
-      return "string";
-    case "ZodNumber":
-      return "number";
-    case "ZodBoolean":
-      return "boolean";
-    case "ZodEnum": {
-      const values = def.values as string[] | undefined;
-      if (values) return values.map((v) => `"${v}"`).join(" | ");
-      return "string";
-    }
-    case "ZodArray": {
-      const element = ((def as Record<string, unknown>).type as unknown) ?? undefined;
-      return `${zodToTypeScript(element)}[]`;
-    }
-    case "ZodObject": {
-      const shapeFn = def.shape as (() => Record<string, unknown>) | undefined;
-      const shape = shapeFn?.() as Record<string, unknown> | undefined;
-      if (!shape) return "Record<string, unknown>";
-      const fields = Object.entries(shape).map(([key, val]) => {
-        const v = val as Record<string, unknown>;
-        const def2 = v._def as Record<string, unknown> | undefined;
-        const isOptional = def2?.typeName === "ZodOptional";
-        return `  ${key}${isOptional ? "?" : ""}: ${zodToTypeScript(val)}`;
-      });
-      return `{\n${fields.join(";\n")}\n}`;
-    }
-    case "ZodOptional": {
-      const inner = ((def as Record<string, unknown>).innerType as unknown) ?? undefined;
-      return `${zodToTypeScript(inner)} | undefined`;
-    }
-    case "ZodNullable": {
-      const inner2 = ((def as Record<string, unknown>).innerType as unknown) ?? undefined;
-      return `${zodToTypeScript(inner2)} | null`;
-    }
-    default:
-      return "unknown";
+  const s = schema as SchemaLike;
+  if (isZodString(s)) return "string";
+  if (isZodNumber(s)) return "number";
+  if (isZodBoolean(s)) return "boolean";
+  if (isZodEnum(s)) {
+    const values = (s._def as { values?: string[] }).values;
+    if (values) return values.map((v) => `"${v}"`).join(" | ");
+    return "string";
   }
+  if (isZodArray(s)) {
+    return `${zodToTypeScript(s.element)}[]`;
+  }
+  if (isZodObject(s)) {
+    const fields = Object.entries(s.shape).map(([key, val]) => {
+      const field = val as SchemaLike;
+      return `  ${key}${isZodOptional(field) ? "?" : ""}: ${zodToTypeScript(field)}`;
+    });
+    return `{\n${fields.join(";\n")}\n}`;
+  }
+  if (isZodOptional(s)) {
+    return `${zodToTypeScript(s.unwrap())} | undefined`;
+  }
+  if (isZodNullable(s)) {
+    return `${zodToTypeScript(s.unwrap())} | null`;
+  }
+  return "unknown";
 }
 
 function generateObjectInterface(name: string, schema: unknown): string {
   if (!schema || typeof schema !== "object") return `export type ${name} = unknown;`;
-  const def = (schema as Record<string, unknown>)._def as Record<string, unknown> | undefined;
-  if (!def) return `export type ${name} = unknown;`;
-  const shapeFn = def.shape as (() => Record<string, unknown>) | undefined;
-  if (!shapeFn) return `export type ${name} = Record<string, unknown>;`;
-  const shape = shapeFn();
-  const fields = Object.entries(shape).map(([key, val]) => {
-    const fieldDef = (val as Record<string, unknown>)._def as Record<string, unknown> | undefined;
-    const isOptional = fieldDef?.typeName === "ZodOptional";
-    return `  ${key}${isOptional ? "?" : ""}: ${zodToTypeScript(val)};`;
+  const s = schema as SchemaLike;
+  if (!isZodObject(s)) return `export type ${name} = Record<string, unknown>;`;
+  const fields = Object.entries(s.shape).map(([key, val]) => {
+    const field = val as SchemaLike;
+    return `  ${key}${isZodOptional(field) ? "?" : ""}: ${zodToTypeScript(field)};`;
   });
   return `export interface ${name} {\n${fields.join("\n")}\n}`;
 }
@@ -224,12 +214,8 @@ function generateTypesForRoute(route: RouteAst, moduleName: string): GeneratedRe
 
 function collectQueryFields(route: RouteAst, pathParams: string[]): string[] {
   if (!route.query) return [];
-  const def = (route.query as unknown as Record<string, unknown>)._def as
-    | Record<string, unknown>
-    | undefined;
-  const shapeFn = def?.shape as (() => Record<string, unknown>) | undefined;
-  if (!shapeFn) return [];
-  return Object.keys(shapeFn()).filter((k) => !pathParams.includes(k));
+  if (!isZodObject(route.query)) return [];
+  return Object.keys(route.query.shape).filter((k) => !pathParams.includes(k));
 }
 
 function generateClientMethod(route: RouteAst): string {

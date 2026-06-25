@@ -157,6 +157,55 @@ function hasEntityPlaceholder(schema: SchemaLike): boolean {
   return false;
 }
 
+export function typeName(schema: SchemaLike): string {
+  return (schema._def as { typeName?: string }).typeName ?? "";
+}
+
+export function isZodOptional(schema: SchemaLike): schema is SchemaLike & { unwrap(): SchemaLike } {
+  return typeName(schema) === "ZodOptional";
+}
+
+export function isZodNullable(schema: SchemaLike): schema is SchemaLike & { unwrap(): SchemaLike } {
+  return typeName(schema) === "ZodNullable";
+}
+
+export function isZodObject(
+  schema: SchemaLike,
+): schema is SchemaLike & { shape: Record<string, SchemaLike> } {
+  return typeName(schema) === "ZodObject";
+}
+
+export function isZodString(schema: SchemaLike): boolean {
+  return typeName(schema) === "ZodString";
+}
+
+export function isZodEnum(schema: SchemaLike): boolean {
+  return typeName(schema) === "ZodEnum";
+}
+
+export function isZodNumber(schema: SchemaLike): boolean {
+  return typeName(schema) === "ZodNumber";
+}
+
+export function isZodBoolean(schema: SchemaLike): boolean {
+  return typeName(schema) === "ZodBoolean";
+}
+
+export function isZodArray(schema: SchemaLike): schema is SchemaLike & { element: SchemaLike } {
+  return typeName(schema) === "ZodArray";
+}
+
+export function unwrap(schema: SchemaLike): SchemaLike {
+  let current = schema;
+  while (isZodOptional(current) || isZodNullable(current)) {
+    current = current.unwrap();
+  }
+  return current;
+}
+
+// Re-export isEntityPlaceholder as isZodEntity for consistency
+export const isZodEntity = isEntityPlaceholder;
+
 const extras = {
   int32,
   int64,
@@ -165,6 +214,17 @@ const extras = {
   entity,
   isEntityPlaceholder,
   hasEntityPlaceholder,
+  typeName,
+  isZodOptional,
+  isZodNullable,
+  isZodObject,
+  isZodString,
+  isZodEnum,
+  isZodNumber,
+  isZodBoolean,
+  isZodArray,
+  unwrap,
+  isZodEntity,
 };
 
 export const z: typeof zod & typeof extras = Object.assign(Object.create(zod), extras);

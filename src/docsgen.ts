@@ -1,5 +1,13 @@
-import type { AppAst, ArchitectureAst, RouteAst } from "./types.js";
+import type { AppAst, ArchitectureAst, RouteAst, SchemaLike } from "./types.js";
 import { pascalCase } from "./naming.js";
+import {
+  isZodString,
+  isZodNumber,
+  isZodBoolean,
+  isZodEnum,
+  isZodArray,
+  isZodObject,
+} from "./zod-extras.js";
 
 export type DocFormat = "markdown" | "mermaid";
 
@@ -131,33 +139,21 @@ function routeTypeName(route: RouteAst, suffix: string): string {
 
 function zodToJsonSchemaSample(schema: unknown): unknown {
   if (!schema || typeof schema !== "object") return null;
-  const def = (schema as Record<string, unknown>)._def as Record<string, unknown> | undefined;
-  if (!def) return null;
-  const typeName = def.typeName as string | undefined;
-
-  switch (typeName) {
-    case "ZodString":
-      return "string";
-    case "ZodNumber":
-      return 0;
-    case "ZodBoolean":
-      return true;
-    case "ZodEnum": {
-      const values = def.values as string[] | undefined;
-      return values?.[0] ?? "string";
-    }
-    case "ZodArray":
-      return [];
-    case "ZodObject": {
-      const shapeFn = def.shape as (() => Record<string, unknown>) | undefined;
-      if (!shapeFn) return {};
-      const result: Record<string, unknown> = {};
-      for (const [key] of Object.entries(shapeFn())) {
-        result[key] = "value";
-      }
-      return result;
-    }
-    default:
-      return null;
+  const s = schema as SchemaLike;
+  if (isZodString(s)) return "string";
+  if (isZodNumber(s)) return 0;
+  if (isZodBoolean(s)) return true;
+  if (isZodEnum(s)) {
+    const values = (s._def as { values?: string[] }).values;
+    return values?.[0] ?? "string";
   }
+  if (isZodArray(s)) return [];
+  if (isZodObject(s)) {
+    const result: Record<string, unknown> = {};
+    for (const [key] of Object.entries(s.shape)) {
+      result[key] = "value";
+    }
+    return result;
+  }
+  return null;
 }
