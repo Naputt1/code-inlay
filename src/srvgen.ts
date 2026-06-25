@@ -20,9 +20,11 @@ export function generateServer(
   const routesPkg = "genroutes";
   imports.push(`genroutes "${moduleInfo.modulePath}/internal/http"`);
 
-  const svcPath = `"${moduleInfo.modulePath}/internal/service"`;
-  if (!imports.includes(svcPath)) {
-    imports.push(svcPath);
+  if (ast.services.length > 0) {
+    const svcPath = `"${moduleInfo.modulePath}/internal/service"`;
+    if (!imports.includes(svcPath)) {
+      imports.push(svcPath);
+    }
   }
 
   const routeArgs = ["api"];
