@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { basename, resolve } from "node:path";
-import type { Diagnostic } from "./types.js";
+import type { Diagnostic } from "../types/index.js";
 
 export type GoModuleInfo = {
   modulePath: string;

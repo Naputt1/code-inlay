@@ -5,10 +5,8 @@ import {
   runValidators,
   runTargets,
   computePluginManifestHash,
-} from "../src/plugins.js";
-import {
-  defineApp,
-} from "../src/index.js";
+} from "../src/plugins/registry.js";
+import { defineApp } from "../src/index.js";
 import type { Diagnostic, AppAst, PluginRegistry } from "../src/index.js";
 
 async function baseAstAndRegistry(): Promise<{ ast: AppAst; registry: PluginRegistry }> {
@@ -23,7 +21,16 @@ async function baseAstAndRegistry(): Promise<{ ast: AppAst; registry: PluginRegi
     pluginData: {},
     architecture: { mode: "replace", refs: [] },
     adapters: { mode: "replace", refs: [] },
-    router: { kind: "Router", id: "r", stableId: "r", annotations: {}, pluginData: {}, adapter: "gin" as never, prefix: "/", middleware: [] },
+    router: {
+      kind: "Router",
+      id: "r",
+      stableId: "r",
+      annotations: {},
+      pluginData: {},
+      adapter: "gin" as never,
+      prefix: "/",
+      middleware: [],
+    },
     modules: [],
     services: [],
     serviceExtensions: [],
@@ -54,9 +61,7 @@ describe("runTransformerStage", () => {
             {
               name: "zzz",
               version: "1.0.0",
-              hooks: [
-                { stage: "codegen" as const, order: 1, run: () => ({}) as never },
-              ],
+              hooks: [{ stage: "codegen" as const, order: 1, run: () => ({}) as never }],
               transform: (a: AppAst) => a,
             },
           ],
@@ -69,9 +74,7 @@ describe("runTransformerStage", () => {
             {
               name: "aaa",
               version: "1.0.0",
-              hooks: [
-                { stage: "codegen" as const, order: 2, run: () => ({}) as never },
-              ],
+              hooks: [{ stage: "codegen" as const, order: 2, run: () => ({}) as never }],
               transform: (a: AppAst) => a,
             },
           ],
@@ -100,10 +103,17 @@ describe("runTargets", () => {
   it("adds warning for unknown target", async () => {
     const { ast, registry } = await baseAstAndRegistry();
     const diagnostics: Diagnostic[] = [];
-    const patches = await runTargets(ast, { nodes: [], routes: [] }, registry, diagnostics, "/tmp", {
-      fileCreation: "skeleton",
-      targets: ["nonexistent-target"],
-    });
+    const patches = await runTargets(
+      ast,
+      { nodes: [], routes: [] },
+      registry,
+      diagnostics,
+      "/tmp",
+      {
+        fileCreation: "skeleton",
+        targets: ["nonexistent-target"],
+      },
+    );
     expect(diagnostics.some((d) => d.code === "unknown-target")).toBe(true);
     expect(patches).toEqual([]);
   });
@@ -111,10 +121,17 @@ describe("runTargets", () => {
   it("merges patches with same path", async () => {
     const { ast, registry } = await baseAstAndRegistry();
     const diagnostics: Diagnostic[] = [];
-    const patches = await runTargets(ast, { nodes: [], routes: [] }, registry, diagnostics, "/tmp", {
-      fileCreation: "skeleton",
-      targets: [],
-    });
+    const patches = await runTargets(
+      ast,
+      { nodes: [], routes: [] },
+      registry,
+      diagnostics,
+      "/tmp",
+      {
+        fileCreation: "skeleton",
+        targets: [],
+      },
+    );
     expect(Array.isArray(patches)).toBe(true);
   });
 });

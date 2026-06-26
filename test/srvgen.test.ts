@@ -1,11 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  compile,
-  defineApp,
-  defineModule,
-  defineRoute,
-  generateServer,
-} from "../src/index.js";
+import { compile, defineApp, defineModule, defineRoute, generateServer } from "../src/index.js";
 import type { AdapterPlugin, GoModuleInfo } from "../src/index.js";
 
 describe("generateServer", () => {
@@ -55,7 +49,10 @@ describe("generateServer", () => {
 
   it("generates service initialization when services present", async () => {
     const result = await buildBase();
-    const appWithServices = { ...result.ast!, services: [{ name: "UserService", close: true, typeName: "*userSvc" }] };
+    const appWithServices = {
+      ...result.ast!,
+      services: [{ name: "UserService", close: true, typeName: "*userSvc" }],
+    };
     const patch = generateServer(appWithServices, result.architecture!, moduleInfo, {
       name: "gin",
       transport: "http",

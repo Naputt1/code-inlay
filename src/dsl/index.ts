@@ -28,7 +28,8 @@ import type {
   TestingConfig,
   AdapterSelection,
   UsecaseOrganization,
-} from "./types.js";
+} from "../types/index.js";
+
 export type DefineRouteInput<
   TQuery extends SchemaLike | undefined,
   TBody extends SchemaLike | undefined,

@@ -8,10 +8,10 @@ import type {
   GeneratedFilePatch,
   GeneratedRegion,
   GoDeclaration,
-} from "./types.js";
+} from "../types/index.js";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
-const parserBinary = resolve(__dirname, "../tools/decl-parser/decl-parser");
+const parserBinary = resolve(__dirname, "../../tools/decl-parser/decl-parser");
 
 export function shortHash(id: string): string {
   return createHash("sha256").update(id).digest("hex").slice(0, 8);
@@ -121,8 +121,6 @@ export function injectGoFile(
     }
   }
 
-  // Adopt user-modified stubs: if a stub function's body differs from the
-  // generated scaffold, treat it as user code so no markers or stub appear.
   const adoptedSymbols = new Set<string>();
   for (let i = existingGen.length - 1; i >= 0; i--) {
     const { decl, region } = existingGen[i];
@@ -181,7 +179,6 @@ export function injectGoFile(
       appendGenerated(newLines, region, fileText);
     }
   } else {
-    // Walk declarations in file order, preserving positions
     for (const decl of declarations) {
       if (decl.kind === "imports" || decl.symbolName === "") continue;
       if (isInsideBlob(decl)) continue;
@@ -204,7 +201,6 @@ export function injectGoFile(
       }
     }
 
-    // Add any planned regions that weren't found in the file (new symbols)
     const placedNames = new Set([...genByName.keys(), ...userNames]);
     for (const region of symbolRegions) {
       if (region.symbolName && !placedNames.has(region.symbolName)) {
@@ -400,16 +396,13 @@ export function applyInnerMarkers(
     const ne = newMP.ends[i];
     if (ne <= ns) continue;
 
-    // Content before start: preserve user code from existing before first marker
     if (i === 0 && existingMP.starts.length > 0 && existingMP.starts[0] > 0) {
       result += existingBody.slice(0, existingMP.starts[0]);
     } else {
       result += newGeneratedBody.slice(lastNewPos, ns);
     }
-    // Start marker line
     result += markerLine(newGeneratedBody, ns, nl);
 
-    // Content between markers: user edits from existing, or default from new
     if (
       i < existingMP.starts.length &&
       i < existingMP.ends.length &&
@@ -422,13 +415,11 @@ export function applyInnerMarkers(
       if (inner) result += inner + nl;
     }
 
-    // End marker line
     result += markerLine(newGeneratedBody, ne, nl);
     const afterNewEndLine = newGeneratedBody.indexOf(nl, ne);
     lastNewPos = afterNewEndLine >= 0 ? afterNewEndLine + nl.length : newGeneratedBody.length;
   }
 
-  // Preserve extra marker pairs in existing (more pairs than new body has)
   if (existingMP.starts.length > pairCount) {
     for (let i = pairCount; i < existingMP.starts.length && i < existingMP.ends.length; i++) {
       const es = existingMP.starts[i];
@@ -441,7 +432,6 @@ export function applyInnerMarkers(
     }
   }
 
-  // Content after last pair: user additions from existing after last end marker, or new generated
   let hasUserAfter = false;
   if (existingMP.ends.length > 0) {
     const le = existingMP.ends[existingMP.ends.length - 1];

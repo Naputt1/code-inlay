@@ -4,7 +4,7 @@ import {
   checkPluginDeterminism,
   getSandboxConfig,
   createSandboxedPlugin,
-} from "../src/sandbox.js";
+} from "../src/plugins/sandbox.js";
 import type { BackendCompilerPlugin, SandboxConfig, AppAst } from "../src/index.js";
 
 const emptyPlugin: BackendCompilerPlugin = {
@@ -60,11 +60,7 @@ describe("runPluginInSandbox", () => {
       ],
     };
     const config: SandboxConfig = { enabled: true, timeout: 5000 };
-    const result = runPluginInSandbox(
-      plugin,
-      { diagnostics: [], plugin },
-      config,
-    );
+    const result = runPluginInSandbox(plugin, { diagnostics: [], plugin }, config);
     expect(result.success).toBe(true);
     expect(result.executionTime).toBeGreaterThanOrEqual(0);
   });

@@ -11,7 +11,7 @@ import {
   type ParseInput,
   type ParseReturnType,
 } from "zod";
-import type { SchemaLike } from "./types.js";
+import type { SchemaLike } from "../types/index.js";
 
 interface ZodEntityDef extends ZodTypeDef {
   typeName: "ZodEntity";
@@ -203,7 +203,6 @@ export function unwrap(schema: SchemaLike): SchemaLike {
   return current;
 }
 
-// Re-export isEntityPlaceholder as isZodEntity for consistency
 export const isZodEntity = isEntityPlaceholder;
 
 const extras = {

@@ -1,6 +1,6 @@
-import type { AppAst, ArchitectureAst } from "../types.js";
-import { compile } from "../compiler.js";
-import { generateApiDocs } from "../docsgen.js";
+import type { AppAst, ArchitectureAst } from "../types/index.js";
+import { compile } from "../compiler/compiler.js";
+import { generateApiDocs } from "../docs/index.js";
 import type { ParsedArgs } from "./index.js";
 import { basename, dirname, resolve } from "node:path";
 

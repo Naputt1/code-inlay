@@ -5,10 +5,10 @@ import type {
   ModuleAst,
   RouteAst,
   SchemaLike,
-} from "../types.js";
-import { extractPathParams, pascalCase } from "../naming.js";
-import { contentHash } from "../hash.js";
-import { mergeEntityIntoWrapper } from "../schema.js";
+} from "../types/index.js";
+import { extractPathParams, pascalCase } from "../utils/naming.js";
+import { contentHash } from "../utils/hash.js";
+import { mergeEntityIntoWrapper } from "../schema/index.js";
 import {
   isZodString,
   isZodNumber,
@@ -18,7 +18,7 @@ import {
   isZodObject,
   isZodOptional,
   isZodNullable,
-} from "../zod-extras.js";
+} from "../schema/extras.js";
 
 export const tsClientTarget: CodeTarget = {
   name: "ts-client",

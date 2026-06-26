@@ -1,4 +1,4 @@
-import { compileWithWatch } from "../compiler.js";
+import { compileWithWatch } from "../compiler/compiler.js";
 import type { ParsedArgs } from "./index.js";
 import { basename, dirname, resolve } from "node:path";
 

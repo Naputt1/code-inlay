@@ -69,12 +69,14 @@ describe("renderGraph", () => {
   it("includes plugins in tree output", async () => {
     const app = defineApp({
       architecture: "clean",
-      plugins: [{
-        name: "test-plugin",
-        version: "1.0.0",
-        apiVersion: "2" as const,
-        transformers: [],
-      }],
+      plugins: [
+        {
+          name: "test-plugin",
+          version: "1.0.0",
+          apiVersion: "2" as const,
+          transformers: [],
+        },
+      ],
       modules: [
         defineModule({
           name: "user",

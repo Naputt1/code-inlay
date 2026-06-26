@@ -9,7 +9,7 @@ import {
   generateEntityStructs,
 } from "../src/index.js";
 import type { Diagnostic } from "../src/index.js";
-import type { ResponseFormat } from "../src/types.js";
+import type { ResponseFormat } from "../src/types/index.js";
 
 describe("extractEntityContext", () => {
   it("strips 'get' suffix", () => {
@@ -83,5 +83,3 @@ describe("generateEntityStructs", () => {
     expect(output).toContain("Pet");
   });
 });
-
-

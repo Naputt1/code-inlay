@@ -1,4 +1,4 @@
-import type { CodeTarget } from "../types.js";
+import type { CodeTarget } from "../types/index.js";
 import { tsClientTarget } from "./ts-client.js";
 import { openapiTarget } from "./openapi.js";
 

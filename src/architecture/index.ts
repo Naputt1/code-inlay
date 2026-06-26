@@ -8,17 +8,16 @@ import type {
   Diagnostic,
   GeneratedLayer,
   RouteAst,
-} from "./types.js";
+} from "../types/index.js";
 import {
   defaultFileForLayer,
   defaultRegionId,
   fileForUsecaseGroup,
-  pascalCase,
   regionIdForUsecase,
   resolveUsecaseGroupKey,
   resolveUsecaseOrg,
-} from "./naming.js";
-import { stableHash } from "./hash.js";
+} from "../utils/naming.js";
+import { stableHash } from "../utils/hash.js";
 
 function buildArchitecture(name: string, layerKinds: readonly string[]): ArchitecturePlugin {
   return {
@@ -174,6 +173,14 @@ export function applyArchitecture(ast: AppAst, diagnostics: Diagnostic[]): Archi
   checkDuplicateRegionIds(routes, diagnostics);
 
   return { nodes: allNodes, routes };
+}
+
+function pascalCase(value: string): string {
+  return value
+    .split(/[^a-zA-Z0-9]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join("");
 }
 
 function checkDuplicateSymbols(

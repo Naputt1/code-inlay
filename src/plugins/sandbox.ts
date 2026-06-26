@@ -1,5 +1,5 @@
 import vm from "node:vm";
-import type { BackendCompilerPlugin, PluginContext, SandboxConfig } from "./types.js";
+import type { BackendCompilerPlugin, PluginContext, SandboxConfig } from "../types/index.js";
 
 export type SandboxResult = {
   success: boolean;

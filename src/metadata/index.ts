@@ -1,6 +1,6 @@
-import type { AppAst, GeneratedFilePatch, RouteAst } from "./types.js";
-import { pascalCase } from "./naming.js";
-import { stableHash } from "./hash.js";
+import type { AppAst, GeneratedFilePatch, RouteAst } from "../types/index.js";
+import { pascalCase } from "../utils/naming.js";
+import { stableHash } from "../utils/hash.js";
 
 export function generateMetadata(ast: AppAst): GeneratedFilePatch[] {
   if (!ast.options.metadata?.enabled) return [];

@@ -1,13 +1,13 @@
 import { execSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
-import type { PluginPackage } from "../types.js";
+import type { PluginPackage } from "../types/index.js";
 import {
   resolvePluginPackage,
   checkPluginCompatibility,
   savePluginLock,
   readPluginLock,
-} from "../plugin-resolver.js";
+} from "../plugins/resolver.js";
 import type { ParsedArgs } from "./index.js";
 
 export async function pluginCommand(parsed: ParsedArgs): Promise<void> {

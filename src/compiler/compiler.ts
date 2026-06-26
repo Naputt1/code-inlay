@@ -9,19 +9,19 @@ import type {
   CompileResult,
   Diagnostic,
   GeneratedFilePatch,
-} from "./types.js";
+} from "../types/index.js";
 import { buildAst } from "./ast.js";
-import { applyArchitecture } from "./architecture.js";
-import { generateCode } from "./codegen.js";
-import { formatGoSnippet } from "./format.js";
-import { checkGoEnvironment } from "./env.js";
+import { applyArchitecture } from "../architecture/index.js";
+import { generateCode } from "../generators/index.js";
+import { formatGoSnippet } from "../utils/format.js";
+import { checkGoEnvironment } from "../utils/env.js";
 import {
   computePluginManifestHash,
   createPluginRegistry,
   runTransformerStage,
   runTargets,
   runValidators,
-} from "./plugins.js";
+} from "../plugins/registry.js";
 import {
   buildDependencyGraph,
   buildSymbolsCache,
@@ -29,8 +29,8 @@ import {
   readCache,
   validateCache,
   writeCache,
-} from "./cache.js";
-import { atomicWritePatches, removeOrphanRegions, validateBeforeWrite } from "./writer.js";
+} from "../cache/index.js";
+import { atomicWritePatches, removeOrphanRegions, validateBeforeWrite } from "../writer/writer.js";
 
 export async function compile(options: CompileOptions): Promise<CompileResult> {
   const cwd = options.cwd ?? process.cwd();

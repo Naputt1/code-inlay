@@ -21,8 +21,8 @@ import {
   fileForModuleRoutes,
   regionIdForUsecaseImports,
   regionIdForUsecaseImpl,
-} from "../src/naming.js";
-import type { RouteAst, UsecaseOrganization } from "../src/types.js";
+} from "../src/utils/naming.js";
+import type { RouteAst, UsecaseOrganization } from "../src/types/index.js";
 
 // ---------------------------------------------------------------------------
 // Helpers

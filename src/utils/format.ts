@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import type { Diagnostic } from "./types.js";
+import type { Diagnostic } from "../types/index.js";
 
 function isCompleteSnippet(content: string): boolean {
   if (/^}$/.test(content)) return false;

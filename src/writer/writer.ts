@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
-import type { CompilerCache, Diagnostic, FileDiff, GeneratedFilePatch } from "./types.js";
-import { formatFile, formatGoSnippet } from "./format.js";
+import type { CompilerCache, Diagnostic, FileDiff, GeneratedFilePatch } from "../types/index.js";
+import { formatFile, formatGoSnippet } from "../utils/format.js";
 import { injectGoFile } from "./go-writer.js";
 
 export type FileSnapshot = {
@@ -510,7 +510,7 @@ function lineEndIndex(fileText: string, index: number): number {
   return nextLine === -1 ? fileText.length : nextLine + 1;
 }
 
-function extractRegionContent(fileText: string, regionId: string): string {
+export function extractRegionContent(fileText: string, regionId: string): string {
   const startPat = new RegExp(`// @gen:start ${escapeRegex(regionId)}`);
   const endPat = new RegExp(`// @gen:end ${escapeRegex(regionId)}`);
 

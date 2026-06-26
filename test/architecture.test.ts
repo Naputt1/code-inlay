@@ -1,7 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  resolveArchitecture,
-} from "../src/architecture.js";
+import { resolveArchitecture } from "../src/architecture/index.js";
 import type { Diagnostic, ArchitectureRef } from "../src/index.js";
 
 describe("resolveArchitecture", () => {
@@ -31,10 +29,7 @@ describe("resolveArchitecture", () => {
       apiVersion: "2" as const,
       transform: () => ({ nodes: [], routes: [] }) as never,
     };
-    const plugins = resolveArchitecture(
-      { mode: "replace", refs: [customArch] },
-      diagnostics,
-    );
+    const plugins = resolveArchitecture({ mode: "replace", refs: [customArch] }, diagnostics);
     expect(plugins).toHaveLength(1);
     expect(plugins[0].name).toBe("custom");
     expect(diagnostics).toHaveLength(0);

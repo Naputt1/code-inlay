@@ -1,4 +1,4 @@
-import type { RouteAst, UsecaseOrganization } from "./types.js";
+import type { RouteAst, UsecaseOrganization } from "../types/index.js";
 
 export function pascalCase(value: string): string {
   return value

@@ -1,12 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import {
-  compile,
-  defineApp,
-  defineModule,
-  defineRoute,
-  defineMiddleware,
-} from "../src/index.js";
+import { compile, defineApp, defineModule, defineRoute, defineMiddleware } from "../src/index.js";
 
 describe("middleware file generation", () => {
   it("generates middleware files when routes have middleware", async () => {
@@ -77,9 +71,7 @@ describe("middleware file generation", () => {
       ],
     });
     const result = await compile({ app, dryRun: true });
-    const mwFile = result.generation?.files.find((f) =>
-      f.path.includes("middleware/ratelimit.go"),
-    );
+    const mwFile = result.generation?.files.find((f) => f.path.includes("middleware/ratelimit.go"));
     expect(mwFile).toBeDefined();
   });
 });

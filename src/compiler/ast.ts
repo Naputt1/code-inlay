@@ -14,10 +14,10 @@ import type {
   RouteAst,
   ServiceDefinition,
   ServiceExtensionResult,
-} from "./types.js";
-import { joinPath, serviceTypeName } from "./naming.js";
-import { stableHash } from "./hash.js";
-import { hasEntityPlaceholder } from "./zod-extras.js";
+} from "../types/index.js";
+import { joinPath, serviceTypeName } from "../utils/naming.js";
+import { stableHash } from "../utils/hash.js";
+import { hasEntityPlaceholder } from "../schema/extras.js";
 
 export function buildAst(app: AppDefinition, diagnostics: Diagnostic[]): AppAst {
   const router = app.router ?? {

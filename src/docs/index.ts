@@ -1,5 +1,5 @@
-import type { AppAst, ArchitectureAst, RouteAst, SchemaLike } from "./types.js";
-import { pascalCase } from "./naming.js";
+import type { AppAst, ArchitectureAst, RouteAst, SchemaLike } from "../types/index.js";
+import { pascalCase } from "../utils/naming.js";
 import {
   isZodString,
   isZodNumber,
@@ -7,7 +7,7 @@ import {
   isZodEnum,
   isZodArray,
   isZodObject,
-} from "./zod-extras.js";
+} from "../schema/extras.js";
 
 export type DocFormat = "markdown" | "mermaid";
 
