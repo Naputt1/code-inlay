@@ -143,28 +143,28 @@ describe("invalidateChanged", () => {
     edges?: Array<{ from: string; to: string }>,
   ): DependencyGraph => ({
     nodes: Object.fromEntries(
-      Object.entries(nodes).map(([id, { kind, hash }]) => [id, { id, kind: kind as DependencyNode["kind"], hash }]),
+      Object.entries(nodes).map(([id, { kind, hash }]) => [
+        id,
+        { id, kind: kind as DependencyNode["kind"], hash },
+      ]),
     ),
     edges: (edges ?? []).map((e) => ({ ...e, reason: "test" })),
   });
 
   it("detects new nodes", () => {
     const prev = makeGraph({ a: { kind: "app", hash: "hash1" } });
-    const current = makeGraph({ a: { kind: "app", hash: "hash1" }, b: { kind: "app", hash: "hash2" } });
-    const invalid = invalidateChanged(
-      { dependencyGraph: prev } as CompilerCache,
-      current,
-    );
+    const current = makeGraph({
+      a: { kind: "app", hash: "hash1" },
+      b: { kind: "app", hash: "hash2" },
+    });
+    const invalid = invalidateChanged({ dependencyGraph: prev } as CompilerCache, current);
     expect(invalid.has("b")).toBe(true);
   });
 
   it("detects changed nodes by hash", () => {
     const prev = makeGraph({ a: { kind: "app", hash: "hash1" } });
     const current = makeGraph({ a: { kind: "app", hash: "hash2" } });
-    const invalid = invalidateChanged(
-      { dependencyGraph: prev } as CompilerCache,
-      current,
-    );
+    const invalid = invalidateChanged({ dependencyGraph: prev } as CompilerCache, current);
     expect(invalid.has("a")).toBe(true);
   });
 
@@ -177,10 +177,7 @@ describe("invalidateChanged", () => {
       { a: { kind: "app", hash: "hash2" }, b: { kind: "app", hash: "hash1" } },
       [{ from: "a", to: "b" }],
     );
-    const invalid = invalidateChanged(
-      { dependencyGraph: prev } as CompilerCache,
-      current,
-    );
+    const invalid = invalidateChanged({ dependencyGraph: prev } as CompilerCache, current);
     expect(invalid.has("a")).toBe(true);
     expect(invalid.has("b")).toBe(true);
   });
@@ -200,22 +197,20 @@ describe("invalidateChanged", () => {
       },
       [{ from: "file:src/main.go", to: "region:main" }],
     );
-    const invalid = invalidateChanged(
-      { dependencyGraph: prev } as CompilerCache,
-      current,
-      ["src/main.go"],
-    );
+    const invalid = invalidateChanged({ dependencyGraph: prev } as CompilerCache, current, [
+      "src/main.go",
+    ]);
     expect(invalid.has("file:src/main.go")).toBe(true);
     expect(invalid.has("region:main")).toBe(true);
   });
 
   it("detects removed nodes (present in prev but not in current)", () => {
-    const prev = makeGraph({ a: { kind: "app", hash: "hash1" }, b: { kind: "app", hash: "hash1" } });
+    const prev = makeGraph({
+      a: { kind: "app", hash: "hash1" },
+      b: { kind: "app", hash: "hash1" },
+    });
     const current = makeGraph({ a: { kind: "app", hash: "hash1" } });
-    const invalid = invalidateChanged(
-      { dependencyGraph: prev } as CompilerCache,
-      current,
-    );
+    const invalid = invalidateChanged({ dependencyGraph: prev } as CompilerCache, current);
     expect(invalid.has("b")).toBe(true);
   });
 

@@ -1,6 +1,6 @@
-import { serviceConstructorName } from "./naming.js";
-import type { AppAst, ArchitectureAst, GeneratedFilePatch, AdapterPlugin } from "./types.js";
-import type { GoModuleInfo } from "./env.js";
+import { serviceConstructorName } from "../utils/naming.js";
+import type { AppAst, ArchitectureAst, GeneratedFilePatch, AdapterPlugin } from "../types/index.js";
+import type { GoModuleInfo } from "../utils/env.js";
 
 export const serverFilePath = "cmd/server/main.go";
 export const serverMainRegionId = "server.main";

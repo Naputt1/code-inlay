@@ -7,7 +7,7 @@ import {
   resolvePluginPackage,
   savePluginLock,
   readPluginLock,
-} from "../src/plugin-resolver.js";
+} from "../src/plugins/resolver.js";
 import type { PluginPackage, Diagnostic } from "../src/index.js";
 
 describe("checkPluginCompatibility", () => {

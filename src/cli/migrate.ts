@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { compile } from "../compiler.js";
-import { readCache } from "../cache.js";
+import { compile } from "../compiler/compiler.js";
+import { readCache } from "../cache/index.js";
 import type { ParsedArgs } from "./index.js";
 
 export async function migrateCommand(parsed: ParsedArgs): Promise<void> {

@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import {
-  compile,
-  defineApp,
-  defineModule,
-  defineRoute,
-} from "../src/index.js";
+import { compile, defineApp, defineModule, defineRoute } from "../src/index.js";
 
 function hasErrors(result: { diagnostics: Array<{ level: string }> }): boolean {
   return result.diagnostics.some((d) => d.level === "error");

@@ -6,13 +6,15 @@ import {
   resolveArchitectureSelection,
   resolveAdapterSelection,
   buildAst,
-} from "../src/ast.js";
-import {
-  defineApp,
-  defineModule,
-  defineRoute,
+} from "../src/compiler/ast.js";
+import { defineApp, defineModule, defineRoute } from "../src/index.js";
+import type {
+  Diagnostic,
+  ArchitectureRef,
+  AdapterRef,
+  ArchitectureSelection,
+  AdapterSelection,
 } from "../src/index.js";
-import type { Diagnostic, ArchitectureRef, AdapterRef, ArchitectureSelection, AdapterSelection } from "../src/index.js";
 
 describe("normalizeArchitectureSelection", () => {
   it("passes through existing selection", () => {
@@ -28,7 +30,10 @@ describe("normalizeArchitectureSelection", () => {
   });
 
   it("wraps array of refs", () => {
-    const result = normalizeArchitectureSelection(["clean" as ArchitectureRef, "minimal" as ArchitectureRef]);
+    const result = normalizeArchitectureSelection([
+      "clean" as ArchitectureRef,
+      "minimal" as ArchitectureRef,
+    ]);
     expect(result.mode).toBe("replace");
     expect(result.refs).toEqual(["clean", "minimal"]);
   });
@@ -151,15 +156,11 @@ describe("buildAst validation", () => {
       modules: [
         defineModule({
           name: "user",
-          routes: [
-            defineRoute({ id: "get", method: "GET", path: "/users", handler: "GetUsers" }),
-          ],
+          routes: [defineRoute({ id: "get", method: "GET", path: "/users", handler: "GetUsers" })],
         }),
         defineModule({
           name: "admin",
-          routes: [
-            defineRoute({ id: "get", method: "GET", path: "/admin", handler: "GetAdmin" }),
-          ],
+          routes: [defineRoute({ id: "get", method: "GET", path: "/admin", handler: "GetAdmin" })],
         }),
       ],
     });

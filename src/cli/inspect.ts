@@ -1,8 +1,8 @@
-import type { AppDefinition } from "../types.js";
-import { compile } from "../compiler.js";
-import { renderGraph, renderPluginExecutionOrder } from "../graph.js";
+import type { AppDefinition } from "../types/index.js";
+import { compile } from "../compiler/compiler.js";
+import { renderGraph, renderPluginExecutionOrder } from "../cache/graph.js";
 import type { ParsedArgs } from "./index.js";
-import type { GraphFormat } from "../graph.js";
+import type { GraphFormat } from "../cache/graph.js";
 import { basename, dirname, resolve } from "node:path";
 
 export async function inspectCommand(parsed: ParsedArgs): Promise<void> {
@@ -153,7 +153,7 @@ async function inspectGraph(configFile: string, cwd: string, format: string): Pr
 }
 
 async function inspectPlugins(configFile: string, cwd: string): Promise<void> {
-  const { compile: compileInternal, printDiagnostics } = await import("../compiler.js");
+  const { compile: compileInternal, printDiagnostics } = await import("../compiler/compiler.js");
   const result = await compileInternal({ configFile, cwd, dryRun: true });
 
   printDiagnostics(result.diagnostics);
@@ -164,7 +164,7 @@ async function inspectPlugins(configFile: string, cwd: string): Promise<void> {
     return;
   }
 
-  const { createPluginRegistry } = await import("../plugins.js");
+  const { createPluginRegistry } = await import("../plugins/registry.js");
 
   const appDef = await loadAppConfig(configFile, cwd);
   if (!appDef) {

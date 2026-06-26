@@ -1,4 +1,4 @@
-import { compile, printDiagnostics } from "../compiler.js";
+import { compile, printDiagnostics } from "../compiler/compiler.js";
 import type { ParsedArgs } from "./index.js";
 import { basename, dirname, resolve } from "node:path";
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { GeneratedRegion } from "../src/types.js";
-import { batchEnrichGoRegions, enrichRegionWithRegex, tryBatchAST } from "../src/enrich.js";
+import type { GeneratedRegion } from "../src/types/index.js";
+import { batchEnrichGoRegions, enrichRegionWithRegex, tryBatchAST } from "../src/plugins/enrich.js";
 
 function region(overrides: Partial<GeneratedRegion> & { id: string }): GeneratedRegion {
   return {

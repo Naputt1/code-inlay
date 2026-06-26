@@ -1,5 +1,5 @@
-import type { Diagnostic, ResponseFormat, RouteAst, SchemaLike } from "./types.js";
-import { extractPathParams, pascalCase, routeTypeName } from "./naming.js";
+import type { Diagnostic, ResponseFormat, RouteAst, SchemaLike } from "../types/index.js";
+import { extractPathParams, pascalCase, routeTypeName } from "../utils/naming.js";
 import {
   typeName,
   isZodOptional,
@@ -12,7 +12,7 @@ import {
   isZodArray,
   isZodEntity,
   unwrap,
-} from "./zod-extras.js";
+} from "./extras.js";
 
 export type GoField = {
   name: string;
@@ -174,7 +174,6 @@ export function generateRouteTypes(
               validations: extractValidations(fieldSchema),
             };
           }
-          // Fall through: entity marker without entity schema
         }
         if (isZodArray(inner)) {
           const elem = unwrap(inner.element);
@@ -190,7 +189,6 @@ export function generateRouteTypes(
                 validations: extractValidations(fieldSchema),
               };
             }
-            // Fall through: entity marker without entity schema
           }
         }
         return {
@@ -380,7 +378,6 @@ export function generateEntityStructs(
   }
 
   const rendered = entities.map((s) => renderEntityStruct(s)).join("\n\n");
-
   const subRendered = [...subStructs.values()].map((s) => renderEntityStruct(s)).join("\n\n");
 
   return [rendered, subRendered].filter(Boolean).join("\n\n");

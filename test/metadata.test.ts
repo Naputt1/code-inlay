@@ -1,12 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import {
-  compile,
-  defineApp,
-  defineModule,
-  defineRoute,
-  generateMetadata,
-} from "../src/index.js";
+import { compile, defineApp, defineModule, defineRoute, generateMetadata } from "../src/index.js";
 
 describe("generateMetadata", () => {
   it("returns empty array when metadata is disabled", async () => {

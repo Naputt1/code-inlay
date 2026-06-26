@@ -1,8 +1,8 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
-import type { PluginPackage, PluginCompatibility, Diagnostic } from "./types.js";
-import { AST_VERSION, COMPILER_VERSION } from "./types.js";
-import { stableHash } from "./hash.js";
+import type { PluginPackage, PluginCompatibility, Diagnostic } from "../types/index.js";
+import { AST_VERSION, COMPILER_VERSION } from "../types/index.js";
+import { stableHash } from "../utils/hash.js";
 
 export type ResolvedPlugin = {
   package: PluginPackage;

@@ -1,5 +1,5 @@
-import type { AppAst, RuntimeConfig, GeneratedFilePatch, GeneratedRegion } from "../types.js";
-import { contentHash } from "../hash.js";
+import type { AppAst, RuntimeConfig, GeneratedFilePatch, GeneratedRegion } from "../types/index.js";
+import { contentHash } from "../utils/hash.js";
 
 export function generateRuntimeCode(
   ast: AppAst,

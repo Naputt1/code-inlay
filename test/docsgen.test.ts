@@ -1,12 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import {
-  compile,
-  defineApp,
-  defineModule,
-  defineRoute,
-  generateApiDocs,
-} from "../src/index.js";
+import { compile, defineApp, defineModule, defineRoute, generateApiDocs } from "../src/index.js";
 
 describe("generateApiDocs", () => {
   it("handles enum schemas in body", async () => {

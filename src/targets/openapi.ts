@@ -1,6 +1,6 @@
-import type { CodeTarget, GeneratedRegion, SchemaLike } from "../types.js";
-import { pascalCase } from "../naming.js";
-import { mergeEntityIntoWrapper } from "../schema.js";
+import type { CodeTarget, GeneratedRegion, SchemaLike } from "../types/index.js";
+import { pascalCase } from "../utils/naming.js";
+import { mergeEntityIntoWrapper } from "../schema/index.js";
 import {
   isZodString,
   isZodNumber,
@@ -10,7 +10,7 @@ import {
   isZodObject,
   isZodOptional,
   isZodNullable,
-} from "../zod-extras.js";
+} from "../schema/extras.js";
 
 export const openapiTarget: CodeTarget = {
   name: "openapi",

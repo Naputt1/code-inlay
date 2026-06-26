@@ -1,5 +1,108 @@
-import type { AppAst, ArchitectureAst, DependencyGraph, GeneratedFilePatch } from "./types.js";
-import { buildDependencyGraph } from "./cache.js";
+import type {
+  AppAst,
+  ArchitectureAst,
+  DependencyGraph,
+  DependencyNode,
+  GenerationAst,
+  GeneratedFilePatch,
+} from "../types/index.js";
+import { stableHash } from "../utils/hash.js";
+
+export function buildDependencyGraph(
+  ast: AppAst,
+  architecture: ArchitectureAst,
+  generation: GenerationAst,
+): DependencyGraph {
+  const nodes: Record<string, DependencyNode> = {};
+  const edges: Array<{ from: string; to: string; reason: string }> = [];
+
+  const addNode = (id: string, kind: DependencyNode["kind"], hash: string) => {
+    nodes[id] = { id, kind, hash };
+  };
+
+  const addEdge = (from: string, to: string, reason: string) => {
+    edges.push({ from, to, reason });
+  };
+
+  addNode(ast.stableId, "app", stableHash(ast, 16));
+
+  for (const module of ast.modules) {
+    addNode(module.stableId, "module", stableHash(module, 16));
+    addEdge(ast.stableId, module.stableId, "contains");
+
+    for (const route of module.routes) {
+      addNode(route.stableId, "route", stableHash(route, 16));
+      addEdge(module.stableId, route.stableId, "contains");
+
+      if (route.query) {
+        const schemaId = `${route.stableId}:query`;
+        addNode(schemaId, "schema", stableHash(route.query, 16));
+        addEdge(route.stableId, schemaId, "has-query-schema");
+      }
+      if (route.body) {
+        const schemaId = `${route.stableId}:body`;
+        addNode(schemaId, "schema", stableHash(route.body, 16));
+        addEdge(route.stableId, schemaId, "has-body-schema");
+      }
+      if (route.response) {
+        const schemaId = `${route.stableId}:response`;
+        addNode(schemaId, "schema", stableHash(route.response, 16));
+        addEdge(route.stableId, schemaId, "has-response-schema");
+      }
+    }
+  }
+
+  for (const expansion of architecture.routes) {
+    for (const layer of expansion.layers) {
+      if (layer.stableId) {
+        addNode(layer.stableId, "architecture-layer", stableHash(layer, 16));
+        addEdge(expansion.route.stableId, layer.stableId, `has-layer:${layer.kind}`);
+        addEdge(layer.stableId, layer.file, "maps-to-file");
+      }
+    }
+  }
+
+  for (const file of generation.files) {
+    const fileId = `file:${file.path}`;
+    addNode(fileId, "file", stableHash(file, 16));
+
+    for (const region of file.regions) {
+      const regionId = region.stableHash ?? `region:${region.id}`;
+      addNode(regionId, "generated-region", region.contentHash ?? stableHash(region.content, 16));
+      addEdge(fileId, regionId, "contains-region");
+
+      if (region.symbolName) {
+        const symbolId = `symbol:${region.stableHash ?? region.id}`;
+        addNode(symbolId, "generated-symbol", region.contentHash ?? stableHash(region.content, 16));
+        addEdge(regionId, symbolId, "defines-symbol");
+      }
+    }
+  }
+
+  for (const file of generation.files) {
+    for (const region of file.regions) {
+      const regionStableId = region.stableHash ?? `region:${region.id}`;
+      const owner = region.owner;
+      if (owner) {
+        const adapterNodeId = `adapter:${owner}`;
+        if (!nodes[adapterNodeId]) {
+          addNode(adapterNodeId, "adapter-target", stableHash(owner, 16));
+        }
+        addEdge(adapterNodeId, regionStableId, "generates");
+      }
+
+      for (const expansion of architecture.routes) {
+        for (const layer of expansion.layers) {
+          if (layer.regionId === region.id && layer.stableId) {
+            addEdge(layer.stableId, regionStableId, "codegen-result");
+          }
+        }
+      }
+    }
+  }
+
+  return { nodes, edges };
+}
 
 export type GraphFormat = "tree" | "mermaid" | "json";
 
@@ -101,9 +204,9 @@ function sanitizeMermaidId(id: string): string {
   return id.replace(/[^a-zA-Z0-9_.-]/g, "_");
 }
 
-export function renderPluginExecutionOrder(
-  registry: import("./plugins.js").PluginRegistry,
-): string {
+import type { PluginRegistry } from "../plugins/registry.js";
+
+export function renderPluginExecutionOrder(registry: PluginRegistry): string {
   const lines: string[] = [];
   lines.push("Plugin Execution Order:");
   lines.push("");

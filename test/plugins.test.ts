@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
-import {
-  computePluginManifestHash,
-  createPluginRegistry,
-} from "../src/plugins.js";
-import {
-  defineApp,
-} from "../src/index.js";
+import { computePluginManifestHash, createPluginRegistry } from "../src/plugins/registry.js";
+import { defineApp } from "../src/index.js";
 import type { Diagnostic } from "../src/index.js";
 
 describe("computePluginManifestHash", () => {
@@ -18,7 +13,10 @@ describe("computePluginManifestHash", () => {
 
   it("returns different hash for different plugins", () => {
     const app1 = defineApp({ modules: [] });
-    const app2 = defineApp({ modules: [], plugins: [{ name: "extra", version: "1.0.0", apiVersion: "2" as const, transformers: [] }] });
+    const app2 = defineApp({
+      modules: [],
+      plugins: [{ name: "extra", version: "1.0.0", apiVersion: "2" as const, transformers: [] }],
+    });
     const hash1 = computePluginManifestHash(app1);
     const hash2 = computePluginManifestHash(app2);
     expect(hash1).not.toBe(hash2);
@@ -50,9 +48,7 @@ describe("createPluginRegistry", () => {
   it("adds diagnostic for unsupported api version", () => {
     const app = defineApp({
       modules: [],
-      plugins: [
-        { name: "bad", version: "1.0.0", apiVersion: "1" as never, transformers: [] },
-      ],
+      plugins: [{ name: "bad", version: "1.0.0", apiVersion: "1" as never, transformers: [] }],
     });
     const diagnostics: Diagnostic[] = [];
     createPluginRegistry(app, diagnostics);
@@ -63,7 +59,12 @@ describe("createPluginRegistry", () => {
     const app = defineApp({
       modules: [],
       targets: [
-        { name: "ts-client", version: "0.1.0", stage: "postTransform" as const, generate: () => [] },
+        {
+          name: "ts-client",
+          version: "0.1.0",
+          stage: "postTransform" as const,
+          generate: () => [],
+        },
       ],
     });
     const diagnostics: Diagnostic[] = [];

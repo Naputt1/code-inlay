@@ -6,7 +6,7 @@ import type {
   GeneratedRegion,
   RouteAst,
   SchemaLike,
-} from "./types.js";
+} from "../types/index.js";
 import {
   defaultFileForLayer,
   defaultRegionId,
@@ -14,8 +14,8 @@ import {
   lowerIdent,
   pascalCase,
   routeTypeName,
-} from "./naming.js";
-import { requestType } from "./schema.js";
+} from "../utils/naming.js";
+import { requestType } from "../schema/index.js";
 
 function shortHash(id: string): string {
   return createHash("sha256").update(id).digest("hex").slice(0, 8);
@@ -262,7 +262,6 @@ export function generateGinHandler(
       }
       emitErrAndResp(body, route.method);
     } else {
-      // Fallback: non-domain behavior for non-CRUD handlers
       if (hasQuery && hasBody) {
         const queryType = routeTypeName(route, "Query");
         const bodyType = routeTypeName(route, "Body");
@@ -304,7 +303,6 @@ export function generateGinHandler(
       emitErrAndResp(body, route.method);
     }
   } else {
-    // Non-domain: current behavior
     if (hasQuery && hasBody) {
       const queryType = routeTypeName(route, "Query");
       const bodyType = routeTypeName(route, "Body");

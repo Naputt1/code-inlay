@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { checkGoEnvironment } from "../src/env.js";
+import { checkGoEnvironment } from "../src/utils/env.js";
 import type { Diagnostic } from "../src/index.js";
 
 const goModWithGin = `module github.com/example/test

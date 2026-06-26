@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatGoSnippet } from "../src/format.js";
+import { formatGoSnippet } from "../src/utils/format.js";
 import type { Diagnostic } from "../src/index.js";
 
 describe("formatGoSnippet", () => {

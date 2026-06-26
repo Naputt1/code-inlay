@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import {
-  compile,
-  defineApp,
-  defineModule,
-  defineRoute,
-} from "../src/index.js";
+import { compile, defineApp, defineModule, defineRoute } from "../src/index.js";
 
 describe("openapi target", () => {
   it("generates OpenAPI spec for basic routes", async () => {
@@ -91,7 +86,11 @@ describe("openapi target", () => {
     const content = JSON.parse(specFile!.regions[0].content);
     const bodyRef = content.paths["/pets"].post.requestBody.content["application/json"].schema.$ref;
     const schemaName = bodyRef.split("/").pop();
-    expect(content.components.schemas[schemaName].properties.type.enum).toEqual(["dog", "cat", "fish"]);
+    expect(content.components.schemas[schemaName].properties.type.enum).toEqual([
+      "dog",
+      "cat",
+      "fish",
+    ]);
   });
 
   it("handles optional and nullable schemas", async () => {

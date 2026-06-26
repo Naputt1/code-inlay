@@ -15,11 +15,11 @@ import type {
   TargetContext,
   TransformerPlugin,
   ValidatorPlugin,
-} from "./types.js";
-import { architectureRegistry } from "./architecture.js";
-import { adapterRegistry } from "./adapters.js";
-import { builtinTargets } from "./targets/index.js";
-import { stableHash } from "./hash.js";
+} from "../types/index.js";
+import { architectureRegistry } from "../architecture/index.js";
+import { adapterRegistry } from "../adapters/gin.js";
+import { builtinTargets } from "../targets/index.js";
+import { stableHash } from "../utils/hash.js";
 
 export type PluginRegistry = {
   plugins: BackendCompilerPlugin[];
