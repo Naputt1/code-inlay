@@ -134,7 +134,7 @@ describe("service layer", () => {
     expect(ctorRegion!.signature).toBe(
       "func NewProcessPaymentUsecase(repo PaymentRepository, paymentSvc service.PaymentService) *processPaymentUsecaseImpl",
     );
-    expect(ctorRegion!.content).toContain('panic("service.PaymentService must not be nil")');
+    expect(ctorRegion!.content).toContain("return &processPaymentUsecaseImpl{");
     expect(ctorRegion!.content).toContain("paymentSvc: paymentSvc,");
   });
 

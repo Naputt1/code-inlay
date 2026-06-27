@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { dirname, join, resolve } from "node:path";
 import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -84,7 +85,18 @@ function toCleanContent(path: string, regions: Region[]): string {
     .map((r) => regionContent(r))
     .join("\n\n")
     .trimStart();
-  if (!path.endsWith(".go")) return `${body}\n`;
+  let content: string;
+  if (!path.endsWith(".go")) {
+    content = `${body}\n`;
+    if (path.endsWith(".ts") || path.endsWith(".json")) {
+      const result = spawnSync("pnpm", ["prettier", "--stdin-filepath", path], {
+        input: content,
+        encoding: "utf8",
+      });
+      if (result.status === 0 && result.stdout) content = result.stdout;
+    }
+    return content;
+  }
   const pkg = goPackageName(path);
   return pkg ? `package ${pkg}\n\n${body}\n` : `${body}\n`;
 }
