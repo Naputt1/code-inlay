@@ -1,0 +1,71 @@
+package auth
+
+import (
+	"context"
+)
+
+type LoginUsecase interface {
+	Execute(ctx context.Context, input LoginAuthRequest) (LoginAuthResponse, error)
+}
+
+type RegisterUsecase interface {
+	Execute(ctx context.Context, input RegisterAuthRequest) (RegisterAuthResponse, error)
+}
+
+type loginUsecaseImpl struct {
+	repo AuthRepository
+}
+
+type LogoutUsecase interface {
+	Execute(ctx context.Context, input struct{}) (LogoutAuthResponse, error)
+}
+
+type logoutUsecaseImpl struct {
+	repo AuthRepository
+}
+
+type registerUsecaseImpl struct {
+	repo AuthRepository
+}
+
+func NewLoginUsecase(repo AuthRepository) *loginUsecaseImpl {
+	if repo == nil {
+		panic("AuthRepository must not be nil")
+	}
+	return &loginUsecaseImpl{
+		repo: repo,
+	}
+}
+
+func (uc *loginUsecaseImpl) Execute(ctx context.Context, input LoginAuthRequest) (LoginAuthResponse, error) {
+	// TODO: implement LoginUsecase
+	return LoginAuthResponse{}, nil
+}
+
+func NewLogoutUsecase(repo AuthRepository) *logoutUsecaseImpl {
+	if repo == nil {
+		panic("AuthRepository must not be nil")
+	}
+	return &logoutUsecaseImpl{
+		repo: repo,
+	}
+}
+
+func (uc *logoutUsecaseImpl) Execute(ctx context.Context, input struct{}) (LogoutAuthResponse, error) {
+	// TODO: implement LogoutUsecase
+	return LogoutAuthResponse{}, nil
+}
+
+func NewRegisterUsecase(repo AuthRepository) *registerUsecaseImpl {
+	if repo == nil {
+		panic("AuthRepository must not be nil")
+	}
+	return &registerUsecaseImpl{
+		repo: repo,
+	}
+}
+
+func (uc *registerUsecaseImpl) Execute(ctx context.Context, input RegisterAuthRequest) (RegisterAuthResponse, error) {
+	// TODO: implement RegisterUsecase
+	return RegisterAuthResponse{}, nil
+}

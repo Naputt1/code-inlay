@@ -22,6 +22,7 @@
     "coverage": "vitest run --coverage",
     "generate": "node dist/cli.js generate --config backend.config.ts --cwd sample-project/maemoo",
     "typecheck": "tsc --noEmit",
+    "snapshot:update": "UPDATE_SNAPSHOT=true vitest run test/snapshot.test.ts",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs"

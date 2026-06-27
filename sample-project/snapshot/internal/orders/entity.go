@@ -1,0 +1,108 @@
+package orders
+
+type AdminListAllOrdersRequest struct {
+	Page     *int32 `json:"page,omitempty" form:"page"`
+	PageSize *int32 `json:"pageSize,omitempty" form:"pageSize"`
+}
+
+type AdminListAllOrdersResponse struct {
+	Result  []AdminListAllOrdersResponseResultItem `json:"result"`
+	Success bool                                   `json:"success"`
+}
+
+type AdminListAllOrdersResponseResultItem struct {
+	Id         string  `json:"id"`
+	Status     string  `json:"status"`
+	TotalPrice float64 `json:"totalPrice"`
+	UserId     string  `json:"userId"`
+}
+
+type CancelOrdersRequest struct {
+	Id     string  `json:"id" form:"id" validate:"required"`
+	Reason *string `json:"reason,omitempty" form:"reason"`
+}
+
+type CancelOrdersResponse struct {
+	Data   CancelOrdersResponseData `json:"data"`
+	Status bool                     `json:"status"`
+}
+
+type CancelOrdersResponseData struct{}
+
+type CreateOrdersRequest struct {
+	CouponCode      *string                         `json:"couponCode,omitempty" form:"couponCode"`
+	Notes           *string                         `json:"notes,omitempty" form:"notes" validate:"max=500"`
+	ProductId       string                          `json:"productId" form:"productId" validate:"required"`
+	Quantity        int32                           `json:"quantity" form:"quantity" validate:"required"`
+	ShippingAddress CreateOrdersBodyShippingAddress `json:"shippingAddress" form:"shippingAddress" validate:"required"`
+}
+
+type CreateOrdersResponse struct {
+	Result  CreateOrdersResponseResult `json:"result"`
+	Success bool                       `json:"success"`
+}
+
+type CreateOrdersBodyShippingAddress struct {
+	City    string  `json:"city" form:"city" validate:"required"`
+	Country *string `json:"country,omitempty" form:"country"`
+	Street  string  `json:"street" form:"street" validate:"required"`
+	ZipCode string  `json:"zipCode" form:"zipCode" validate:"required"`
+}
+
+type CreateOrdersResponseResult struct {
+	EstimatedDelivery *int64  `json:"estimatedDelivery,omitempty"`
+	Id                string  `json:"id"`
+	Status            string  `json:"status"`
+	TotalPrice        float64 `json:"totalPrice"`
+}
+
+type GetOrdersRequest struct {
+	Id string `json:"id" form:"id" validate:"required"`
+}
+
+type GetOrdersResponse struct {
+	Result  GetOrdersResponseResult `json:"result"`
+	Success bool                    `json:"success"`
+}
+
+type GetOrdersResponseResultItemsItem struct {
+	ProductId   string  `json:"productId"`
+	ProductName string  `json:"productName"`
+	Quantity    int32   `json:"quantity"`
+	UnitPrice   float64 `json:"unitPrice"`
+}
+
+type GetOrdersResponseResultShippingAddress struct {
+	City    string `json:"city"`
+	Street  string `json:"street"`
+	ZipCode string `json:"zipCode"`
+}
+
+type GetOrdersResponseResult struct {
+	CreatedAt       string                                 `json:"createdAt"`
+	Id              string                                 `json:"id"`
+	Items           []GetOrdersResponseResultItemsItem     `json:"items"`
+	ShippingAddress GetOrdersResponseResultShippingAddress `json:"shippingAddress"`
+	Status          string                                 `json:"status"`
+	TotalPrice      float64                                `json:"totalPrice"`
+	UpdatedAt       *string                                `json:"updatedAt,omitempty"`
+}
+
+type ListOrdersRequest struct {
+	Page     *int32  `json:"page,omitempty" form:"page"`
+	PageSize *int32  `json:"pageSize,omitempty" form:"pageSize"`
+	Status   *string `json:"status,omitempty" form:"status"`
+}
+
+type ListOrdersResponse struct {
+	Result  []ListOrdersResponseResultItem `json:"result"`
+	Success bool                           `json:"success"`
+}
+
+type ListOrdersResponseResultItem struct {
+	CreatedAt  string  `json:"createdAt"`
+	Id         string  `json:"id"`
+	ItemCount  int32   `json:"itemCount"`
+	Status     string  `json:"status"`
+	TotalPrice float64 `json:"totalPrice"`
+}
