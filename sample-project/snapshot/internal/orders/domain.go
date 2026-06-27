@@ -1,0 +1,48 @@
+package orders
+
+type OrdersID string
+
+type Orders struct {
+	EstimatedDelivery *int64  `json:"estimatedDelivery,omitempty"`
+	Id                string  `json:"id"`
+	Status            string  `json:"status"`
+	TotalPrice        float64 `json:"totalPrice"`
+}
+
+type OrdersList struct {
+	CreatedAt  string  `json:"createdAt"`
+	Id         string  `json:"id"`
+	ItemCount  int32   `json:"itemCount"`
+	Status     string  `json:"status"`
+	TotalPrice float64 `json:"totalPrice"`
+}
+
+type OrdersGet struct {
+	CreatedAt       string                `json:"createdAt"`
+	Id              string                `json:"id"`
+	Items           []OrdersItemsItem     `json:"items"`
+	ShippingAddress OrdersShippingAddress `json:"shippingAddress"`
+	Status          string                `json:"status"`
+	TotalPrice      float64               `json:"totalPrice"`
+	UpdatedAt       *string               `json:"updatedAt,omitempty"`
+}
+
+type OrdersAdminListAll struct {
+	Id         string  `json:"id"`
+	Status     string  `json:"status"`
+	TotalPrice float64 `json:"totalPrice"`
+	UserId     string  `json:"userId"`
+}
+
+type OrdersItemsItem struct {
+	ProductId   string  `json:"productId"`
+	ProductName string  `json:"productName"`
+	Quantity    int32   `json:"quantity"`
+	UnitPrice   float64 `json:"unitPrice"`
+}
+
+type OrdersShippingAddress struct {
+	City    string `json:"city"`
+	Street  string `json:"street"`
+	ZipCode string `json:"zipCode"`
+}

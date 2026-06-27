@@ -4,5 +4,6 @@ dist
 docs/.vitepress/cache
 docs/.vitepress/dist
 test-project/
-sample-project/
+sample-project/*
+!sample-project/snapshot/
 coverage/
