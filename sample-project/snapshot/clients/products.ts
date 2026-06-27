@@ -11,7 +11,10 @@ import type {
 import { BaseApiClient } from "./base.js";
 
 export class ProductsClient extends BaseApiClient {
-  async Create(params: CreateProductsRequest, options?: RequestInit): Promise<CreateProductsResponse> {
+  async Create(
+    params: CreateProductsRequest,
+    options?: RequestInit,
+  ): Promise<CreateProductsResponse> {
     return this.request<CreateProductsResponse>(`/api/v1/products`, {
       method: "POST",
       body: JSON.stringify(params),
@@ -21,7 +24,7 @@ export class ProductsClient extends BaseApiClient {
 
   async List(params: ListProductsRequest, options?: RequestInit): Promise<ListProductsResponse> {
     const query = Object.entries(params)
-      .filter(([k]) => ["page","limit","category"].includes(k))
+      .filter(([k]) => ["page", "limit", "category"].includes(k))
       .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
       .join("&");
     const url = query ? `/api/v1/products?${query}` : `/api/v1/products`;
@@ -49,5 +52,4 @@ export class ProductsClient extends BaseApiClient {
     const url = query ? `/api/v1/products/${params.id}?${query}` : `/api/v1/products/${params.id}`;
     return this.request<void>(url, { method: "DELETE", ...options });
   }
-
 }

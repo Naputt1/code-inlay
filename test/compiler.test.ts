@@ -941,7 +941,6 @@ describe("compiler", () => {
     expect(ctorRegion!.signature).toBe(
       "func NewCreateUserUsecase(repo UserRepository) *createUserUsecaseImpl",
     );
-    expect(ctorRegion!.content).toContain('panic("UserRepository must not be nil")');
     expect(execRegion!.content).toContain("created, err := uc.repo.Create(ctx, entity)");
     expect(execRegion!.content).toContain("return resp, nil");
   });
@@ -1000,7 +999,6 @@ describe("compiler", () => {
     expect(ctorRegion!.signature).toBe(
       "func NewLoginUsecase(repo AuthRepository) *loginUsecaseImpl",
     );
-    expect(ctorRegion!.content).toContain('panic("AuthRepository must not be nil")');
     expect(execRegion!.content).toContain("// TODO: implement LoginUsecase");
   });
 

@@ -20,7 +20,13 @@ const SNAPSHOT_DIR = resolve(process.cwd(), "sample-project/snapshot");
 const CONFIG_FILE = "backend.config.ts";
 const UPDATE = process.env.UPDATE_SNAPSHOT === "true";
 
-type Region = { id: string; content: string; signature?: string; kind?: string; imports?: string[] };
+type Region = {
+  id: string;
+  content: string;
+  signature?: string;
+  kind?: string;
+  imports?: string[];
+};
 
 function goPackageName(path: string): string | undefined {
   if (path.startsWith("cmd/")) return "main";
@@ -41,7 +47,11 @@ function regionSortKey(r: Region): string {
 
 function regionContent(region: Region): string {
   if (region.kind === "imports") {
-    if (region.imports && region.imports.length > 0 && !region.imports.some((i) => /^(func|type|var|const)\s/.test(i))) {
+    if (
+      region.imports &&
+      region.imports.length > 0 &&
+      !region.imports.some((i) => /^(func|type|var|const)\s/.test(i))
+    ) {
       const lines: string[] = ["import ("];
       for (const imp of region.imports) {
         if (imp.includes('"')) {
@@ -70,7 +80,10 @@ function toCleanContent(path: string, regions: Region[]): string {
   const sorted = [...regions].sort(
     (a, b) => regionSortKey(a).localeCompare(regionSortKey(b)) || a.id.localeCompare(b.id),
   );
-  const body = sorted.map((r) => regionContent(r)).join("\n\n").trimStart();
+  const body = sorted
+    .map((r) => regionContent(r))
+    .join("\n\n")
+    .trimStart();
   if (!path.endsWith(".go")) return `${body}\n`;
   const pkg = goPackageName(path);
   return pkg ? `package ${pkg}\n\n${body}\n` : `${body}\n`;

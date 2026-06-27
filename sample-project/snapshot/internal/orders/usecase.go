@@ -51,12 +51,6 @@ type listOrdersUsecaseImpl struct {
 }
 
 func NewAdminListAllOrdersUsecase(repo OrdersRepository, redisSvc service.RedisService) *adminListAllOrdersUsecaseImpl {
-	if repo == nil {
-		panic("OrdersRepository must not be nil")
-	}
-	if redisSvc == nil {
-		panic("service.RedisService must not be nil")
-	}
 	return &adminListAllOrdersUsecaseImpl{
 		repo: repo,
 		redisSvc: redisSvc,
@@ -69,12 +63,6 @@ func (uc *adminListAllOrdersUsecaseImpl) Execute(ctx context.Context, input Admi
 }
 
 func NewCancelOrderUsecase(repo OrdersRepository, redisSvc service.RedisService) *cancelOrderUsecaseImpl {
-	if repo == nil {
-		panic("OrdersRepository must not be nil")
-	}
-	if redisSvc == nil {
-		panic("service.RedisService must not be nil")
-	}
 	return &cancelOrderUsecaseImpl{
 		repo: repo,
 		redisSvc: redisSvc,
@@ -87,12 +75,6 @@ func (uc *cancelOrderUsecaseImpl) Execute(ctx context.Context, input CancelOrder
 }
 
 func NewCreateOrderUsecase(repo OrdersRepository, redisSvc service.RedisService) *createOrderUsecaseImpl {
-	if repo == nil {
-		panic("OrdersRepository must not be nil")
-	}
-	if redisSvc == nil {
-		panic("service.RedisService must not be nil")
-	}
 	return &createOrderUsecaseImpl{
 		repo: repo,
 		redisSvc: redisSvc,
@@ -113,12 +95,6 @@ func (uc *createOrderUsecaseImpl) Execute(ctx context.Context, entity Orders) (C
 }
 
 func NewGetOrderUsecase(repo OrdersRepository, redisSvc service.RedisService) *getOrderUsecaseImpl {
-	if repo == nil {
-		panic("OrdersRepository must not be nil")
-	}
-	if redisSvc == nil {
-		panic("service.RedisService must not be nil")
-	}
 	return &getOrderUsecaseImpl{
 		repo: repo,
 		redisSvc: redisSvc,
@@ -139,12 +115,6 @@ func (uc *getOrderUsecaseImpl) Execute(ctx context.Context, id OrdersID) (GetOrd
 }
 
 func NewListOrdersUsecase(repo OrdersRepository, redisSvc service.RedisService) *listOrdersUsecaseImpl {
-	if repo == nil {
-		panic("OrdersRepository must not be nil")
-	}
-	if redisSvc == nil {
-		panic("service.RedisService must not be nil")
-	}
 	return &listOrdersUsecaseImpl{
 		repo: repo,
 		redisSvc: redisSvc,

@@ -9,9 +9,7 @@
       "post": {
         "operationId": "products.create",
         "summary": "POST /api/v1/products",
-        "tags": [
-          "products"
-        ],
+        "tags": ["products"],
         "responses": {
           "200": {
             "description": "Successful response",
@@ -37,9 +35,7 @@
       "get": {
         "operationId": "products.list",
         "summary": "GET /api/v1/products",
-        "tags": [
-          "products"
-        ],
+        "tags": ["products"],
         "responses": {
           "200": {
             "description": "Successful response",
@@ -80,9 +76,7 @@
       "get": {
         "operationId": "products.get",
         "summary": "GET /api/v1/products/:id",
-        "tags": [
-          "products"
-        ],
+        "tags": ["products"],
         "responses": {
           "200": {
             "description": "Successful response",
@@ -99,9 +93,7 @@
       "put": {
         "operationId": "products.update",
         "summary": "PUT /api/v1/products/:id",
-        "tags": [
-          "products"
-        ],
+        "tags": ["products"],
         "responses": {
           "200": {
             "description": "Successful response",
@@ -127,9 +119,7 @@
       "delete": {
         "operationId": "products.remove",
         "summary": "DELETE /api/v1/products/:id",
-        "tags": [
-          "products"
-        ],
+        "tags": ["products"],
         "responses": {
           "200": {
             "description": "Successful response",
@@ -158,9 +148,7 @@
       "post": {
         "operationId": "orders.create",
         "summary": "POST /api/v1/orders",
-        "tags": [
-          "orders"
-        ],
+        "tags": ["orders"],
         "responses": {
           "200": {
             "description": "Successful response",
@@ -186,9 +174,7 @@
       "get": {
         "operationId": "orders.list",
         "summary": "GET /api/v1/orders",
-        "tags": [
-          "orders"
-        ],
+        "tags": ["orders"],
         "responses": {
           "200": {
             "description": "Successful response",
@@ -229,9 +215,7 @@
       "get": {
         "operationId": "orders.get",
         "summary": "GET /api/v1/orders/:id",
-        "tags": [
-          "orders"
-        ],
+        "tags": ["orders"],
         "responses": {
           "200": {
             "description": "Successful response",
@@ -250,9 +234,7 @@
       "post": {
         "operationId": "orders.cancel",
         "summary": "POST /api/v1/orders/:id/cancel",
-        "tags": [
-          "orders"
-        ],
+        "tags": ["orders"],
         "responses": {
           "200": {
             "description": "Successful response",
@@ -280,9 +262,7 @@
       "get": {
         "operationId": "orders.adminListAll",
         "summary": "GET /api/v1/orders/admin/all",
-        "tags": [
-          "orders"
-        ],
+        "tags": ["orders"],
         "responses": {
           "200": {
             "description": "Successful response",
@@ -315,9 +295,7 @@
       "post": {
         "operationId": "auth.login",
         "summary": "POST /api/v1/auth/login",
-        "tags": [
-          "auth"
-        ],
+        "tags": ["auth"],
         "responses": {
           "200": {
             "description": "Successful response",
@@ -345,9 +323,7 @@
       "post": {
         "operationId": "auth.logout",
         "summary": "POST /api/v1/auth/logout",
-        "tags": [
-          "auth"
-        ],
+        "tags": ["auth"],
         "responses": {
           "200": {
             "description": "Successful response",
@@ -366,9 +342,7 @@
       "post": {
         "operationId": "auth.register",
         "summary": "POST /api/v1/auth/register",
-        "tags": [
-          "auth"
-        ],
+        "tags": ["auth"],
         "responses": {
           "200": {
             "description": "Successful response",
@@ -406,11 +380,7 @@
           },
           "category": {
             "type": "string",
-            "enum": [
-              "electronics",
-              "clothing",
-              "food"
-            ]
+            "enum": ["electronics", "clothing", "food"]
           },
           "tags": {
             "type": "array",
@@ -426,11 +396,7 @@
             "properties": {}
           }
         },
-        "required": [
-          "name",
-          "price",
-          "category"
-        ]
+        "required": ["name", "price", "category"]
       },
       "CreateProductsResponse": {
         "type": "object",
@@ -451,17 +417,10 @@
                 "type": "number"
               }
             },
-            "required": [
-              "id",
-              "name",
-              "price"
-            ]
+            "required": ["id", "name", "price"]
           }
         },
-        "required": [
-          "status",
-          "data"
-        ]
+        "required": ["status", "data"]
       },
       "ListProductsResponse": {
         "type": "object",
@@ -487,19 +446,11 @@
                   "type": "string"
                 }
               },
-              "required": [
-                "id",
-                "name",
-                "price",
-                "category"
-              ]
+              "required": ["id", "name", "price", "category"]
             }
           }
         },
-        "required": [
-          "status",
-          "data"
-        ]
+        "required": ["status", "data"]
       },
       "GetProductsResponse": {
         "type": "object",
@@ -544,25 +495,14 @@
                       "type": "string"
                     }
                   },
-                  "required": [
-                    "userId",
-                    "score"
-                  ]
+                  "required": ["userId", "score"]
                 }
               }
             },
-            "required": [
-              "id",
-              "name",
-              "price",
-              "category"
-            ]
+            "required": ["id", "name", "price", "category"]
           }
         },
-        "required": [
-          "status",
-          "data"
-        ]
+        "required": ["status", "data"]
       },
       "UpdateProductsBody": {
         "type": "object",
@@ -575,11 +515,7 @@
           },
           "category": {
             "type": "string",
-            "enum": [
-              "electronics",
-              "clothing",
-              "food"
-            ]
+            "enum": ["electronics", "clothing", "food"]
           },
           "tags": {
             "type": "array",
@@ -604,10 +540,7 @@
           },
           "data": {}
         },
-        "required": [
-          "status",
-          "data"
-        ]
+        "required": ["status", "data"]
       },
       "RemoveProductsResponse": {
         "type": "object",
@@ -617,10 +550,7 @@
           },
           "data": {}
         },
-        "required": [
-          "status",
-          "data"
-        ]
+        "required": ["status", "data"]
       },
       "CreateOrdersBody": {
         "type": "object",
@@ -645,11 +575,7 @@
                 "type": "string"
               }
             },
-            "required": [
-              "street",
-              "city",
-              "zipCode"
-            ]
+            "required": ["street", "city", "zipCode"]
           },
           "notes": {
             "type": "string"
@@ -658,11 +584,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "productId",
-          "quantity",
-          "shippingAddress"
-        ]
+        "required": ["productId", "quantity", "shippingAddress"]
       },
       "CreateOrdersResponse": {
         "type": "object",
@@ -684,17 +606,10 @@
               },
               "estimatedDelivery": {}
             },
-            "required": [
-              "id",
-              "totalPrice",
-              "status"
-            ]
+            "required": ["id", "totalPrice", "status"]
           }
         },
-        "required": [
-          "success",
-          "result"
-        ]
+        "required": ["success", "result"]
       },
       "ListOrdersResponse": {
         "type": "object",
@@ -721,20 +636,11 @@
                 },
                 "itemCount": {}
               },
-              "required": [
-                "id",
-                "totalPrice",
-                "status",
-                "createdAt",
-                "itemCount"
-              ]
+              "required": ["id", "totalPrice", "status", "createdAt", "itemCount"]
             }
           }
         },
-        "required": [
-          "success",
-          "result"
-        ]
+        "required": ["success", "result"]
       },
       "GetOrdersResponse": {
         "type": "object",
@@ -770,12 +676,7 @@
                       "type": "number"
                     }
                   },
-                  "required": [
-                    "productId",
-                    "productName",
-                    "quantity",
-                    "unitPrice"
-                  ]
+                  "required": ["productId", "productName", "quantity", "unitPrice"]
                 }
               },
               "shippingAddress": {
@@ -791,11 +692,7 @@
                     "type": "string"
                   }
                 },
-                "required": [
-                  "street",
-                  "city",
-                  "zipCode"
-                ]
+                "required": ["street", "city", "zipCode"]
               },
               "createdAt": {
                 "type": "string"
@@ -804,20 +701,10 @@
                 "type": "string"
               }
             },
-            "required": [
-              "id",
-              "totalPrice",
-              "status",
-              "items",
-              "shippingAddress",
-              "createdAt"
-            ]
+            "required": ["id", "totalPrice", "status", "items", "shippingAddress", "createdAt"]
           }
         },
-        "required": [
-          "success",
-          "result"
-        ]
+        "required": ["success", "result"]
       },
       "CancelOrdersBody": {
         "type": "object",
@@ -835,10 +722,7 @@
           },
           "data": {}
         },
-        "required": [
-          "status",
-          "data"
-        ]
+        "required": ["status", "data"]
       },
       "AdminListAllOrdersResponse": {
         "type": "object",
@@ -864,19 +748,11 @@
                   "type": "string"
                 }
               },
-              "required": [
-                "id",
-                "totalPrice",
-                "status",
-                "userId"
-              ]
+              "required": ["id", "totalPrice", "status", "userId"]
             }
           }
         },
-        "required": [
-          "success",
-          "result"
-        ]
+        "required": ["success", "result"]
       },
       "LoginAuthBody": {
         "type": "object",
@@ -888,10 +764,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "email",
-          "password"
-        ]
+        "required": ["email", "password"]
       },
       "LoginAuthResponse": {
         "type": "object",
@@ -924,24 +797,13 @@
                     }
                   }
                 },
-                "required": [
-                  "id",
-                  "name",
-                  "email",
-                  "roles"
-                ]
+                "required": ["id", "name", "email", "roles"]
               }
             },
-            "required": [
-              "token",
-              "user"
-            ]
+            "required": ["token", "user"]
           }
         },
-        "required": [
-          "status",
-          "data"
-        ]
+        "required": ["status", "data"]
       },
       "LogoutAuthResponse": {
         "type": "object",
@@ -951,10 +813,7 @@
           },
           "data": {}
         },
-        "required": [
-          "status",
-          "data"
-        ]
+        "required": ["status", "data"]
       },
       "RegisterAuthBody": {
         "type": "object",
@@ -972,11 +831,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "name",
-          "email",
-          "password"
-        ]
+        "required": ["name", "email", "password"]
       },
       "RegisterAuthResponse": {
         "type": "object",
@@ -1000,18 +855,10 @@
                 "type": "string"
               }
             },
-            "required": [
-              "id",
-              "name",
-              "email",
-              "createdAt"
-            ]
+            "required": ["id", "name", "email", "createdAt"]
           }
         },
-        "required": [
-          "status",
-          "data"
-        ]
+        "required": ["status", "data"]
       }
     }
   }

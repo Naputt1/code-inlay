@@ -8,6 +8,13 @@ import (
 )
 
 func registerOrdersRoutes(api *gin.RouterGroup, mygormSvc service.MygormService, redisSvc service.RedisService) {
+	if mygormSvc == nil {
+		panic("mygormSvc must not be nil")
+	}
+	if redisSvc == nil {
+		panic("redisSvc must not be nil")
+	}
+
 	ordersRepo := orders.NewOrdersRepository(mygormSvc.DB())
 
 	ordersHandler := &orders.OrdersHandler{

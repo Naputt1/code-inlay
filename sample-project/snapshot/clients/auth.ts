@@ -21,12 +21,14 @@ export class AuthClient extends BaseApiClient {
     return this.request<void>(url, { method: "POST", ...options });
   }
 
-  async Register(params: RegisterAuthRequest, options?: RequestInit): Promise<RegisterAuthResponse> {
+  async Register(
+    params: RegisterAuthRequest,
+    options?: RequestInit,
+  ): Promise<RegisterAuthResponse> {
     return this.request<RegisterAuthResponse>(`/api/v1/auth/register`, {
       method: "POST",
       body: JSON.stringify(params),
       ...options,
     });
   }
-
 }

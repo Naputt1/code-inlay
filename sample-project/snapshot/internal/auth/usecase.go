@@ -29,9 +29,6 @@ type registerUsecaseImpl struct {
 }
 
 func NewLoginUsecase(repo AuthRepository) *loginUsecaseImpl {
-	if repo == nil {
-		panic("AuthRepository must not be nil")
-	}
 	return &loginUsecaseImpl{
 		repo: repo,
 	}
@@ -43,9 +40,6 @@ func (uc *loginUsecaseImpl) Execute(ctx context.Context, input LoginAuthRequest)
 }
 
 func NewLogoutUsecase(repo AuthRepository) *logoutUsecaseImpl {
-	if repo == nil {
-		panic("AuthRepository must not be nil")
-	}
 	return &logoutUsecaseImpl{
 		repo: repo,
 	}
@@ -57,9 +51,6 @@ func (uc *logoutUsecaseImpl) Execute(ctx context.Context, input struct{}) (Logou
 }
 
 func NewRegisterUsecase(repo AuthRepository) *registerUsecaseImpl {
-	if repo == nil {
-		panic("AuthRepository must not be nil")
-	}
 	return &registerUsecaseImpl{
 		repo: repo,
 	}
