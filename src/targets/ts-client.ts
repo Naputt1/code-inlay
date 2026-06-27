@@ -108,7 +108,7 @@ function routeTypeName(route: RouteAst, suffix: string): string {
   return `${pascalCase(route.id)}${pascalCase(route.moduleName)}${suffix}`;
 }
 
-function zodToTypeScript(schema: unknown): string {
+function zodToTypeScript(schema: unknown, depth: number = 1): string {
   if (!schema || typeof schema !== "object") return "unknown";
   const s = schema as SchemaLike;
   if (isZodString(s)) return "string";
@@ -120,20 +120,26 @@ function zodToTypeScript(schema: unknown): string {
     return "string";
   }
   if (isZodArray(s)) {
-    return `${zodToTypeScript(s.element)}[]`;
+    const inner = zodToTypeScript(s.element, depth);
+    if (inner.startsWith("{")) {
+      return `${inner}[]`;
+    }
+    return `${inner}[]`;
   }
   if (isZodObject(s)) {
+    const indent = "  ".repeat(depth);
+    const closingIndent = "  ".repeat(depth - 1);
     const fields = Object.entries(s.shape).map(([key, val]) => {
       const field = val as SchemaLike;
-      return `  ${key}${isZodOptional(field) ? "?" : ""}: ${zodToTypeScript(field)}`;
+      return `${indent}${key}${isZodOptional(field) ? "?" : ""}: ${zodToTypeScript(field, depth + 1)};`;
     });
-    return `{\n${fields.join(";\n")}\n}`;
+    return `{\n${fields.join("\n")}\n${closingIndent}}`;
   }
   if (isZodOptional(s)) {
-    return `${zodToTypeScript(s.unwrap())} | undefined`;
+    return `${zodToTypeScript(s.unwrap(), depth)} | undefined`;
   }
   if (isZodNullable(s)) {
-    return `${zodToTypeScript(s.unwrap())} | null`;
+    return `${zodToTypeScript(s.unwrap(), depth)} | null`;
   }
   return "unknown";
 }
@@ -144,7 +150,7 @@ function generateObjectInterface(name: string, schema: unknown): string {
   if (!isZodObject(s)) return `export type ${name} = Record<string, unknown>;`;
   const fields = Object.entries(s.shape).map(([key, val]) => {
     const field = val as SchemaLike;
-    return `  ${key}${isZodOptional(field) ? "?" : ""}: ${zodToTypeScript(field)};`;
+    return `  ${key}${isZodOptional(field) ? "?" : ""}: ${zodToTypeScript(field, 2)};`;
   });
   return `export interface ${name} {\n${fields.join("\n")}\n}`;
 }
@@ -230,7 +236,10 @@ function generateClientMethod(route: RouteAst): string {
 
   if (route.query || route.body) {
     const reqType = routeTypeName(route, "Request");
-    body.push(`async ${fnName}(params: ${reqType}, options?: RequestInit): Promise<${resType}> {`);
+    body.push(`async ${fnName}(`);
+    body.push(`  params: ${reqType},`);
+    body.push(`  options?: RequestInit,`);
+    body.push(`): Promise<${resType}> {`);
     if (hasBody) {
       body.push(`  return this.request<${resType}>(\`${pathTemplate}\`, {`);
       body.push(`    method: "${route.method}",`);
@@ -255,9 +264,11 @@ function generateClientMethod(route: RouteAst): string {
       );
     }
   } else if (pathParams.length > 0) {
-    body.push(
-      `async ${fnName}(params: { ${pathParams.map((p) => `${p}: string`).join("; ")} }, options?: RequestInit): Promise<${resType}> {`,
-    );
+    const pathParamStr = pathParams.map((p) => `${p}: string`).join("; ");
+    body.push(`async ${fnName}(`);
+    body.push(`  params: { ${pathParamStr} },`);
+    body.push(`  options?: RequestInit,`);
+    body.push(`): Promise<${resType}> {`);
     body.push(`  const url = \`${pathTemplate}\`;`);
     body.push(`  return this.request<${resType}>(url, { method: "${route.method}", ...options });`);
   } else {
@@ -274,13 +285,19 @@ function generateClientMethod(route: RouteAst): string {
 function generateBaseClientContent(): string {
   return [
     `export class ApiError extends Error {`,
-    `  constructor(public status: number, body: string) {`,
+    `  constructor(`,
+    `    public status: number,`,
+    `    body: string,`,
+    `  ) {`,
     `    super(\`API error \${status}: \${body}\`);`,
     `  }`,
     `}`,
     ``,
     `export class BaseApiClient {`,
-    `  constructor(protected baseUrl: string, protected headers?: Record<string, string>) {}`,
+    `  constructor(`,
+    `    protected baseUrl: string,`,
+    `    protected headers?: Record<string, string>,`,
+    `  ) {}`,
     ``,
     `  protected async request<T>(path: string, options?: RequestInit): Promise<T> {`,
     `    const res = await fetch(\`\${this.baseUrl}\${path}\`, {`,
