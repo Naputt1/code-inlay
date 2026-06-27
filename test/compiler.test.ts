@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   compile,
+  createSerializedRunner,
   defineApp,
   defineModule,
   defineRoute,
@@ -1078,6 +1079,36 @@ describe("compiler", () => {
     const scaffoldRegions = usecaseFile!.regions.filter((r) => r.id.includes(".usecase.impl"));
     expect(scaffoldRegions.length).toBe(0);
   });
+
+  it("handles concurrent compile calls without error", async () => {
+    const route = defineRoute({
+      id: "create",
+      method: "POST",
+      path: "/users",
+      body: z.object({ name: z.string() }),
+      response: z.object({ id: z.string() }),
+      handler: "CreateUser",
+    });
+
+    const app = defineApp({
+      architecture: "clean",
+      router: defineRouter({ adapter: "gin", prefix: "/api" }),
+      modules: [defineModule({ name: "user", routes: [route] })],
+    });
+
+    const results = await Promise.all([
+      compile({ app, dryRun: true }),
+      compile({ app, dryRun: true }),
+      compile({ app, dryRun: true }),
+    ]);
+
+    for (const result of results) {
+      expect(result.diagnostics.filter((d) => d.level === "error")).toEqual([]);
+    }
+
+    expect(results[0].generation).toEqual(results[1].generation);
+    expect(results[1].generation).toEqual(results[2].generation);
+  });
 });
 
 describe("multi-architecture", () => {
@@ -1529,5 +1560,63 @@ describe("responseFormat", () => {
     expect(entityRegion).toBeDefined();
     expect(entityRegion!.content).toContain("AppData");
     expect(entityRegion!.content).toContain("ListItemsResponseAppData");
+  });
+});
+
+describe("createSerializedRunner", () => {
+  it("executes the wrapped function", async () => {
+    const log: string[] = [];
+    const runner = createSerializedRunner(
+      async () => {
+        log.push("run");
+      },
+      (fn) => fn(),
+    );
+
+    runner();
+    expect(log).toEqual(["run"]);
+  });
+
+  it("serializes concurrent calls", async () => {
+    const log: number[] = [];
+    const releases: (() => void)[] = [];
+
+    const runner = createSerializedRunner(
+      async () => {
+        log.push(1);
+        await new Promise<void>((resolve) => {
+          releases.push(resolve);
+        });
+        log.push(2);
+      },
+      (fn) => fn(),
+    );
+
+    runner();
+    expect(log).toEqual([1]);
+
+    runner();
+    expect(log).toEqual([1]);
+
+    releases[0]();
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(log).toEqual([1, 2, 1]);
+
+    releases[1]();
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(log).toEqual([1, 2, 1, 2]);
+  });
+
+  it("does not re-run if no pending request", async () => {
+    const log: string[] = [];
+    const runner = createSerializedRunner(
+      async () => {
+        log.push("run");
+      },
+      (fn) => fn(),
+    );
+
+    runner();
+    expect(log).toEqual(["run"]);
   });
 });
