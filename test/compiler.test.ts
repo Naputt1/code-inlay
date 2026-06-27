@@ -929,7 +929,7 @@ describe("compiler", () => {
     );
     expect(ctorRegion!.content).toContain('panic("UserRepository must not be nil")');
     expect(execRegion!.content).toContain("created, err := uc.repo.Create(ctx, entity)");
-    expect(execRegion!.content).toContain("return CreateUserResponse{}, nil");
+    expect(execRegion!.content).toContain("return resp, nil");
   });
 
   it("generates usecase scaffold with repo dependency in clean architecture", async () => {

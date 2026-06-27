@@ -59,8 +59,12 @@ func (uc *createProductUsecaseImpl) Execute(ctx context.Context, entity Products
 	if err != nil {
 		return CreateProductsResponse{}, err
 	}
+	// @gen:start e33c9189
 	// TODO: map created to CreateProductsResponse
-	return CreateProductsResponse{}, nil
+	_ = created
+	var resp CreateProductsResponse
+	// @gen:end e33c9189
+	return resp, nil
 }
 
 func NewGetProductUsecase(repo ProductsRepository) *getProductUsecaseImpl {
@@ -77,8 +81,12 @@ func (uc *getProductUsecaseImpl) Execute(ctx context.Context, id ProductsID) (Ge
 	if err != nil {
 		return GetProductsResponse{}, err
 	}
+	// @gen:start 42f4f774
 	// TODO: map result to GetProductsResponse
-	return GetProductsResponse{}, nil
+	_ = result
+	var resp GetProductsResponse
+	// @gen:end 42f4f774
+	return resp, nil
 }
 
 func NewListProductsUsecase(repo ProductsRepository) *listProductsUsecaseImpl {
@@ -125,6 +133,10 @@ func (uc *updateProductUsecaseImpl) Execute(ctx context.Context, id ProductsID, 
 	if err != nil {
 		return UpdateProductsResponse{}, err
 	}
+	// @gen:start a8b14139
 	// TODO: map updated to UpdateProductsResponse
-	return UpdateProductsResponse{}, nil
+	_ = updated
+	var resp UpdateProductsResponse
+	// @gen:end a8b14139
+	return resp, nil
 }
