@@ -7,7 +7,7 @@ import type { ParsedArgs } from "./index.js";
 export async function migrateCommand(parsed: ParsedArgs): Promise<void> {
   const cwd = process.cwd();
   const configFile = (parsed.flags.config as string) ?? "backend.config.ts";
-  const dryRun = parsed.flags.dryRun !== false;
+  const dryRun = parsed.flags.dryRun === true;
   const configPath = resolve(cwd, configFile);
 
   if (!existsSync(configPath)) {
