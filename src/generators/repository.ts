@@ -147,35 +147,37 @@ export function generateRepository(
       isStub: false,
     });
 
-    const structContent = [`type ${implName} struct {`, `\tdb ${dbType}`, `}`].join("\n");
-    parts.push({
-      kind: "struct" as const,
-      symbolName: implName,
-      content: structContent,
-      expectsUserCode: false,
-      isStub: false,
-    });
+    if (dbProvider) {
+      const structContent = [`type ${implName} struct {`, `\tdb ${dbType}`, `}`].join("\n");
+      parts.push({
+        kind: "struct" as const,
+        symbolName: implName,
+        content: structContent,
+        expectsUserCode: false,
+        isStub: false,
+      });
 
-    const ctorSig = `func New${typeName}Repository(db ${dbType}) *${implName}`;
-    parts.push({
-      kind: "function" as const,
-      symbolName: `New${typeName}Repository`,
-      signature: ctorSig,
-      content: `\treturn &${implName}{db: db}`,
-      expectsUserCode: false,
-      isStub: false,
-    });
+      const ctorSig = `func New${typeName}Repository(db ${dbType}) *${implName}`;
+      parts.push({
+        kind: "function" as const,
+        symbolName: `New${typeName}Repository`,
+        signature: ctorSig,
+        content: `\treturn &${implName}{db: db}`,
+        expectsUserCode: false,
+        isStub: false,
+      });
 
-    for (const method of seen.values()) {
-      const methodPart = generateDialectMethodPart(
-        method,
-        baseEntity,
-        implName,
-        dialect,
-        extensions,
-        dbProvider?.extensionOptions,
-      );
-      if (methodPart) parts.push(methodPart);
+      for (const method of seen.values()) {
+        const methodPart = generateDialectMethodPart(
+          method,
+          baseEntity,
+          implName,
+          dialect,
+          extensions,
+          dbProvider.extensionOptions,
+        );
+        if (methodPart) parts.push(methodPart);
+      }
     }
   }
 

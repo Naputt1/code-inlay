@@ -308,7 +308,7 @@ export default defineApp({
     }),
     defineModule({
       name: "orders",
-      services: ["db", "redis"],
+      services: ["mygorm", "redis"],
       routes: [...orderRoutes, ...adminOrderRoutes],
     }),
     defineModule({
