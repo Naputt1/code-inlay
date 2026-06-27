@@ -40,17 +40,24 @@ function regionSortKey(r: Region): string {
 }
 
 function regionContent(region: Region): string {
-  if (region.kind === "imports" && region.imports && region.imports.length > 0) {
-    const lines: string[] = ["import ("];
-    for (const imp of region.imports) {
-      if (imp.includes('"')) {
-        lines.push(`\t${imp}`);
-      } else {
-        lines.push(`\t"${imp}"`);
+  if (region.kind === "imports") {
+    if (region.imports && region.imports.length > 0 && !region.imports.some((i) => /^(func|type|var|const)\s/.test(i))) {
+      const lines: string[] = ["import ("];
+      for (const imp of region.imports) {
+        if (imp.includes('"')) {
+          lines.push(`\t${imp}`);
+        } else {
+          lines.push(`\t"${imp}"`);
+        }
       }
+      lines.push(")");
+      return lines.join("\n");
     }
-    lines.push(")");
-    return lines.join("\n");
+    const body = region.content
+      .split("\n")
+      .filter((l) => !/^\s*\/\/\s*@gen:(start|end)\b/.test(l))
+      .join("\n");
+    return body.trim();
   }
   if (region.signature) {
     const body = region.content.replace(/^\n+/, "").replace(/\n+$/, "");
@@ -405,7 +412,7 @@ describe("full pipeline snapshot", () => {
         }),
         defineModule({
           name: "orders",
-          services: ["db", "redis"],
+          services: ["mygorm", "redis"],
           routes: [...orderRoutes, ...adminOrderRoutes],
         }),
         defineModule({

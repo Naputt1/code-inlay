@@ -1,5 +1,10 @@
 package orders
 
+import (
+	"context"
+	"gorm.io/gorm"
+)
+
 type OrdersRepository interface {
 	Create(ctx context.Context, entity Orders) (Orders, error)
 	FindAll(ctx context.Context) ([]Orders, error)
