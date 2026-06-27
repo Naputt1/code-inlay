@@ -15,6 +15,7 @@
   },
   "scripts": {
     "build": "tsup src/index.ts src/cli.ts --format esm --dts --clean --splitting false",
+    "postinstall": "go build -o tools/decl-parser/decl-parser ./tools/decl-parser/ || true",
     "lint": "eslint .",
     "format": "prettier --check .",
     "format:fix": "prettier --write .",
