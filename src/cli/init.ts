@@ -1,5 +1,6 @@
+import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { basename, resolve } from "node:path";
 import type { ParsedArgs } from "./index.js";
 
 export async function initCommand(parsed: ParsedArgs): Promise<void> {
@@ -42,6 +43,23 @@ export default defineApp({
     console.log(`Created: ${configPath}`);
   } else {
     console.log(`Skipped (exists): ${configPath}`);
+  }
+
+  const goModPath = resolve(targetDir, "go.mod");
+  if (!existsSync(goModPath)) {
+    const name = basename(targetDir);
+    const result = spawnSync("go", ["mod", "init", name], {
+      cwd: targetDir,
+      stdio: "pipe",
+      encoding: "utf8",
+    });
+    if (result.status === 0) {
+      console.log(`Created: ${goModPath}`);
+    } else {
+      console.error(
+        `Failed to run "go mod init ${name}": ${(result.stderr || result.stdout || "unknown error").trim()}`,
+      );
+    }
   }
 
   console.log(`Config file created. Run \`backend-gen generate\` to generate code.`);
