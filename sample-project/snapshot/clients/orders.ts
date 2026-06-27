@@ -22,7 +22,7 @@ export class OrdersClient extends BaseApiClient {
 
   async List(params: ListOrdersRequest, options?: RequestInit): Promise<ListOrdersResponse> {
     const query = Object.entries(params)
-      .filter(([k]) => ["page","pageSize","status"].includes(k))
+      .filter(([k]) => ["page", "pageSize", "status"].includes(k))
       .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
       .join("&");
     const url = query ? `/api/v1/orders?${query}` : `/api/v1/orders`;
@@ -42,13 +42,15 @@ export class OrdersClient extends BaseApiClient {
     });
   }
 
-  async AdminListAll(params: AdminListAllOrdersRequest, options?: RequestInit): Promise<AdminListAllOrdersResponse> {
+  async AdminListAll(
+    params: AdminListAllOrdersRequest,
+    options?: RequestInit,
+  ): Promise<AdminListAllOrdersResponse> {
     const query = Object.entries(params)
-      .filter(([k]) => ["page","pageSize"].includes(k))
+      .filter(([k]) => ["page", "pageSize"].includes(k))
       .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
       .join("&");
     const url = query ? `/api/v1/orders/admin/all?${query}` : `/api/v1/orders/admin/all`;
     return this.request<AdminListAllOrdersResponse>(url, { method: "GET", ...options });
   }
-
 }

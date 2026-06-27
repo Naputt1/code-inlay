@@ -11,14 +11,14 @@ export interface LoginAuthRequest {
 export interface LoginAuthResponse {
   status: boolean;
   data: {
-  token: string;
-  user: {
-  id: string;
-  name: string;
-  email: string;
-  roles: string[]
-}
-};
+    token: string;
+    user: {
+      id: string;
+      name: string;
+      email: string;
+      roles: string[];
+    };
+  };
 }
 
 export interface LogoutAuthResponse {
@@ -43,11 +43,11 @@ export interface RegisterAuthRequest {
 export interface RegisterAuthResponse {
   status: boolean;
   data: {
-  id: string;
-  name: string;
-  email: string;
-  createdAt: string
-};
+    id: string;
+    name: string;
+    email: string;
+    createdAt: string;
+  };
 }
 
 export interface AdminListAllOrdersQuery {
@@ -63,11 +63,11 @@ export interface AdminListAllOrdersRequest {
 export interface AdminListAllOrdersResponse {
   success: boolean;
   result: {
-  id: string;
-  totalPrice: number;
-  status: string;
-  userId: string
-}[];
+    id: string;
+    totalPrice: number;
+    status: string;
+    userId: string;
+  }[];
 }
 
 export interface CancelOrdersBody {
@@ -87,11 +87,11 @@ export interface CreateOrdersBody {
   productId: string;
   quantity: unknown;
   shippingAddress: {
-  street: string;
-  city: string;
-  zipCode: string;
-  country?: string | undefined
-};
+    street: string;
+    city: string;
+    zipCode: string;
+    country?: string | undefined;
+  };
   notes?: string | undefined;
   couponCode?: string | undefined;
 }
@@ -100,11 +100,11 @@ export interface CreateOrdersRequest {
   productId: string;
   quantity: unknown;
   shippingAddress: {
-  street: string;
-  city: string;
-  zipCode: string;
-  country?: string | undefined
-};
+    street: string;
+    city: string;
+    zipCode: string;
+    country?: string | undefined;
+  };
   notes?: string | undefined;
   couponCode?: string | undefined;
 }
@@ -112,33 +112,33 @@ export interface CreateOrdersRequest {
 export interface CreateOrdersResponse {
   success: boolean;
   result: {
-  id: string;
-  totalPrice: number;
-  status: string;
-  estimatedDelivery?: unknown | undefined
-};
+    id: string;
+    totalPrice: number;
+    status: string;
+    estimatedDelivery?: unknown | undefined;
+  };
 }
 
 export interface GetOrdersResponse {
   success: boolean;
   result: {
-  id: string;
-  totalPrice: number;
-  status: string;
-  items: {
-  productId: string;
-  productName: string;
-  quantity: unknown;
-  unitPrice: number
-}[];
-  shippingAddress: {
-  street: string;
-  city: string;
-  zipCode: string
-};
-  createdAt: string;
-  updatedAt?: string | undefined
-};
+    id: string;
+    totalPrice: number;
+    status: string;
+    items: {
+      productId: string;
+      productName: string;
+      quantity: unknown;
+      unitPrice: number;
+    }[];
+    shippingAddress: {
+      street: string;
+      city: string;
+      zipCode: string;
+    };
+    createdAt: string;
+    updatedAt?: string | undefined;
+  };
 }
 
 export interface ListOrdersQuery {
@@ -156,12 +156,12 @@ export interface ListOrdersRequest {
 export interface ListOrdersResponse {
   success: boolean;
   result: {
-  id: string;
-  totalPrice: number;
-  status: string;
-  createdAt: string;
-  itemCount: unknown
-}[];
+    id: string;
+    totalPrice: number;
+    status: string;
+    createdAt: string;
+    itemCount: unknown;
+  }[];
 }
 
 export interface CreateProductsBody {
@@ -170,9 +170,7 @@ export interface CreateProductsBody {
   category: "electronics" | "clothing" | "food";
   tags?: string[] | undefined;
   active?: boolean | undefined;
-  metadata?: {
-
-} | undefined;
+  metadata?: {} | undefined;
 }
 
 export interface CreateProductsRequest {
@@ -181,35 +179,35 @@ export interface CreateProductsRequest {
   category: "electronics" | "clothing" | "food";
   tags?: string[] | undefined;
   active?: boolean | undefined;
-  metadata?: {
-
-} | undefined;
+  metadata?: {} | undefined;
 }
 
 export interface CreateProductsResponse {
   status: boolean;
   data: {
-  id: string;
-  name: string;
-  price: number
-};
+    id: string;
+    name: string;
+    price: number;
+  };
 }
 
 export interface GetProductsResponse {
   status: boolean;
   data: {
-  id: string;
-  name: string;
-  price: number;
-  category: string;
-  tags?: string[] | undefined;
-  description?: string | undefined;
-  ratings?: {
-  userId: string;
-  score: unknown;
-  comment?: string | undefined
-}[] | undefined
-};
+    id: string;
+    name: string;
+    price: number;
+    category: string;
+    tags?: string[] | undefined;
+    description?: string | undefined;
+    ratings?:
+      | {
+          userId: string;
+          score: unknown;
+          comment?: string | undefined;
+        }[]
+      | undefined;
+  };
 }
 
 export interface ListProductsQuery {
@@ -227,11 +225,11 @@ export interface ListProductsRequest {
 export interface ListProductsResponse {
   status: boolean;
   data: {
-  id: string;
-  name: string;
-  price: number;
-  category: string
-}[];
+    id: string;
+    name: string;
+    price: number;
+    category: string;
+  }[];
 }
 
 export interface RemoveProductsQuery {
@@ -253,9 +251,7 @@ export interface UpdateProductsBody {
   category?: "electronics" | "clothing" | "food" | undefined;
   tags?: string[] | undefined;
   active?: boolean | undefined;
-  metadata?: {
-
-} | undefined;
+  metadata?: {} | undefined;
 }
 
 export interface UpdateProductsRequest {
@@ -264,9 +260,7 @@ export interface UpdateProductsRequest {
   category?: "electronics" | "clothing" | "food" | undefined;
   tags?: string[] | undefined;
   active?: boolean | undefined;
-  metadata?: {
-
-} | undefined;
+  metadata?: {} | undefined;
 }
 
 export interface UpdateProductsResponse {

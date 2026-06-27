@@ -8,6 +8,10 @@ import (
 )
 
 func registerProductsRoutes(api *gin.RouterGroup, mygormSvc service.MygormService) {
+	if mygormSvc == nil {
+		panic("mygormSvc must not be nil")
+	}
+
 	productsRepo := products.NewProductsRepository(mygormSvc.DB())
 
 	productsHandler := &products.ProductsHandler{

@@ -380,6 +380,13 @@ export function generateCode(
           ? moduleServices.filter((s) => s !== dbProvider)
           : moduleServices;
         const repoVarName = `${lowerIdent(modPkg)}Repo`;
+        for (const svc of moduleServices) {
+          const svcVar = `${lowerIdent(svc.name)}Svc`;
+          handlerInitLines.push(`\tif ${svcVar} == nil {`);
+          handlerInitLines.push(`\t\tpanic("${svcVar} must not be nil")`);
+          handlerInitLines.push(`\t}`);
+        }
+        if (moduleServices.length > 0) handlerInitLines.push(``);
         if (repositoryModules.has(modPkg) && dbProvider) {
           handlerInitLines.push(
             `\t${repoVarName} := ${modPkg}.New${pascalCase(modPkg)}Repository(${lowerIdent(dbProvider.name)}Svc.${dbProvider.dbAccessor}())`,

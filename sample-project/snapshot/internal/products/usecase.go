@@ -45,9 +45,6 @@ type updateProductUsecaseImpl struct {
 }
 
 func NewCreateProductUsecase(repo ProductsRepository) *createProductUsecaseImpl {
-	if repo == nil {
-		panic("ProductsRepository must not be nil")
-	}
 	return &createProductUsecaseImpl{
 		repo: repo,
 	}
@@ -67,9 +64,6 @@ func (uc *createProductUsecaseImpl) Execute(ctx context.Context, entity Products
 }
 
 func NewGetProductUsecase(repo ProductsRepository) *getProductUsecaseImpl {
-	if repo == nil {
-		panic("ProductsRepository must not be nil")
-	}
 	return &getProductUsecaseImpl{
 		repo: repo,
 	}
@@ -89,9 +83,6 @@ func (uc *getProductUsecaseImpl) Execute(ctx context.Context, id ProductsID) (Ge
 }
 
 func NewListProductsUsecase(repo ProductsRepository) *listProductsUsecaseImpl {
-	if repo == nil {
-		panic("ProductsRepository must not be nil")
-	}
 	return &listProductsUsecaseImpl{
 		repo: repo,
 	}
@@ -103,9 +94,6 @@ func (uc *listProductsUsecaseImpl) Execute(ctx context.Context, input ListProduc
 }
 
 func NewRemoveProductUsecase(repo ProductsRepository) *removeProductUsecaseImpl {
-	if repo == nil {
-		panic("ProductsRepository must not be nil")
-	}
 	return &removeProductUsecaseImpl{
 		repo: repo,
 	}
@@ -119,9 +107,6 @@ func (uc *removeProductUsecaseImpl) Execute(ctx context.Context, id ProductsID) 
 }
 
 func NewUpdateProductUsecase(repo ProductsRepository) *updateProductUsecaseImpl {
-	if repo == nil {
-		panic("ProductsRepository must not be nil")
-	}
 	return &updateProductUsecaseImpl{
 		repo: repo,
 	}

@@ -51,9 +51,6 @@ export function generateUsecaseScaffold(
   if (repoType) {
     structFields.push(`\trepo ${repoType}`);
     ctorParams.push(`repo ${repoType}`);
-    ctorBody.push(`\tif repo == nil {`);
-    ctorBody.push(`\t\tpanic("${repoType} must not be nil")`);
-    ctorBody.push(`\t}`);
     assignFields.push(`\t\trepo: repo`);
   }
   for (let i = 0; i < serviceTypes.length; i++) {
@@ -62,9 +59,6 @@ export function generateUsecaseScaffold(
     const varName = `${lowerIdent(svcName)}Svc`;
     structFields.push(`\t${varName} service.${st}`);
     ctorParams.push(`${varName} service.${st}`);
-    ctorBody.push(`\tif ${varName} == nil {`);
-    ctorBody.push(`\t\tpanic("service.${st} must not be nil")`);
-    ctorBody.push(`\t}`);
     assignFields.push(`\t\t${varName}: ${varName}`);
   }
 
@@ -208,15 +202,16 @@ function scaffoldExecuteContent(
   executeSh: string,
 ): string {
   const rmn = repoMethodName(verb, context, baseEntity, handlerName);
-  const withMarkers = (resultVar: string, lines: string[]): string => [
-    ...lines,
-    `\t// @gen:start ${executeSh}`,
-    `\t// TODO: map ${resultVar} to ${respType}`,
-    `\t_ = ${resultVar}`,
-    `\tvar resp ${respType}`,
-    `\t// @gen:end ${executeSh}`,
-    `\treturn resp, nil`,
-  ].join("\n");
+  const withMarkers = (resultVar: string, lines: string[]): string =>
+    [
+      ...lines,
+      `\t// @gen:start ${executeSh}`,
+      `\t// TODO: map ${resultVar} to ${respType}`,
+      `\t_ = ${resultVar}`,
+      `\tvar resp ${respType}`,
+      `\t// @gen:end ${executeSh}`,
+      `\treturn resp, nil`,
+    ].join("\n");
   switch (verb) {
     case "Get":
       return withMarkers("result", [
