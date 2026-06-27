@@ -278,8 +278,9 @@ export function generateCode(
     if (usecaseImportsAdded.has(regionId)) continue;
     usecaseImportsAdded.add(regionId);
     const moduleServices = getModuleServices(info.moduleName);
+    const nonDbServices = moduleServices.filter((s) => !s.dbAccessor);
     const importLines: string[] = [];
-    if (moduleServices.length > 0 && moduleInfo) {
+    if (nonDbServices.length > 0 && moduleInfo) {
       importLines.push(`import (`);
       importLines.push(`\t"context"`);
       importLines.push(`\tservice "${moduleInfo.modulePath}/internal/service"`);

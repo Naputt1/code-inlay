@@ -2,7 +2,6 @@ package products
 
 import (
 	"context"
-	service "snapshot/internal/service"
 )
 
 type CreateProductUsecase interface {
