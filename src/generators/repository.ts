@@ -136,6 +136,25 @@ export function generateRepository(
       expectsUserCode: false,
       isStub: false,
     });
+
+    const structContent = [`type ${implName} struct {}`].join("\n");
+    parts.push({
+      kind: "struct" as const,
+      symbolName: implName,
+      content: structContent,
+      expectsUserCode: false,
+      isStub: false,
+    });
+
+    const ctorSig = `func New${typeName}Repository() *${implName}`;
+    parts.push({
+      kind: "function" as const,
+      symbolName: `New${typeName}Repository`,
+      signature: ctorSig,
+      content: `\treturn &${implName}{}`,
+      expectsUserCode: false,
+      isStub: false,
+    });
   } else {
     const body = [...seen.values()].map((m) => `\t${m.name}(${m.params}) ${m.results}`).join("\n");
     const content = [`type ${typeName}Repository interface {`, body, `}`].join("\n");

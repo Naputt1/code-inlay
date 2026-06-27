@@ -385,6 +385,11 @@ export function generateCode(
             `\t${repoVarName} := ${modPkg}.New${pascalCase(modPkg)}Repository(${lowerIdent(dbProvider.name)}Svc.${dbProvider.dbAccessor}())`,
           );
           handlerInitLines.push(``);
+        } else if (moduleServices.length === 0 && repositoryModules.has(modPkg)) {
+          handlerInitLines.push(
+            `\t${repoVarName} := ${modPkg}.New${pascalCase(modPkg)}Repository()`,
+          );
+          handlerInitLines.push(``);
         }
         for (const expansion of architecture.routes) {
           if (expansion.route.moduleName !== modPkg) continue;
@@ -402,7 +407,10 @@ export function generateCode(
               `\t\t${handlerName}Usecase: ${modPkg}.New${handlerName}Usecase(${repoArg}${svcArgs}),`,
             );
           } else {
-            usecaseFields.push(`\t\t${handlerName}Usecase: nil, // TODO: inject`);
+            const repoArg = repositoryModules.has(modPkg) ? `${repoVarName}, ` : "";
+            usecaseFields.push(
+              `\t\t${handlerName}Usecase: ${modPkg}.New${handlerName}Usecase(${repoArg}),`,
+            );
           }
         }
         handlerInitLines.push(`\t${handlerVar} := &${modPkg}.${handlerType}{`);
