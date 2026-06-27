@@ -62,7 +62,8 @@ func (h *ProductsHandler) RemoveProduct(c *gin.Context) {
 		return
 	}
 	input.Id = c.Param("id")
-	output, err := h.RemoveProductUsecase.Execute(c.Request.Context(), input)
+	id := ProductsID(c.Param("id"))
+	output, err := h.RemoveProductUsecase.Execute(c.Request.Context(), id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
