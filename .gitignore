@@ -7,3 +7,4 @@ test-project/
 sample-project/*
 !sample-project/snapshot/
 coverage/
+tools/decl-parser/decl-parser
