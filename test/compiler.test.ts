@@ -886,12 +886,26 @@ describe("compiler", () => {
   });
 
   it("generates usecase scaffold implementations by default in same usecase file", async () => {
+    const gorm = defineServiceExtension({
+      name: "gorm",
+      service: {
+        provides: "database",
+        optionsSchema: z.object({ driver: z.enum(["mysql", "postgres", "sqlite"]) }),
+        dbAccessor: "DB",
+        dbType: "*gorm.DB",
+        dbTypePkg: "gorm.io/gorm",
+      },
+    });
+
     const app = defineApp({
       architecture: "clean",
       router: defineRouter({ adapter: "gin" }),
+      extensions: [gorm],
+      services: [gorm({ name: "mygorm", driver: "sqlite", close: true })],
       modules: [
         defineModule({
           name: "user",
+          services: ["mygorm"],
           routes: [
             defineRoute({
               id: "create",
@@ -933,12 +947,26 @@ describe("compiler", () => {
   });
 
   it("generates usecase scaffold with repo dependency in clean architecture", async () => {
+    const gorm = defineServiceExtension({
+      name: "gorm",
+      service: {
+        provides: "database",
+        optionsSchema: z.object({ driver: z.enum(["mysql", "postgres", "sqlite"]) }),
+        dbAccessor: "DB",
+        dbType: "*gorm.DB",
+        dbTypePkg: "gorm.io/gorm",
+      },
+    });
+
     const app = defineApp({
       architecture: "clean",
       router: defineRouter({ adapter: "gin" }),
+      extensions: [gorm],
+      services: [gorm({ name: "mygorm", driver: "sqlite", close: true })],
       modules: [
         defineModule({
           name: "auth",
+          services: ["mygorm"],
           routes: [
             defineRoute({
               id: "login",

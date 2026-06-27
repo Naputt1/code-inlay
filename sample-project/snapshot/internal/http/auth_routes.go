@@ -6,10 +6,12 @@ import (
 )
 
 func registerAuthRoutes(api *gin.RouterGroup) {
+	authRepo := auth.NewAuthRepository()
+
 	authHandler := &auth.AuthHandler{
-		LoginUsecase:    nil, // TODO: inject
-		LogoutUsecase:   nil, // TODO: inject
-		RegisterUsecase: nil, // TODO: inject
+		LoginUsecase:    auth.NewLoginUsecase(authRepo),
+		LogoutUsecase:   auth.NewLogoutUsecase(authRepo),
+		RegisterUsecase: auth.NewRegisterUsecase(authRepo),
 	}
 
 	auth := api.Group("/auth")
