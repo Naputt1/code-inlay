@@ -24,6 +24,12 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - run: go build -o tools/decl-parser/decl-parser ./tools/decl-parser/
+
       - run: pnpm lint
 
       - run: pnpm format

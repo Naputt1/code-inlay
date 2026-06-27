@@ -89,8 +89,7 @@ export function injectGoFile(
   const plannedByName = new Map(symbolRegions.map((r) => [r.symbolName!, r]));
 
   if (declarations.length === 0) {
-    let t = buildFromScratch(lines, plannedByName, symbolRegions, fileText);
-    t = applyBlobRegions(t, patch, blobIds);
+    let t = injectAllViaMarkers(fileText, patch);
     t = mergeImports(t, patch, fileText);
     return cleanBlankLines(t);
   }
@@ -227,23 +226,23 @@ export function injectGoFile(
   return result;
 }
 
-function buildFromScratch(
-  lines: string[],
-  plannedByName: Map<string, GeneratedRegion>,
-  symbolRegions: GeneratedRegion[],
-  fileText: string,
-): string {
-  const newLines: string[] = [];
-  const pkgLine = lines.find((l) => /^package\s+\w+/.test(l.trim()));
-  if (pkgLine) {
-    newLines.push(pkgLine);
-    newLines.push("");
+function injectAllViaMarkers(fileText: string, patch: GeneratedFilePatch): string {
+  const markerIds = new Set(patch.regions.filter((r) => r.kind !== "imports").map((r) => r.id));
+  const markers = findBlobMarkers(fileText, markerIds);
+  let result = fileText;
+  for (const region of patch.regions) {
+    if (region.kind === "imports") continue;
+    const marker = markers.get(region.id);
+    if (marker) {
+      const content = region.content;
+      const replacement = `${marker.indent}// @gen:start ${region.id}\n${content}\n${marker.indent}// @gen:end ${region.id}`;
+      result = result.slice(0, marker.startIdx) + replacement + result.slice(marker.endIdx);
+    } else {
+      const nl = fileText.includes("\r\n") ? "\r\n" : "\n";
+      result += `${nl}// @gen:start ${region.id}${nl}${region.content}${nl}// @gen:end ${region.id}${nl}`;
+    }
   }
-  for (const region of symbolRegions) {
-    newLines.push("");
-    newLines.push(buildDeclarationText(region, buildBody(region, fileText)));
-  }
-  return newLines.join("\n");
+  return result;
 }
 
 function findBlobLineRanges(
