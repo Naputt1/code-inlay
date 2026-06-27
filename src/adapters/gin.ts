@@ -160,10 +160,20 @@ export function generateGinHandler(
     if (verb === "Get" || verb === "Delete" || verb === "Remove") {
       if (hasQuery) {
         emitBindQuery(body, reqType, pathParams, route);
-        body.push(`output, err := h.${usecaseField}.Execute(c.Request.Context(), input)`);
+        if (hasDomain && pathParams.length > 0) {
+          body.push(`id := ${baseID}(c.Param("${pathParams[0]}"))`);
+          body.push(`output, err := h.${usecaseField}.Execute(c.Request.Context(), id)`);
+        } else {
+          body.push(`output, err := h.${usecaseField}.Execute(c.Request.Context(), input)`);
+        }
       } else if (hasBody) {
         emitBindJSON(body, reqType, pathParams, route);
-        body.push(`output, err := h.${usecaseField}.Execute(c.Request.Context(), input)`);
+        if (hasDomain && pathParams.length > 0) {
+          body.push(`id := ${baseID}(c.Param("${pathParams[0]}"))`);
+          body.push(`output, err := h.${usecaseField}.Execute(c.Request.Context(), id)`);
+        } else {
+          body.push(`output, err := h.${usecaseField}.Execute(c.Request.Context(), input)`);
+        }
       } else if (pathParams.length > 0) {
         body.push(`id := ${baseID}(c.Param("${pathParams[0]}"))`);
         body.push(`output, err := h.${usecaseField}.Execute(c.Request.Context(), id)`);
