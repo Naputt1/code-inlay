@@ -304,11 +304,38 @@ export async function compileIncremental(options: CompileOptions): Promise<Compi
   return compile(options);
 }
 
+export function createSerializedRunner(
+  run: () => Promise<void>,
+  scheduleNext: (fn: () => void) => void = (fn) => {
+    setImmediate(fn);
+  },
+): () => void {
+  let isCompiling = false;
+  let pendingRestart = false;
+
+  const trigger = () => {
+    if (isCompiling) {
+      pendingRestart = true;
+      return;
+    }
+    isCompiling = true;
+    pendingRestart = false;
+    run().finally(() => {
+      isCompiling = false;
+      if (pendingRestart) {
+        scheduleNext(trigger);
+      }
+    });
+  };
+
+  return trigger;
+}
+
 export async function compileWithWatch(options: CompileOptions): Promise<void> {
   const cwd = options.cwd ?? process.cwd();
   let debounceTimer: ReturnType<typeof setTimeout> | undefined;
 
-  const runCompile = async () => {
+  const runCompile = createSerializedRunner(async () => {
     const result = await compileIncremental(options);
     printDiagnostics(result.diagnostics);
 
@@ -322,7 +349,7 @@ export async function compileWithWatch(options: CompileOptions): Promise<void> {
         console.log(`  - ${file}`);
       }
     }
-  };
+  });
 
   const configPath = options.configFile ? resolve(cwd, options.configFile) : undefined;
 
