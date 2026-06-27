@@ -1,11 +1,17 @@
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { resolve } from "node:path";
+import { sep, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { GeneratedRegion, GoDeclaration } from "../types/index.js";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
-const parserBinary = resolve(__dirname, "../../tools/decl-parser/decl-parser");
+const dir = __dirname.endsWith(sep) ? __dirname : __dirname + sep;
+const parserBinary = resolve(
+  __dirname,
+  dir.includes(`${sep}dist${sep}`)
+    ? "../tools/decl-parser/decl-parser"
+    : "../../tools/decl-parser/decl-parser",
+);
 const hasParser = existsSync(parserBinary);
 
 const funcSignatureRe = /^(func\s+(?:\([^)]*\)\s+)?(\w+)\s*\([^)]*\)(?:\s*\([^)]*\))?)\s*\{/;

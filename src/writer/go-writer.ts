@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { resolve } from "node:path";
+import { sep, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type {
   CompilerCache,
@@ -11,7 +11,13 @@ import type {
 } from "../types/index.js";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
-const parserBinary = resolve(__dirname, "../../tools/decl-parser/decl-parser");
+const dir = __dirname.endsWith(sep) ? __dirname : __dirname + sep;
+const parserBinary = resolve(
+  __dirname,
+  dir.includes(`${sep}dist${sep}`)
+    ? "../tools/decl-parser/decl-parser"
+    : "../../tools/decl-parser/decl-parser",
+);
 
 export function shortHash(id: string): string {
   return createHash("sha256").update(id).digest("hex").slice(0, 8);
