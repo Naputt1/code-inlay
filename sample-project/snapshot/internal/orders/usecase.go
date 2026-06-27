@@ -104,8 +104,12 @@ func (uc *createOrderUsecaseImpl) Execute(ctx context.Context, entity Orders) (C
 	if err != nil {
 		return CreateOrdersResponse{}, err
 	}
+	// @gen:start 45022a1a
 	// TODO: map created to CreateOrdersResponse
-	return CreateOrdersResponse{}, nil
+	_ = created
+	var resp CreateOrdersResponse
+	// @gen:end 45022a1a
+	return resp, nil
 }
 
 func NewGetOrderUsecase(repo OrdersRepository, redisSvc service.RedisService) *getOrderUsecaseImpl {
@@ -126,8 +130,12 @@ func (uc *getOrderUsecaseImpl) Execute(ctx context.Context, id OrdersID) (GetOrd
 	if err != nil {
 		return GetOrdersResponse{}, err
 	}
+	// @gen:start 8017b89c
 	// TODO: map result to GetOrdersResponse
-	return GetOrdersResponse{}, nil
+	_ = result
+	var resp GetOrdersResponse
+	// @gen:end 8017b89c
+	return resp, nil
 }
 
 func NewListOrdersUsecase(repo OrdersRepository, redisSvc service.RedisService) *listOrdersUsecaseImpl {

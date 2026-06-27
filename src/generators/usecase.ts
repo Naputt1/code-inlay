@@ -1,7 +1,12 @@
+import { createHash } from "node:crypto";
 import type { RouteAst } from "../types/index.js";
 import { extractEntityContext, requestType, responseType } from "../schema/index.js";
 import { extractPathParams, lowerIdent, pascalCase } from "../utils/naming.js";
 import type { ScaffoldPart } from "./types.js";
+
+function shortHash(id: string): string {
+  return createHash("sha256").update(id).digest("hex").slice(0, 8);
+}
 
 export function generateUsecaseInterface(route: RouteAst, hasDomain?: boolean): string {
   const respType = responseType(route);
@@ -122,6 +127,7 @@ export function generateUsecaseScaffold(
       } else {
         executeSig = `func (uc *${structName}) Execute(ctx context.Context, ${domainParams.params}) (${respType}, error)`;
       }
+      const executeSh = shortHash(`${route.moduleName}.${route.handlerName}.execute`);
       if (verb) {
         executeContent = scaffoldExecuteContent(
           verb,
@@ -129,6 +135,7 @@ export function generateUsecaseScaffold(
           baseEntity,
           route.handlerName,
           respType,
+          executeSh,
         );
       } else {
         executeContent = `\t// TODO: implement ${ifaceName}\n\treturn ${respType}{}, nil`;
@@ -198,38 +205,42 @@ function scaffoldExecuteContent(
   baseEntity: string,
   handlerName: string,
   respType: string,
+  executeSh: string,
 ): string {
   const rmn = repoMethodName(verb, context, baseEntity, handlerName);
+  const withMarkers = (resultVar: string, lines: string[]): string => [
+    ...lines,
+    `\t// @gen:start ${executeSh}`,
+    `\t// TODO: map ${resultVar} to ${respType}`,
+    `\t_ = ${resultVar}`,
+    `\tvar resp ${respType}`,
+    `\t// @gen:end ${executeSh}`,
+    `\treturn resp, nil`,
+  ].join("\n");
   switch (verb) {
     case "Get":
-      return [
+      return withMarkers("result", [
         `\tresult, err := uc.repo.${rmn}(ctx, id)`,
         `\tif err != nil {`,
         `\t\treturn ${respType}{}, err`,
         `\t}`,
-        `\t// TODO: map result to ${respType}`,
-        `\treturn ${respType}{}, nil`,
-      ].join("\n");
+      ]);
     case "Create":
     case "New":
-      return [
+      return withMarkers("created", [
         `\tcreated, err := uc.repo.${rmn}(ctx, entity)`,
         `\tif err != nil {`,
         `\t\treturn ${respType}{}, err`,
         `\t}`,
-        `\t// TODO: map created to ${respType}`,
-        `\treturn ${respType}{}, nil`,
-      ].join("\n");
+      ]);
     case "Update":
     case "Edit":
-      return [
+      return withMarkers("updated", [
         `\tupdated, err := uc.repo.${rmn}(ctx, id, entity)`,
         `\tif err != nil {`,
         `\t\treturn ${respType}{}, err`,
         `\t}`,
-        `\t// TODO: map updated to ${respType}`,
-        `\treturn ${respType}{}, nil`,
-      ].join("\n");
+      ]);
     case "Delete":
     case "Remove":
       return [
@@ -239,14 +250,12 @@ function scaffoldExecuteContent(
         `\treturn ${respType}{}, nil`,
       ].join("\n");
     case "List":
-      return [
+      return withMarkers("results", [
         `\tresults, err := uc.repo.${rmn}(ctx)`,
         `\tif err != nil {`,
         `\t\treturn ${respType}{}, err`,
         `\t}`,
-        `\t// TODO: map results to ${respType}`,
-        `\treturn ${respType}{}, nil`,
-      ].join("\n");
+      ]);
     case "Set":
       return [
         `\tif err := uc.repo.${rmn}(ctx, id); err != nil {`,
