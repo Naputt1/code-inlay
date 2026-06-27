@@ -1,5 +1,5 @@
-import type { AppAst, ArchitectureAst, RouteAst, SchemaLike } from "../types/index.js";
-import { pascalCase } from "../utils/naming.js";
+import type { AppAst, ArchitectureAst, SchemaLike } from "../types/index.js";
+import { pascalCase, routeTypeName } from "../utils/naming.js";
 import {
   isZodString,
   isZodNumber,
@@ -131,10 +131,6 @@ function generateMermaidDoc(ast: AppAst, architecture: ArchitectureAst): string 
 
   lines.push("```");
   return lines.join("\n");
-}
-
-function routeTypeName(route: RouteAst, suffix: string): string {
-  return `${pascalCase(route.id)}${pascalCase(route.moduleName)}${suffix}`;
 }
 
 function zodToJsonSchemaSample(schema: unknown): unknown {

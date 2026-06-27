@@ -6,7 +6,7 @@ import type {
   RouteAst,
   SchemaLike,
 } from "../types/index.js";
-import { extractPathParams, pascalCase } from "../utils/naming.js";
+import { extractPathParams, pascalCase, routeTypeName } from "../utils/naming.js";
 import { contentHash } from "../utils/hash.js";
 import { mergeEntityIntoWrapper } from "../schema/index.js";
 import {
@@ -103,10 +103,6 @@ export const tsClientTarget: CodeTarget = {
     return patches;
   },
 };
-
-function routeTypeName(route: RouteAst, suffix: string): string {
-  return `${pascalCase(route.id)}${pascalCase(route.moduleName)}${suffix}`;
-}
 
 function zodToTypeScript(schema: unknown, depth: number = 1): string {
   if (!schema || typeof schema !== "object") return "unknown";
