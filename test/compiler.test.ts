@@ -1109,6 +1109,28 @@ describe("compiler", () => {
     expect(results[0].generation).toEqual(results[1].generation);
     expect(results[1].generation).toEqual(results[2].generation);
   });
+
+  it("merges runtime code generation into output files", async () => {
+    const route = defineRoute({
+      id: "create",
+      method: "POST",
+      path: "/users",
+      handler: "CreateUser",
+    });
+
+    const app = defineApp({
+      architecture: "clean",
+      runtime: { enabled: true },
+      modules: [defineModule({ name: "user", routes: [route] })],
+    });
+
+    const result = await compile({ app, dryRun: true });
+    expect(result.diagnostics.filter((d) => d.level === "error")).toEqual([]);
+
+    const runtimeFiles = result.generation.files.filter((f) => f.path.startsWith("runtime/"));
+    expect(runtimeFiles.length).toBeGreaterThan(0);
+    expect(runtimeFiles.some((f) => f.path.endsWith("context.go"))).toBe(true);
+  });
 });
 
 describe("multi-architecture", () => {
