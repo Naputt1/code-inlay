@@ -16,6 +16,7 @@ import { applyArchitecture } from "../architecture/index.js";
 import { generateCode } from "../generators/index.js";
 import { formatGoSnippet } from "../utils/format.js";
 import { checkGoEnvironment } from "../utils/env.js";
+import { generateRuntimeCode } from "../runtime/index.js";
 import {
   computePluginManifestHash,
   createPluginRegistry,
@@ -95,8 +96,10 @@ export async function compile(options: CompileOptions): Promise<CompileResult> {
     app.options,
   );
 
+  const runtimePatches = generateRuntimeCode(ast, ast.options.runtime ?? { enabled: false });
+
   generation = {
-    files: [...generation.files, ...targetPatches]
+    files: [...generation.files, ...runtimePatches, ...targetPatches]
       .reduce((acc, file) => {
         const existing = acc.find((f) => f.path === file.path);
         if (existing) {
