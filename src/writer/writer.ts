@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import type { CompilerCache, Diagnostic, FileDiff, GeneratedFilePatch } from "../types/index.js";
+import { contentHash } from "../utils/hash.js";
 import { formatFile, formatGoSnippet } from "../utils/format.js";
 import { injectGoFile } from "./go-writer.js";
 
@@ -530,16 +531,6 @@ function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function simpleHash(content: string): string {
-  let hash = 0;
-  for (let i = 0; i < content.length; i++) {
-    const char = content.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash |= 0;
-  }
-  return hash.toString(36);
-}
-
 export function detectDrift(
   fileText: string,
   regions: Array<{ id: string; content: string; stableHash?: string; contentHash?: string }>,
@@ -560,7 +551,7 @@ export function detectDrift(
     const currentContent = extractRegionContent(fileText, region.id);
     if (!currentContent) continue;
 
-    const currentContentHash = simpleHash(currentContent);
+    const currentContentHash = contentHash(currentContent);
     if (currentContentHash !== cached.contentHash) {
       diagnostics.push({
         level: "warning",

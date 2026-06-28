@@ -10,6 +10,7 @@ import {
   applyInnerMarkers,
   shortHash,
 } from "../src/index.js";
+import { contentHash } from "../src/utils/hash.js";
 import type { Diagnostic, GeneratedFilePatch, GeneratedRegion } from "../src/index.js";
 
 vi.mock("node:fs", async () => {
@@ -473,14 +474,15 @@ describe("detectDrift", () => {
       "// @gen:end test.region",
     ].join("\n");
 
+    const generatedHash = contentHash("generated content");
     const diagnostics: Diagnostic[] = [];
     const cache: Record<string, { contentHash: string }> = {
-      "test.region": { contentHash: "generated-hash" },
+      "test.region": { contentHash: generatedHash },
     };
 
     const hasDrift = detectDrift(
       fileText,
-      [{ id: "test.region", content: "generated content", contentHash: "generated-hash" }],
+      [{ id: "test.region", content: "generated content", contentHash: generatedHash }],
       cache,
       diagnostics,
       "test.go",
@@ -497,14 +499,15 @@ describe("detectDrift", () => {
       "// @gen:end test.region",
     ].join("\n");
 
+    const generatedHash = contentHash("generated content");
     const diagnostics: Diagnostic[] = [];
     const cache: Record<string, { contentHash: string }> = {
-      "test.region": { contentHash: "generated-hash" },
+      "test.region": { contentHash: generatedHash },
     };
 
     const hasDrift = detectDrift(
       fileText,
-      [{ id: "test.region", content: "generated content", contentHash: "generated-hash" }],
+      [{ id: "test.region", content: "generated content", contentHash: generatedHash }],
       cache,
       diagnostics,
       "test.go",
