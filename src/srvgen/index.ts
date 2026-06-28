@@ -14,7 +14,13 @@ export function generateServer(
   const imports: string[] = [];
 
   if (adapter?.name === "gin") {
-    imports.push(`"github.com/gin-gonic/gin"`);
+    imports.push(
+      `"reflect"`,
+      `"strings"`,
+      `"github.com/gin-gonic/gin"`,
+      `"github.com/gin-gonic/gin/binding"`,
+      `"github.com/go-playground/validator/v10"`,
+    );
   }
 
   const routesPkg = "genroutes";
@@ -40,6 +46,20 @@ export function generateServer(
       mainBody.push(`\tdefer ${varName}.Close()`);
     }
     routeArgs.push(varName);
+  }
+
+  if (adapter?.name === "gin") {
+    mainBody.push(``);
+    mainBody.push(`\t// Configure validator`);
+    mainBody.push(`\tif v, ok := binding.Validator.Engine().(*validator.Validate); ok {`);
+    mainBody.push(`\t\tv.RegisterTagNameFunc(func(fld reflect.StructField) string {`);
+    mainBody.push(`\t\t\tname := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]`);
+    mainBody.push(`\t\t\tif name == "-" || name == "" {`);
+    mainBody.push(`\t\t\t\treturn fld.Name`);
+    mainBody.push(`\t\t\t}`);
+    mainBody.push(`\t\t\treturn name`);
+    mainBody.push(`\t\t})`);
+    mainBody.push(`\t}`);
   }
 
   mainBody.push(``);
