@@ -98,27 +98,27 @@ export async function compile(options: CompileOptions): Promise<CompileResult> {
 
   const runtimePatches = generateRuntimeCode(ast, ast.options.runtime ?? { enabled: false });
 
+  const mergedFiles = new Map<string, GeneratedFilePatch>();
+  for (const file of [...generation.files, ...targetPatches, ...runtimePatches]) {
+    const existing = mergedFiles.get(file.path);
+    if (existing) {
+      existing.regions.push(...file.regions);
+    } else {
+      mergedFiles.set(file.path, { ...file, regions: [...file.regions] });
+    }
+  }
+
   generation = {
-    files: [...generation.files, ...runtimePatches, ...targetPatches]
-      .reduce((acc, file) => {
-        const existing = acc.find((f) => f.path === file.path);
-        if (existing) {
-          existing.regions.push(...file.regions);
-        } else {
-          acc.push({ ...file, regions: [...file.regions] });
-        }
-        return acc;
-      }, [] as GeneratedFilePatch[])
-      .map((file) => ({
-        ...file,
-        regions: file.regions.map((region) => ({
-          ...region,
-          content:
-            region.language === "go" && !region.symbolName
-              ? formatGoSnippet(region.content, diagnostics, region.id)
-              : region.content,
-        })),
+    files: [...mergedFiles.values()].map((file) => ({
+      ...file,
+      regions: file.regions.map((region) => ({
+        ...region,
+        content:
+          region.language === "go" && !region.symbolName
+            ? formatGoSnippet(region.content, diagnostics, region.id)
+            : region.content,
       })),
+    })),
   };
 
   await runValidators(ast, registry, diagnostics);
