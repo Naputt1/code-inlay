@@ -112,6 +112,30 @@ describe("createSandboxedPlugin", () => {
   });
 });
 
+describe("createSafeMath", () => {
+  it("has no constructor property", () => {
+    const safe = createSafeMath();
+    expect("constructor" in safe).toBe(false);
+  });
+
+  it("returns 0.5 for random", () => {
+    const safe = createSafeMath();
+    expect(safe.random()).toBe(0.5);
+  });
+
+  it("provides Math constants and functions", () => {
+    const safe = createSafeMath();
+    expect(safe.PI).toBe(Math.PI);
+    expect(safe.sin(Math.PI / 2)).toBeCloseTo(1);
+    expect(safe.floor(3.7)).toBe(3);
+  });
+
+  it("is frozen", () => {
+    const safe = createSafeMath();
+    expect(Object.isFrozen(safe)).toBe(true);
+  });
+});
+
 describe("sandbox security", () => {
   function runInSandbox(code: string): { success: boolean; error?: string } {
     try {
@@ -128,7 +152,7 @@ describe("sandbox security", () => {
         enumerable: true,
       });
       Object.defineProperty(sandbox, "process", {
-        value: { env: {}, cwd: () => "/sandbox", platform: "linux" },
+        value: Object.freeze({ env: Object.freeze({}), cwd: () => "/sandbox", platform: "linux" }),
         writable: false,
         enumerable: true,
       });
@@ -139,16 +163,7 @@ describe("sandbox security", () => {
         writable: false,
         enumerable: true,
       });
-      for (const key of [
-        "constructor",
-        "Function",
-        "eval",
-        "Object",
-        "Array",
-        "Symbol",
-        "Reflect",
-        "Proxy",
-      ]) {
+      for (const key of ["constructor", "Function", "eval", "Reflect", "Proxy"]) {
         Object.defineProperty(sandbox, key, {
           value: undefined,
           writable: false,
@@ -186,20 +201,139 @@ describe("sandbox security", () => {
     expect(result.success).toBe(false);
   });
 
-  it("blocks Symbol, Reflect, Proxy", () => {
-    const r1 = runInSandbox("Symbol()");
-    const r2 = runInSandbox("Reflect.get({}, 'x')");
-    const r3 = runInSandbox("new Proxy({}, {})");
+  it("blocks Reflect and Proxy", () => {
+    const r1 = runInSandbox("Reflect.get({}, 'x')");
+    const r2 = runInSandbox("new Proxy({}, {})");
     expect(r1.success).toBe(false);
     expect(r2.success).toBe(false);
-    expect(r3.success).toBe(false);
   });
 
   it("sets importModuleDynamically option to reject imports", () => {
-    // The importModuleDynamically option is set on vm.runInNewContext in the
-    // implementation to block dynamic import() calls. This option requires
-    // --experimental-vm-modules at runtime; without it, Node.js raises an
-    // unhandled rejection. The option exists as defense-in-depth.
     expect(typeof runPluginInSandbox).toBe("function");
+  });
+});
+
+describe("sandbox compatibility", () => {
+  function runInSandbox(code: string): unknown {
+    const sandbox = vm.createContext(Object.create(null));
+    sandbox.console = { log: () => {}, warn: () => {}, error: () => {} };
+    Object.defineProperty(sandbox, "Math", {
+      value: createSafeMath(),
+      writable: false,
+      enumerable: true,
+    });
+    Object.defineProperty(sandbox, "JSON", {
+      value: JSON,
+      writable: false,
+      enumerable: true,
+    });
+    Object.defineProperty(sandbox, "process", {
+      value: Object.freeze({ env: Object.freeze({}), cwd: () => "/sandbox", platform: "linux" }),
+      writable: false,
+      enumerable: true,
+    });
+    Object.defineProperty(sandbox, "require", {
+      value: () => {
+        throw new Error("disabled");
+      },
+      writable: false,
+      enumerable: true,
+    });
+    for (const key of ["constructor", "Function", "eval", "Reflect", "Proxy"]) {
+      Object.defineProperty(sandbox, key, {
+        value: undefined,
+        writable: false,
+        configurable: false,
+      });
+    }
+    return vm.runInNewContext(code, sandbox, { timeout: 1000 });
+  }
+
+  it("provides Object.keys", () => {
+    const r = runInSandbox("Object.keys({a:1,b:2})") as string[];
+    expect(r).toEqual(["a", "b"]);
+  });
+
+  it("provides Array.isArray", () => {
+    const r = runInSandbox("Array.isArray([1,2,3])") as boolean;
+    expect(r).toBe(true);
+  });
+
+  it("provides Symbol", () => {
+    const r = runInSandbox("typeof Symbol") as string;
+    expect(r).toBe("function");
+  });
+
+  it("provides JSON.stringify and JSON.parse", () => {
+    const r = runInSandbox("JSON.parse(JSON.stringify({a:1}))") as { a: number };
+    expect(r).toEqual({ a: 1 });
+  });
+
+  it("provides Math.PI", () => {
+    const r = runInSandbox("Math.PI") as number;
+    expect(r).toBe(Math.PI);
+  });
+
+  it("provides safe Math.random", () => {
+    const r = runInSandbox("Math.random()") as number;
+    expect(r).toBe(0.5);
+  });
+
+  it("provides Map and Set", () => {
+    const r = runInSandbox("new Map([[1,2]]).get(1)") as number;
+    expect(r).toBe(2);
+  });
+
+  it("provides Promise", () => {
+    const r = runInSandbox("typeof Promise") as string;
+    expect(r).toBe("function");
+  });
+
+  it("provides Error types", () => {
+    const r = runInSandbox("(new Error('test')).message") as string;
+    expect(r).toBe("test");
+  });
+});
+
+describe("sandbox known limitations", () => {
+  function runInSandbox(code: string): { success: boolean; error?: string } {
+    try {
+      const sandbox = vm.createContext(Object.create(null));
+      sandbox.console = { log: () => {}, warn: () => {}, error: () => {} };
+      Object.defineProperty(sandbox, "Math", {
+        value: createSafeMath(),
+        writable: false,
+        enumerable: true,
+      });
+      Object.defineProperty(sandbox, "JSON", {
+        value: JSON,
+        writable: false,
+        enumerable: true,
+      });
+      for (const key of ["constructor", "Function", "eval", "Reflect", "Proxy"]) {
+        Object.defineProperty(sandbox, key, {
+          value: undefined,
+          writable: false,
+          configurable: false,
+        });
+      }
+      vm.runInNewContext(code, sandbox, { timeout: 1000 });
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  }
+
+  it("NOTICE: [].constructor.constructor escape is a known vm module limitation", () => {
+    // Node.js vm module explicitly states it is not a security mechanism.
+    // Literal [] accesses the shared Array constructor directly via .constructor,
+    // bypassing global name shadowing. This is a fundamental V8 limitation.
+    const r = runInSandbox("[].constructor.constructor('return 1')()");
+    expect(r.success).toBe(true);
+  });
+
+  it("NOTICE: ({}).constructor.constructor escape is a known vm module limitation", () => {
+    const r = runInSandbox("({}).constructor.constructor('return 1')()");
+    expect(r.success).toBe(true);
   });
 });

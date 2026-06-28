@@ -149,7 +149,7 @@ export async function compile(options: CompileOptions): Promise<CompileResult> {
       cwd,
       app.options.fileCreation,
       diagnostics,
-      undefined,
+      cache,
       true,
     );
     return {

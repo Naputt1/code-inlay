@@ -61,16 +61,7 @@ export function runPluginInSandbox(
       enumerable: true,
     });
 
-    const restrictedGlobals: string[] = [
-      "constructor",
-      "Function",
-      "eval",
-      "Object",
-      "Array",
-      "Symbol",
-      "Reflect",
-      "Proxy",
-    ];
+    const restrictedGlobals: string[] = ["constructor", "Function", "eval", "Reflect", "Proxy"];
     for (const key of restrictedGlobals) {
       Object.defineProperty(sandbox, key, {
         value: undefined,
