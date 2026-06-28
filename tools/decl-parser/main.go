@@ -44,7 +44,12 @@ func main() {
 	var imports []string
 	for _, imp := range f.Imports {
 		if imp.Path != nil {
-			imports = append(imports, strings.Trim(imp.Path.Value, "\""))
+			path := strings.Trim(imp.Path.Value, "\"")
+			if imp.Name != nil {
+				imports = append(imports, imp.Name.Name+" \""+path+"\"")
+			} else {
+				imports = append(imports, "\""+path+"\"")
+			}
 		}
 	}
 	if len(imports) > 0 {
