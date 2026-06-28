@@ -147,6 +147,8 @@ export function readPluginLock(
 }
 
 function satisfies(version: string, range: string): boolean {
+  version = version.trim();
+  range = range.trim();
   if (range === "*" || range === "x") return true;
   if (range.startsWith(">=")) {
     const min = range.slice(2);
@@ -199,8 +201,8 @@ function satisfies(version: string, range: string): boolean {
 }
 
 function compareVersions(a: string, b: string): number {
-  const partsA = a.split(".").map(Number);
-  const partsB = b.split(".").map(Number);
+  const partsA = a.trim().split(".").map(Number);
+  const partsB = b.trim().split(".").map(Number);
   for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
     const nA = partsA[i] ?? 0;
     const nB = partsB[i] ?? 0;

@@ -81,6 +81,26 @@ describe("checkPluginCompatibility", () => {
     const diagnostics: Diagnostic[] = [];
     expect(checkPluginCompatibility(pkg, diagnostics)).toBe(true);
   });
+
+  it("handles trailing whitespace in version strings", () => {
+    const pkg: PluginPackage = {
+      ...compatible,
+      version: "1.0.0 ",
+      compatibility: { astVersion: "2.0 ", coreVersion: ">=0.1.0 " },
+    };
+    const diagnostics: Diagnostic[] = [];
+    expect(checkPluginCompatibility(pkg, diagnostics)).toBe(true);
+  });
+
+  it("handles leading whitespace in version strings", () => {
+    const pkg: PluginPackage = {
+      ...compatible,
+      version: " 1.0.0",
+      compatibility: { astVersion: " 2.0", coreVersion: " >=0.1.0" },
+    };
+    const diagnostics: Diagnostic[] = [];
+    expect(checkPluginCompatibility(pkg, diagnostics)).toBe(true);
+  });
 });
 
 describe("resolvePluginPackage", () => {
