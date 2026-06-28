@@ -43,7 +43,11 @@ describe("generateServer", () => {
     expect(patch.regions[1].id).toContain("main");
 
     const importsContent = patch.regions[0].content;
+    expect(importsContent).toContain('"reflect"');
+    expect(importsContent).toContain('"strings"');
     expect(importsContent).toContain('"github.com/gin-gonic/gin"');
+    expect(importsContent).toContain('"github.com/gin-gonic/gin/binding"');
+    expect(importsContent).toContain('"github.com/go-playground/validator/v10"');
     expect(importsContent).toContain('genroutes "github.com/example/myapp/internal/http"');
   });
 
@@ -76,6 +80,9 @@ describe("generateServer", () => {
       generateServer: () => "",
     } as unknown as AdapterPlugin);
     const mainContent = patch.regions[1].content;
+    expect(mainContent).toContain("binding.Validator.Engine()");
+    expect(mainContent).toContain("RegisterTagNameFunc");
+    expect(mainContent).toContain("strings.SplitN(fld.Tag.Get(\"json\"), \",\", 2)[0]");
     expect(mainContent).toContain("gin.Default()");
     expect(mainContent).toContain("RegisterRoutes");
     expect(mainContent).toContain(`r.Group("${result.ast!.router.prefix}")`);
