@@ -95,7 +95,7 @@ export function injectGoFile(
   const plannedByName = new Map(symbolRegions.map((r) => [r.symbolName!, r]));
 
   if (declarations.length === 0) {
-    let t = injectAllViaMarkers(fileText, patch);
+    let t = injectAllViaMarkers(fileText, patch, diagnostics, patch.path);
     t = mergeImports(t, patch, fileText);
     return cleanBlankLines(t);
   }
@@ -232,10 +232,40 @@ export function injectGoFile(
   return result;
 }
 
-function injectAllViaMarkers(fileText: string, patch: GeneratedFilePatch): string {
+function injectAllViaMarkers(
+  fileText: string,
+  patch: GeneratedFilePatch,
+  diagnostics: Diagnostic[],
+  file?: string,
+): string {
   const markerIds = new Set(patch.regions.filter((r) => r.kind !== "imports").map((r) => r.id));
-  const markers = findBlobMarkers(fileText, markerIds);
+
+  // Remove orphan blob markers (IDs no longer in the plan)
+  const allMarkers = findAllBlobMarkers(fileText);
   let result = fileText;
+  const orphanIds: Array<{ start: number; end: number }> = [];
+  for (const [, marker] of allMarkers) {
+    if (!markerIds.has(marker.id)) {
+      orphanIds.push({ start: marker.startIdx, end: marker.endIdx });
+      diagnostics.push({
+        level: "warning",
+        code: "orphaned-region-removed",
+        message: `Removed orphaned region "${marker.id}" that is no longer generated.`,
+        file,
+        regionId: marker.id,
+      });
+    }
+  }
+  orphanIds.sort((a, b) => b.start - a.start);
+  for (const { start, end } of orphanIds) {
+    const before = result.slice(0, start);
+    const after = result.slice(end);
+    const beforeTrimmed = before.replace(/\n+$/, "");
+    const afterTrimmed = after.replace(/^\n+/, "");
+    result = beforeTrimmed + "\n\n" + afterTrimmed;
+  }
+
+  const markers = findBlobMarkers(result, markerIds);
   for (const region of patch.regions) {
     if (region.kind === "imports") continue;
     const marker = markers.get(region.id);
@@ -249,6 +279,35 @@ function injectAllViaMarkers(fileText: string, patch: GeneratedFilePatch): strin
     }
   }
   return result;
+}
+
+function findAllBlobMarkers(text: string): Map<string, BlobMarker> {
+  const markers = new Map<string, BlobMarker>();
+  const starts: Array<{ id: string; index: number; indent: string }> = [];
+  const ends: Array<{ id: string; index: number; indent: string }> = [];
+
+  let m: RegExpExecArray | null;
+  const startLocal = new RegExp(startMarkerRe.source, startMarkerRe.flags);
+  while ((m = startLocal.exec(text)) !== null) {
+    starts.push({ id: m[2], index: m.index, indent: m[1] });
+  }
+  const endLocal = new RegExp(endMarkerRe.source, endMarkerRe.flags);
+  while ((m = endLocal.exec(text)) !== null) {
+    ends.push({ id: m[2], index: m.index, indent: m[1] });
+  }
+
+  for (const start of starts) {
+    const end = ends.find((e) => e.id === start.id && e.index > start.index);
+    if (end) {
+      markers.set(start.id, {
+        id: start.id,
+        startIdx: start.index,
+        endIdx: end.index + end.indent.length + `// @gen:end ${start.id}`.length,
+        indent: start.indent,
+      });
+    }
+  }
+  return markers;
 }
 
 function findBlobLineRanges(
