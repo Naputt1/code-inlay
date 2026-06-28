@@ -1,7 +1,7 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   atomicWritePatches,
   validateBeforeWrite,
@@ -11,6 +11,14 @@ import {
   shortHash,
 } from "../src/index.js";
 import type { Diagnostic, GeneratedFilePatch, GeneratedRegion } from "../src/index.js";
+
+vi.mock("node:fs", async () => {
+  const actual = await vi.importActual<typeof import("node:fs")>("node:fs");
+  return {
+    ...actual,
+    statSync: vi.fn(actual.statSync),
+  };
+});
 
 const nl = "\n";
 const rid = "test.module.route.handler";
@@ -308,6 +316,84 @@ describe("atomic write + rollback", () => {
     const content = readFileSync(join(cwd, "internal/user/types.go"), "utf8");
     expect(content).not.toContain("original");
     expect(content).toContain("type Foo struct{}");
+  });
+
+  it("rolls back previously written files on write-failed", () => {
+    const cwd = join(tmpdir(), `backend-gen-phase2-wf-${Date.now()}`);
+    mkdirSync(join(cwd, "internal/user"), { recursive: true });
+
+    const originalA = "package user\n\n// @gen:start r1\noriginal\n// @gen:end r1\n";
+    const originalB = "package user\n\n// @gen:start r2\noriginal\n// @gen:end r2\n";
+
+    writeFileSync(join(cwd, "internal/user/a.go"), originalA);
+    writeFileSync(join(cwd, "internal/user/b.go"), originalB);
+
+    // Make writeAtomic fail for b.go by placing a directory at the temp path
+    mkdirSync(join(cwd, "internal/user/b.go.gen.tmp"));
+
+    const patches: GeneratedFilePatch[] = [
+      {
+        path: "internal/user/a.go",
+        regions: [{ id: "r1", content: "type Foo struct{}", language: "go" }],
+      },
+      {
+        path: "internal/user/b.go",
+        regions: [{ id: "r2", content: "type Bar struct{}", language: "go" }],
+      },
+    ];
+
+    const diagnostics: Diagnostic[] = [];
+    atomicWritePatches(patches, cwd, "skeleton", diagnostics);
+
+    expect(readFileSync(join(cwd, "internal/user/a.go"), "utf8")).toBe(originalA);
+    expect(readFileSync(join(cwd, "internal/user/b.go"), "utf8")).toBe(originalB);
+    expect(diagnostics.some((d) => d.code === "write-failed")).toBe(true);
+  });
+
+  it("rolls back previously written files on concurrent edit", () => {
+    const cwd = join(tmpdir(), `backend-gen-phase2-ce-${Date.now()}`);
+    mkdirSync(join(cwd, "internal/user"), { recursive: true });
+
+    const originalA = "package user\n\n// @gen:start r1\noriginal\n// @gen:end r1\n";
+    const originalB = "package user\n\n// @gen:start r2\noriginal\n// @gen:end r2\n";
+
+    writeFileSync(join(cwd, "internal/user/a.go"), originalA);
+    writeFileSync(join(cwd, "internal/user/b.go"), originalB);
+
+    const patches: GeneratedFilePatch[] = [
+      {
+        path: "internal/user/a.go",
+        regions: [{ id: "r1", content: "type Foo struct{}", language: "go" }],
+      },
+      {
+        path: "internal/user/b.go",
+        regions: [{ id: "r2", content: "type Bar struct{}", language: "go" }],
+      },
+    ];
+
+    const statCallCount = new Map<string, number>();
+    const statMock = vi.mocked(statSync);
+    statMock.mockImplementation((path: unknown) => {
+      const key = (path as import("node:fs").PathLike).toString();
+      const count = (statCallCount.get(key) ?? 0) + 1;
+      statCallCount.set(key, count);
+      if (key.endsWith("a.go")) {
+        return { mtimeMs: 1000, size: 100 } as import("node:fs").Stats;
+      }
+      if (key.endsWith("b.go")) {
+        return count === 1
+          ? ({ mtimeMs: 2000, size: 200 } as import("node:fs").Stats)
+          : ({ mtimeMs: 3000, size: 300 } as import("node:fs").Stats);
+      }
+      return { mtimeMs: 0, size: 0 } as import("node:fs").Stats;
+    });
+
+    const diagnostics: Diagnostic[] = [];
+    atomicWritePatches(patches, cwd, "skeleton", diagnostics);
+
+    expect(readFileSync(join(cwd, "internal/user/a.go"), "utf8")).toBe(originalA);
+    expect(readFileSync(join(cwd, "internal/user/b.go"), "utf8")).toBe(originalB);
+    expect(diagnostics.some((d) => d.code === "concurrent-edit")).toBe(true);
   });
 });
 

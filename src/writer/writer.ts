@@ -199,7 +199,7 @@ export function atomicWritePatches(
       diffs.push({ path: patch.path, before, after });
 
       if (!dryRun) {
-        writeAtomic(absolutePath, after, diagnostics);
+        writeAtomic(absolutePath, after, diagnostics, patch.path);
         if (!hasErrorsForFile(diagnostics, patch.path)) {
           formatFile(absolutePath, diagnostics);
           writtenPaths.push(patch.path);
@@ -225,7 +225,7 @@ export function atomicWritePatches(
         const statAfter = statSync(absolutePath);
         if (statAfter.mtimeMs !== statBefore!.mtimeMs || statAfter.size !== statBefore!.size) {
           diagnostics.push({
-            level: "warning",
+            level: "error",
             code: "concurrent-edit",
             message: `File "${patch.path}" changed between read and write. Skipping this file.`,
             file: patch.path,
@@ -238,7 +238,7 @@ export function atomicWritePatches(
       diffs.push({ path: patch.path, before, after });
 
       if (!dryRun) {
-        writeAtomic(absolutePath, after, diagnostics);
+        writeAtomic(absolutePath, after, diagnostics, patch.path);
         if (!hasErrorsForFile(diagnostics, patch.path)) {
           formatFile(absolutePath, diagnostics);
           writtenPaths.push(patch.path);
@@ -249,21 +249,23 @@ export function atomicWritePatches(
 
   if (!dryRun) {
     const hasFailures = patches.some((patch) =>
-      diagnostics.some(
-        (d) => d.file === patch.path && d.level === "error" && d.code === "file-not-found",
-      ),
+      diagnostics.some((d) => d.file === patch.path && d.level === "error"),
     );
 
     if (hasFailures) {
-      const writtenSet = new Set(writtenPaths);
-      restoreFromSnapshot(snapshots, cwd, writtenSet);
+      restoreFromSnapshot(snapshots, cwd, new Set());
     }
   }
 
   return { changedFiles, diffs, writtenPaths };
 }
 
-function writeAtomic(absolutePath: string, content: string, diagnostics: Diagnostic[]): void {
+function writeAtomic(
+  absolutePath: string,
+  content: string,
+  diagnostics: Diagnostic[],
+  file?: string,
+): void {
   const tmpPath = absolutePath + ".gen.tmp";
   try {
     writeFileSync(tmpPath, content);
@@ -272,6 +274,7 @@ function writeAtomic(absolutePath: string, content: string, diagnostics: Diagnos
     diagnostics.push({
       level: "error",
       code: "write-failed",
+      file,
       message: `Failed to write "${absolutePath}": ${error instanceof Error ? error.message : String(error)}`,
     });
     try {
