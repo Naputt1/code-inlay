@@ -39,15 +39,6 @@ describe("generateRuntimeCode", () => {
     expect(patches).toEqual([]);
   });
 
-  it("generates go.mod when enabled", () => {
-    const ast = minimalAst();
-    const config: RuntimeConfig = { enabled: true };
-    const patches = generateRuntimeCode(ast, config);
-    const goMod = patches.find((p) => p.path.endsWith("go.mod"));
-    expect(goMod).toBeDefined();
-    expect(goMod!.regions[0].content).toContain("module github.com/code-inlay/runtime");
-  });
-
   it("generates context types", () => {
     const ast = minimalAst();
     const config: RuntimeConfig = { enabled: true };
@@ -60,15 +51,6 @@ describe("generateRuntimeCode", () => {
     expect(content).toContain("type Logger interface");
     expect(content).toContain("type Middleware func");
     expect(content).toContain("type Handler[Req, Res any]");
-  });
-
-  it("generates main wrapper", () => {
-    const ast = minimalAst();
-    const config: RuntimeConfig = { enabled: true };
-    const patches = generateRuntimeCode(ast, config);
-    const main = patches.find((p) => p.path.endsWith("main.go"));
-    expect(main).toBeDefined();
-    expect(main!.regions[0].content).toContain("Starting server");
   });
 
   it("generates middleware chain when middleware names provided", () => {

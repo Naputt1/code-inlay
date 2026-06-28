@@ -1,4 +1,4 @@
-import type { AppAst, RuntimeConfig, GeneratedFilePatch, GeneratedRegion } from "../types/index.js";
+import type { AppAst, RuntimeConfig, GeneratedFilePatch } from "../types/index.js";
 import { contentHash } from "../utils/hash.js";
 
 export function generateRuntimeCode(
@@ -10,31 +10,13 @@ export function generateRuntimeCode(
   const patches: GeneratedFilePatch[] = [];
   const middlewareNames = runtimeConfig.middleware ?? [];
 
-  patches.push(generateGoModule());
-
   patches.push(generateRuntimeTypes());
 
   if (middlewareNames.length > 0) {
     patches.push(generateMiddlewareChain());
   }
 
-  patches.push(generateMainWrapper());
-
   return patches;
-}
-
-function generateGoModule(): GeneratedFilePatch {
-  const region: GeneratedRegion = {
-    id: "runtime.go.mod",
-    owner: "runtime",
-    language: "go",
-    content: [`module github.com/code-inlay/runtime`, ``, `go 1.26`].join("\n"),
-  };
-
-  return {
-    path: "runtime/go.mod",
-    regions: [region],
-  };
 }
 
 function generateRuntimeTypes(): GeneratedFilePatch {
@@ -107,38 +89,6 @@ function generateMiddlewareChain(): GeneratedFilePatch {
         owner: "runtime",
         language: "go",
         content: middlewareCode,
-      },
-    ],
-  };
-}
-
-function generateMainWrapper(): GeneratedFilePatch {
-  const content: string[] = [
-    `// Auto-generated runtime main wrapper`,
-    `package main`,
-    ``,
-    `import (`,
-    `\t"fmt"`,
-    `\t"log"`,
-    `\t"net/http"`,
-    `)`,
-    ``,
-    `func main() {`,
-    `\tlog.Println("Starting server...")`,
-    `\t// Generated server setup will be injected here`,
-    `\tfmt.Println("Server running")`,
-    `}`,
-  ];
-
-  return {
-    path: "runtime/main.go",
-    regions: [
-      {
-        id: "runtime.main",
-        stableHash: "runtime:main",
-        owner: "runtime",
-        language: "go",
-        content: content.join("\n"),
       },
     ],
   };
