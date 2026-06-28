@@ -280,13 +280,21 @@ export function generateCode(
     const moduleServices = getModuleServices(info.moduleName);
     const nonDbServices = moduleServices.filter((s) => !s.dbAccessor);
     const importLines: string[] = [];
-    if (nonDbServices.length > 0 && moduleInfo) {
+
+    if (nonDbServices.length === 0) {
+      importLines.push(`import "context"`);
+    } else if (moduleInfo) {
       importLines.push(`import (`);
       importLines.push(`\t"context"`);
       importLines.push(`\tservice "${moduleInfo.modulePath}/internal/service"`);
       importLines.push(`)`);
     } else {
       importLines.push(`import "context"`);
+      diagnostics.push({
+        level: "warning",
+        code: "missing-module-info",
+        message: `Cannot determine service import path for "${file}" — Go module info not available. Run within a Go module directory (go.mod required).`,
+      });
     }
     add(file, {
       id: regionId,

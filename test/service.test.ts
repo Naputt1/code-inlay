@@ -1,3 +1,6 @@
+import { mkdirSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   compile,
@@ -324,5 +327,90 @@ describe("service layer", () => {
       f.path.endsWith("internal/service/search.go"),
     );
     expect(serviceFile).toBeDefined();
+  });
+
+  it("warns when service import path cannot be determined", async () => {
+    const app = defineApp({
+      architecture: "clean",
+      router: defineRouter({ adapter: "gin" }),
+      services: [defineService({ name: "payment", close: true })],
+      modules: [
+        defineModule({
+          name: "payment",
+          routes: [
+            defineRoute({
+              id: "process",
+              method: "POST",
+              path: "/payments",
+              body: z.object({ amount: z.number() }),
+              response: z.object({ id: z.string() }),
+              handler: "ProcessPayment",
+            }),
+          ],
+        }),
+      ],
+    });
+
+    const result = await compile({ app, dryRun: true });
+
+    const warning = result.diagnostics.find((d) => d.code === "missing-module-info");
+    expect(warning).toBeDefined();
+    expect(warning!.level).toBe("warning");
+    expect(warning!.message).toContain("payment/usecase.go");
+
+    const usecaseFile = result.generation.files.find((f) => f.path.endsWith("payment/usecase.go"));
+    expect(usecaseFile).toBeDefined();
+    const importRegion = usecaseFile!.regions.find((r) => r.id.endsWith(".0usecase.imports"));
+    expect(importRegion).toBeDefined();
+    expect(importRegion!.content).toBe(`import "context"`);
+  });
+
+  it("generates grouped service import when Go module info is available", async () => {
+    const app = defineApp({
+      architecture: "clean",
+      router: defineRouter({ adapter: "gin" }),
+      services: [defineService({ name: "payment", close: true })],
+      modules: [
+        defineModule({
+          name: "payment",
+          routes: [
+            defineRoute({
+              id: "process",
+              method: "POST",
+              path: "/payments",
+              body: z.object({ amount: z.number() }),
+              response: z.object({ id: z.string() }),
+              handler: "ProcessPayment",
+            }),
+          ],
+        }),
+      ],
+    });
+
+    const cwd = join(tmpdir(), `usecase-imports-${Date.now()}`);
+    mkdirSync(cwd, { recursive: true });
+    writeFileSync(
+      join(cwd, "go.mod"),
+      [
+        "module github.com/example/test",
+        "",
+        "go 1.26",
+        "",
+        "require github.com/gin-gonic/gin v1.10.0",
+        "",
+      ].join("\n"),
+    );
+
+    const result = await compile({ app, configFile: "", cwd, dryRun: true });
+
+    expect(result.diagnostics.filter((d) => d.level === "error")).toEqual([]);
+
+    const usecaseFile = result.generation.files.find((f) => f.path.endsWith("payment/usecase.go"));
+    expect(usecaseFile).toBeDefined();
+    const importRegion = usecaseFile!.regions.find((r) => r.id.endsWith(".0usecase.imports"));
+    expect(importRegion).toBeDefined();
+    expect(importRegion!.content).toContain("import (");
+    expect(importRegion!.content).toContain(`"context"`);
+    expect(importRegion!.content).toContain(`service "github.com/example/test/internal/service"`);
   });
 });
