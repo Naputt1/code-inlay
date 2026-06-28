@@ -63,6 +63,24 @@ describe("enrichRegionWithRegex", () => {
     expect(result.imports).toEqual(['"fmt"']);
   });
 
+  it("extracts imports with aliases", () => {
+    const r = region({
+      id: "r1",
+      content: `import (
+\t"github.com/gin-gonic/gin"
+\t"snapshot/internal/service"
+\tgenroutes "snapshot/internal/http"
+)`,
+    });
+    const result = enrichRegionWithRegex(r);
+    expect(result.kind).toBe("imports");
+    expect(result.imports).toEqual([
+      '"github.com/gin-gonic/gin"',
+      '"snapshot/internal/service"',
+      'genroutes "snapshot/internal/http"',
+    ]);
+  });
+
   it("extracts function signature and body", () => {
     const r = region({
       id: "r1",
@@ -327,7 +345,29 @@ describe("tryBatchAST", () => {
     const result = tryBatchAST(regions);
     expect(result).not.toBeNull();
     expect(result![0].kind).toBe("imports");
-    expect(result![0].imports).toEqual(["fmt"]);
+    expect(result![0].imports).toEqual(['"fmt"']);
+  });
+
+  it("extracts aliased imports from block", () => {
+    if (!astAvailable()) return;
+    const regions = [
+      region({
+        id: "r1",
+        content: `import (
+\t"github.com/gin-gonic/gin"
+\t"snapshot/internal/service"
+\tgenroutes "snapshot/internal/http"
+)`,
+      }),
+    ];
+    const result = tryBatchAST(regions);
+    expect(result).not.toBeNull();
+    expect(result![0].kind).toBe("imports");
+    expect(result![0].imports).toEqual([
+      '"github.com/gin-gonic/gin"',
+      '"snapshot/internal/service"',
+      'genroutes "snapshot/internal/http"',
+    ]);
   });
 });
 

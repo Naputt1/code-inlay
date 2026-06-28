@@ -472,7 +472,7 @@ function importPath(spec: string): string {
   return m ? m[1] : spec;
 }
 
-function mergeImports(text: string, patch: GeneratedFilePatch, fileText: string): string {
+export function mergeImports(text: string, patch: GeneratedFilePatch, fileText: string): string {
   const plannedSpecs: string[] = [];
   const seenPaths = new Set<string>();
   for (const region of patch.regions) {
@@ -494,20 +494,45 @@ function mergeImports(text: string, patch: GeneratedFilePatch, fileText: string)
 
   const blockMatch = fileText.match(importBlockRe);
   if (blockMatch) {
-    const existingPaths = new Set<string>();
+    const existingSpecs = new Map<string, { spec: string; index: number }>();
     const inner = blockMatch[2];
-    for (const line of inner.split("\n")) {
-      const trimmed = line.trim();
+    const innerLines = inner.split("\n");
+    for (let i = 0; i < innerLines.length; i++) {
+      const trimmed = innerLines[i].trim();
       const m = trimmed.match(importLineRe);
-      if (m) existingPaths.add(m[2]);
+      if (m) existingSpecs.set(m[2], { spec: trimmed, index: i });
     }
 
-    const toAdd = plannedSpecs.filter((spec) => !existingPaths.has(importPath(spec)));
-    if (toAdd.length === 0) return text;
+    const toAdd: string[] = [];
+    const toUpdate = new Map<number, string>();
+    for (const spec of plannedSpecs) {
+      const path = importPath(spec);
+      const existing = existingSpecs.get(path);
+      if (!existing) {
+        toAdd.push(spec);
+      } else if (existing.spec !== spec) {
+        toUpdate.set(existing.index, spec);
+      }
+    }
+
+    if (toAdd.length === 0 && toUpdate.size === 0) return text;
+
+    let updatedInner: string;
+    if (toUpdate.size > 0) {
+      const lines = [...innerLines];
+      for (const [index, spec] of toUpdate) {
+        lines[index] = `\t${spec}`;
+      }
+      updatedInner = lines.join("\n");
+    } else {
+      updatedInner = inner;
+    }
 
     const indent = blockMatch[1] ?? "";
-    const newSpecLines = toAdd.map((s) => `${indent}\t${s}`).join("\n");
-    const updatedInner = inner.replace(/[ \t]*\n?\s*$/, "") + "\n" + newSpecLines + "\n";
+    if (toAdd.length > 0) {
+      const newSpecLines = toAdd.map((s) => `${indent}\t${s}`).join("\n");
+      updatedInner = updatedInner.replace(/[ \t]*\n?\s*$/, "") + "\n" + newSpecLines + "\n";
+    }
     const updatedBlock = `${indent}import (${updatedInner}${indent})`;
 
     if (importBlockRe.test(text)) {
@@ -525,10 +550,14 @@ function mergeImports(text: string, patch: GeneratedFilePatch, fileText: string)
   const singleMatch = fileText.match(singleImportRe);
   if (singleMatch) {
     const existingPath = singleMatch[1];
+    const aliasUpdate = plannedSpecs.find(
+      (spec) => importPath(spec) === existingPath && spec !== `"${existingPath}"`,
+    );
     const toAdd = plannedSpecs.filter((spec) => importPath(spec) !== existingPath);
-    if (toAdd.length === 0) return text;
+    if (toAdd.length === 0 && !aliasUpdate) return text;
 
-    const allLines = [`\t"${existingPath}"`, ...toAdd.map((s) => `\t${s}`)].sort();
+    const existingEntry = aliasUpdate ?? `"${existingPath}"`;
+    const allLines = [`\t${existingEntry}`, ...toAdd.map((s) => `\t${s}`)].sort();
     const updatedBlock = `import (\n${allLines.join("\n")}\n)`;
 
     if (importBlockRe.test(text)) {

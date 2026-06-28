@@ -3,7 +3,7 @@ package main
 import (
 	"github.com/gin-gonic/gin"
 	"snapshot/internal/service"
-	"snapshot/internal/http"
+	genroutes "snapshot/internal/http"
 )
 
 func main() {
