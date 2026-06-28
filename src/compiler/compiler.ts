@@ -7,6 +7,7 @@ import type {
   AppDefinition,
   CompileOptions,
   CompileResult,
+  DependencyGraph,
   Diagnostic,
   GeneratedFilePatch,
 } from "../types/index.js";
@@ -216,8 +217,9 @@ export async function compile(options: CompileOptions): Promise<CompileResult> {
     }
   }
 
+  let dependencyGraph: DependencyGraph | undefined;
   if (!hasErrors(diagnostics)) {
-    const dependencyGraph = buildDependencyGraph(ast, architecture, generation);
+    dependencyGraph = buildDependencyGraph(ast, architecture, generation);
     const pluginManifestHash = registry.manifestHash;
     const regions: Record<
       string,
@@ -271,7 +273,7 @@ export async function compile(options: CompileOptions): Promise<CompileResult> {
     diagnostics,
     changedFiles: injected.changedFiles,
     diffs: injected.diffs,
-    dependencyGraph: buildDependencyGraph(ast, architecture, generation),
+    dependencyGraph,
   };
 }
 
