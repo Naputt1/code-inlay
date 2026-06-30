@@ -20,6 +20,12 @@ export function generateServer(
       `"github.com/gin-gonic/gin"`,
       `"github.com/gin-gonic/gin/binding"`,
       `"github.com/go-playground/validator/v10"`,
+      `"context"`,
+      `"net/http"`,
+      `"os"`,
+      `"os/signal"`,
+      `"syscall"`,
+      `"time"`,
     );
   }
 
@@ -66,7 +72,36 @@ export function generateServer(
   mainBody.push(`\tr := gin.Default()`);
   mainBody.push(`\tapi := r.Group("${ast.router.prefix}")`);
   mainBody.push(`\t${routesPkg}.RegisterRoutes(${routeArgs.join(", ")})`);
-  mainBody.push(`\tif err := r.Run(); err != nil {`);
+  mainBody.push(``);
+  mainBody.push(`\taddr := os.Getenv("PORT")`);
+  mainBody.push(`\tif addr == "" {`);
+  mainBody.push(`\t\taddr = ":8080"`);
+  mainBody.push(`\t}`);
+  mainBody.push(`\tif !strings.HasPrefix(addr, ":") {`);
+  mainBody.push(`\t\taddr = ":" + addr`);
+  mainBody.push(`\t}`);
+  mainBody.push(``);
+  mainBody.push(`\tsrv := &http.Server{`);
+  mainBody.push(`\t\tAddr:    addr,`);
+  mainBody.push(`\t\tHandler: r,`);
+  mainBody.push(`\t}`);
+  mainBody.push(``);
+  mainBody.push(`\tgo func() {`);
+  mainBody.push(`\t\tif err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {`);
+  mainBody.push(`\t\t\tpanic(err)`);
+  mainBody.push(`\t\t}`);
+  mainBody.push(`\t}()`);
+  mainBody.push(``);
+  mainBody.push(`\tquit := make(chan os.Signal, 1)`);
+  mainBody.push(`\tsignal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)`);
+  mainBody.push(`\t<-quit`);
+  mainBody.push(``);
+  const shutdownTimeout = ast.options.runtime?.shutdownTimeout ?? 5;
+  mainBody.push(
+    `\tctx, cancel := context.WithTimeout(context.Background(), ${shutdownTimeout}*time.Second)`,
+  );
+  mainBody.push(`\tdefer cancel()`);
+  mainBody.push(`\tif err := srv.Shutdown(ctx); err != nil {`);
   mainBody.push(`\t\tpanic(err)`);
   mainBody.push(`\t}`);
 
