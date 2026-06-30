@@ -8,6 +8,7 @@ import type {
   AdapterTarget,
   BackendExtension,
   Diagnostic,
+  ErrorDefinition,
   MiddlewareAst,
   ModuleAst,
   ResponseFormat,
@@ -58,6 +59,8 @@ export function buildAst(app: AppDefinition, diagnostics: Diagnostic[]): AppAst 
     };
   };
 
+  const appErrors = app.errors ?? [];
+
   const ast: AppAst = {
     kind: "App",
     id: "app",
@@ -68,6 +71,7 @@ export function buildAst(app: AppDefinition, diagnostics: Diagnostic[]): AppAst 
     adapters: appAdapters,
     services: (app.services ?? []).map(toAppService),
     serviceExtensions: app.extensions ?? [],
+    errors: appErrors,
     router: {
       kind: "Router",
       id: "router",
@@ -89,6 +93,8 @@ export function buildAst(app: AppDefinition, diagnostics: Diagnostic[]): AppAst 
         ? resolveAdapterSelection(appAdapters, normalizeAdapterSelection(module.adapters))
         : undefined;
       const moduleResponseFormat = resolveResponseFormat(module.responseFormat, appResponseFormat);
+
+      const moduleErrors = mergeErrors(appErrors, module.errors ?? []);
 
       return {
         kind: "Module",
@@ -122,6 +128,7 @@ export function buildAst(app: AppDefinition, diagnostics: Diagnostic[]): AppAst 
             route.responseFormat,
             moduleResponseFormat,
           );
+          const routeErrors = mergeErrors(moduleErrors, route.errors ?? []);
 
           return {
             kind: "Route",
@@ -139,6 +146,7 @@ export function buildAst(app: AppDefinition, diagnostics: Diagnostic[]): AppAst 
             resolvedArchitectures: resolvedArchitectureSelection.refs,
             resolvedAdapters: selectionToTargets(resolvedAdapterSelection),
             responseFormat: routeResponseFormat,
+            errors: routeErrors,
             query: route.query,
             body: route.body,
             response: route.response,
@@ -258,6 +266,18 @@ function nodeStableId(input: string): string {
 
 function validateAst(ast: AppAst, diagnostics: Diagnostic[]): void {
   const routeKeys = new Set<string>();
+  const errorNames = new Set<string>();
+
+  for (const err of ast.errors) {
+    if (errorNames.has(err.name)) {
+      diagnostics.push({
+        level: "error",
+        code: "duplicate-error-name",
+        message: `Duplicate error name "${err.name}". Error names must be unique across the app.`,
+      });
+    }
+    errorNames.add(err.name);
+  }
 
   for (const module of ast.modules) {
     if (!isIdentifierSegment(module.name)) {
@@ -326,6 +346,17 @@ function validateAst(ast: AppAst, diagnostics: Diagnostic[]): void {
       }
     }
   }
+}
+
+function mergeErrors(parent: ErrorDefinition[], child: ErrorDefinition[]): ErrorDefinition[] {
+  const errorMap = new Map<string, ErrorDefinition>();
+  for (const err of parent) {
+    errorMap.set(err.name, err);
+  }
+  for (const err of child) {
+    errorMap.set(err.name, err);
+  }
+  return Array.from(errorMap.values());
 }
 
 function resolveResponseFormat(

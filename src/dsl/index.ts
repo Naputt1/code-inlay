@@ -11,7 +11,9 @@ import type {
   CodeTarget,
   CompileSettings,
   DialectMethodCtx,
+  ErrorDefinition,
   HttpMethod,
+  HttpStatusCode,
   MetadataConfig,
   MiddlewareDefinition,
   ModuleDefinition,
@@ -41,6 +43,7 @@ export type DefineRouteInput<
   adapter?: AdapterRef | AdapterRef[] | AdapterSelection;
   adapters?: AdapterRef[] | AdapterSelection;
   responseFormat?: ResponseFormat;
+  errors?: ErrorDefinition[];
   response?: TResponse;
   handler: string;
   usecaseGroup?: string;
@@ -66,6 +69,7 @@ export function defineRoute<
     adapter: input.adapter,
     adapters: input.adapters,
     responseFormat: input.responseFormat,
+    errors: input.errors,
     query: input.query,
     body: input.body,
     response: input.response,
@@ -91,6 +95,7 @@ export function defineModule(input: {
   services?: string[];
   usecaseOrganization?: UsecaseOrganization;
   responseFormat?: ResponseFormat;
+  errors?: ErrorDefinition[];
   routes?: RouteDefinition<
     SchemaLike | undefined,
     SchemaLike | undefined,
@@ -106,6 +111,7 @@ export function defineModule(input: {
     services: input.services,
     usecaseOrganization: input.usecaseOrganization,
     responseFormat: input.responseFormat,
+    errors: input.errors,
     routes: input.routes ?? [],
     middleware: input.middleware ?? [],
   };
@@ -171,6 +177,7 @@ export function defineApp(input: {
   transformers?: AstTransformer[];
   plugins?: BackendCompilerPlugin[];
   targets?: CodeTarget[];
+  errors?: ErrorDefinition[];
   runtime?: RuntimeConfig;
   testing?: TestingConfig;
   metadata?: MetadataConfig;
@@ -188,6 +195,7 @@ export function defineApp(input: {
     transformers: input.transformers ?? [],
     plugins: input.plugins ?? [],
     targets: input.targets ?? [],
+    errors: input.errors ?? [],
     options: {
       fileCreation: input.options?.fileCreation ?? "skeleton",
       usecaseOrganization: input.options?.usecaseOrganization,
@@ -240,6 +248,19 @@ function joinPath(prefix: string, path: string): string {
   const a = prefix.replace(/\/+$/, "");
   const b = path.startsWith("/") ? path : `/${path}`;
   return `${a}${b}` || "/";
+}
+
+export function defineError(input: {
+  name: string;
+  httpStatus: HttpStatusCode;
+  fields?: SchemaLike;
+}): ErrorDefinition {
+  return {
+    kind: "ErrorDefinition",
+    name: input.name,
+    httpStatus: input.httpStatus,
+    fields: input.fields,
+  };
 }
 
 export function defineResponseFormat(input: { wrapper: SchemaLike }): ResponseFormat {

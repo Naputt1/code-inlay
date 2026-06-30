@@ -95,14 +95,24 @@ function verbForHandler(handlerName: string): string | undefined {
 function emitErrAndResp(body: string[], method: string) {
   if (method === "DELETE") {
     body.push(`if err != nil {`);
-    body.push(`\tc.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})`);
+    body.push(`\tvar httpErr interface{ HTTPStatus() int }`);
+    body.push(`\tif errors.As(err, &httpErr) {`);
+    body.push(`\t\tc.Status(httpErr.HTTPStatus())`);
+    body.push(`\t} else {`);
+    body.push(`\t\tc.Status(http.StatusInternalServerError)`);
+    body.push(`\t}`);
     body.push(`\treturn`);
     body.push(`}`);
     body.push(`_ = output`);
     body.push(`c.Status(http.StatusNoContent)`);
   } else {
     body.push(`if err != nil {`);
-    body.push(`\tc.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})`);
+    body.push(`\tvar httpErr interface{ HTTPStatus() int }`);
+    body.push(`\tif errors.As(err, &httpErr) {`);
+    body.push(`\t\tc.JSON(httpErr.HTTPStatus(), err)`);
+    body.push(`\t} else {`);
+    body.push(`\t\tc.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})`);
+    body.push(`\t}`);
     body.push(`\treturn`);
     body.push(`}`);
     body.push(`c.JSON(http.StatusOK, output)`);

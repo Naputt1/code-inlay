@@ -11,12 +11,56 @@ export function generateRuntimeCode(
   const middlewareNames = runtimeConfig.middleware ?? [];
 
   patches.push(generateRuntimeTypes());
+  patches.push(generateHTTPError());
 
   if (middlewareNames.length > 0) {
     patches.push(generateMiddlewareChain());
   }
 
   return patches;
+}
+
+function generateHTTPError(): GeneratedFilePatch {
+  const content = [
+    `package runtime`,
+    ``,
+    `import "net/http"`,
+    ``,
+    `// HTTPError is an error that carries an HTTP status code.`,
+    `// Return this from a usecase to control the HTTP response status.`,
+    `type HTTPError interface {`,
+    `\terror`,
+    `\tHTTPStatus() int`,
+    `}`,
+    ``,
+    `// StatusError is a simple implementation of HTTPError.`,
+    `type StatusError struct {`,
+    `\tMsg    string \`json:"error"\``,
+    `\tStatus int    \`json:"-"\``,
+    `}`,
+    ``,
+    `func (e *StatusError) Error() string { return e.Msg }`,
+    ``,
+    `func (e *StatusError) HTTPStatus() int { return e.Status }`,
+    ``,
+    `// NewStatusError creates a new StatusError.`,
+    `func NewStatusError(msg string, status int) *StatusError {`,
+    `\treturn &StatusError{Msg: msg, Status: status}`,
+    `}`,
+  ].join("\n");
+
+  return {
+    path: "runtime/errors.go",
+    regions: [
+      {
+        id: "runtime.errors.types",
+        stableHash: `runtime:errors:types:${contentHash(content)}`,
+        owner: "runtime",
+        language: "go",
+        content,
+      },
+    ],
+  };
 }
 
 function generateRuntimeTypes(): GeneratedFilePatch {
