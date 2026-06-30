@@ -14,7 +14,7 @@ import type {
 import { buildAst } from "./ast.js";
 import { applyArchitecture } from "../architecture/index.js";
 import { generateCode } from "../generators/index.js";
-import { formatGoSnippet } from "../utils/format.js";
+import { formatFile, formatGoSnippet } from "../utils/format.js";
 import { checkGoEnvironment } from "../utils/env.js";
 import { generateRuntimeCode } from "../runtime/index.js";
 import {
@@ -208,6 +208,7 @@ export async function compile(options: CompileOptions): Promise<CompileResult> {
               ]);
               if (content !== after) {
                 writeFileSync(abs, after, "utf8");
+                formatFile(abs, diagnostics);
                 injected.changedFiles.push(relPath);
               }
             }
