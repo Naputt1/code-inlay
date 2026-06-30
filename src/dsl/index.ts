@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { validationZ } from "../schema/extras.js";
 import type {
   AdapterRef,
   AppDefinition,
@@ -30,6 +31,7 @@ import type {
   TestingConfig,
   AdapterSelection,
   UsecaseOrganization,
+  ValidationErrorConfig,
 } from "../types/index.js";
 
 export type DefineRouteInput<
@@ -214,6 +216,7 @@ export function defineApp(input: {
         routeRegistry: false,
         schemaReflection: false,
       },
+      validationError: input.options?.validationError,
     },
   };
 }
@@ -260,6 +263,16 @@ export function defineError(input: {
     name: input.name,
     httpStatus: input.httpStatus,
     fields: input.fields,
+  };
+}
+
+export function defineValidationError(input: {
+  httpStatus?: HttpStatusCode;
+  body: (z: typeof validationZ) => SchemaLike;
+}): ValidationErrorConfig {
+  return {
+    httpStatus: input.httpStatus,
+    body: input.body(validationZ),
   };
 }
 

@@ -17,6 +17,7 @@ import {
   defineMiddleware,
   defineError,
   HttpStatus,
+  defineValidationError,
 } from "../src/index.js";
 
 const SNAPSHOT_DIR = resolve(process.cwd(), "sample-project/snapshot");
@@ -464,6 +465,19 @@ describe("full pipeline snapshot", () => {
           "ts-client": { outputDir: "clients" },
           openapi: { title: "Store API", version: "1.0.0" },
         },
+        validationError: defineValidationError({
+          httpStatus: 422,
+          body: (vz) =>
+            vz.object({
+              message: vz.literal("validation failed"),
+              errors: vz.array(
+                vz.object({
+                  field: vz.field(),
+                  rule: vz.tag(),
+                }),
+              ),
+            }),
+        }),
       },
     });
 

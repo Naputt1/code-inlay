@@ -3,6 +3,7 @@ package products
 import (
 	"errors"
 	"net/http"
+	"snapshot/internal/httperr"
 	"github.com/gin-gonic/gin"
 )
 
@@ -17,7 +18,8 @@ type ProductsHandler struct {
 func (h *ProductsHandler) CreateProduct(c *gin.Context) {
 	var binding CreateProductsRequest
 	if err := c.ShouldBindJSON(&binding); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		status, body := httperr.ResolveBindingError(err)
+		c.JSON(status, body)
 		return
 	}
 	// @gen:start f5ea9736
@@ -55,7 +57,8 @@ func (h *ProductsHandler) GetProduct(c *gin.Context) {
 func (h *ProductsHandler) ListProducts(c *gin.Context) {
 	var input ListProductsRequest
 	if err := c.ShouldBindQuery(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		status, body := httperr.ResolveBindingError(err)
+		c.JSON(status, body)
 		return
 	}
 	output, err := h.ListProductsUsecase.Execute(c.Request.Context(), input)
@@ -74,7 +77,8 @@ func (h *ProductsHandler) ListProducts(c *gin.Context) {
 func (h *ProductsHandler) RemoveProduct(c *gin.Context) {
 	var input RemoveProductsRequest
 	if err := c.ShouldBindQuery(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		status, body := httperr.ResolveBindingError(err)
+		c.JSON(status, body)
 		return
 	}
 	input.Id = c.Param("id")
@@ -96,7 +100,8 @@ func (h *ProductsHandler) RemoveProduct(c *gin.Context) {
 func (h *ProductsHandler) UpdateProduct(c *gin.Context) {
 	var binding UpdateProductsRequest
 	if err := c.ShouldBindJSON(&binding); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		status, body := httperr.ResolveBindingError(err)
+		c.JSON(status, body)
 		return
 	}
 	id := ProductsID(c.Param("id"))

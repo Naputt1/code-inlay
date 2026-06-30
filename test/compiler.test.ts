@@ -153,6 +153,7 @@ describe("compiler", () => {
       "internal/http/routes.go",
       "internal/http/user_routes.go",
       "internal/httperr/errors.go",
+      "internal/httperr/resolve.go",
       "internal/user/domain.go",
       "internal/user/entity.go",
       "internal/user/handler.go",

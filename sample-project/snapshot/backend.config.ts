@@ -11,6 +11,7 @@ import {
   defineService,
   defineError,
   HttpStatus,
+  defineValidationError,
 } from "@code-inlay/backend-gen";
 
 const jwtAuth = defineMiddleware({ name: "JwtAuth" });
@@ -334,5 +335,18 @@ export default defineApp({
       "ts-client": { outputDir: "clients" },
       openapi: { title: "Store API", version: "1.0.0" },
     },
+    validationError: defineValidationError({
+      httpStatus: HttpStatus.UnprocessableEntity,
+      body: (z) =>
+        z.object({
+          message: z.literal("validation failed"),
+          errors: z.array(
+            z.object({
+              field: z.field(),
+              rule: z.tag(),
+            }),
+          ),
+        }),
+    }),
   },
 });

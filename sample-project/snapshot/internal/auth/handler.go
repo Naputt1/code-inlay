@@ -3,6 +3,7 @@ package auth
 import (
 	"errors"
 	"net/http"
+	"snapshot/internal/httperr"
 	"github.com/gin-gonic/gin"
 )
 
@@ -15,7 +16,8 @@ type AuthHandler struct {
 func (h *AuthHandler) Login(c *gin.Context) {
 	var input LoginAuthRequest
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		status, body := httperr.ResolveBindingError(err)
+		c.JSON(status, body)
 		return
 	}
 	output, err := h.LoginUsecase.Execute(c.Request.Context(), input)
@@ -49,7 +51,8 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 func (h *AuthHandler) Register(c *gin.Context) {
 	var input RegisterAuthRequest
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		status, body := httperr.ResolveBindingError(err)
+		c.JSON(status, body)
 		return
 	}
 	output, err := h.RegisterUsecase.Execute(c.Request.Context(), input)

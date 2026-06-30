@@ -13,6 +13,7 @@ import {
   defineTesting,
   defineMetadata,
   definePlugin,
+  defineValidationError,
 } from "../src/index.js";
 
 describe("defineApp defaults", () => {
@@ -165,5 +166,24 @@ describe("identity functions", () => {
     expect(mw.kind).toBe("MiddlewareDefinition");
     expect(mw.name).toBe("audit");
     expect(mw.handler).toBeUndefined();
+  });
+});
+
+describe("defineValidationError", () => {
+  it("creates config with httpStatus and body", () => {
+    const cfg = defineValidationError({
+      httpStatus: 422,
+      body: (vz) => vz.object({ field: vz.field(), tag: vz.tag() }),
+    });
+    expect(cfg.httpStatus).toBe(422);
+    expect(cfg.body).toBeDefined();
+  });
+
+  it("defaults httpStatus when not provided", () => {
+    const cfg = defineValidationError({
+      body: (vz) => vz.object({ msg: vz.literal("err") }),
+    });
+    expect(cfg.httpStatus).toBeUndefined();
+    expect(cfg.body).toBeDefined();
   });
 });
