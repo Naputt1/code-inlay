@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { compile, defineApp, defineModule, defineRoute, generateServer } from "../src/index.js";
+import {
+  compile,
+  defineApp,
+  defineModule,
+  defineRoute,
+  defineCors,
+  generateServer,
+} from "../src/index.js";
 import type { AdapterPlugin, GoModuleInfo } from "../src/index.js";
 
 describe("generateServer", () => {
@@ -86,5 +93,118 @@ describe("generateServer", () => {
     expect(mainContent).toContain("gin.Default()");
     expect(mainContent).toContain("RegisterRoutes");
     expect(mainContent).toContain(`r.Group("${result.ast!.router.prefix}")`);
+  });
+
+  it("includes cors import when cors is configured", async () => {
+    const result = await buildBase();
+    const astWithCors = {
+      ...result.ast!,
+      router: {
+        ...result.ast!.router,
+        cors: defineCors({
+          allowOrigins: ["http://localhost:3000"],
+          allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+          allowHeaders: ["Origin", "Content-Type", "Authorization"],
+          allowCredentials: true,
+          maxAge: 86400,
+        }),
+      },
+    };
+    const patch = generateServer(astWithCors, result.architecture!, moduleInfo, {
+      name: "gin",
+      transport: "http",
+      generateRoute: () => "",
+      generateMiddleware: () => "",
+      generateServer: () => "",
+    } as unknown as AdapterPlugin);
+    const importsContent = patch.regions[0].content;
+    expect(importsContent).toContain('cors "github.com/gin-contrib/cors"');
+  });
+
+  it("generates cors middleware in main body when cors is configured", async () => {
+    const result = await buildBase();
+    const astWithCors = {
+      ...result.ast!,
+      router: {
+        ...result.ast!.router,
+        cors: defineCors({
+          allowOrigins: ["http://localhost:3000"],
+          allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+          allowHeaders: ["Origin", "Content-Type", "Authorization"],
+          allowCredentials: true,
+          maxAge: 86400,
+        }),
+      },
+    };
+    const patch = generateServer(astWithCors, result.architecture!, moduleInfo, {
+      name: "gin",
+      transport: "http",
+      generateRoute: () => "",
+      generateMiddleware: () => "",
+      generateServer: () => "",
+    } as unknown as AdapterPlugin);
+    const mainContent = patch.regions[1].content;
+    expect(mainContent).toContain("cors.New(cors.Config{");
+    expect(mainContent).toContain(`AllowOrigins:     []string{"http://localhost:3000"}`);
+    expect(mainContent).toContain(
+      `AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}`,
+    );
+    expect(mainContent).toContain(
+      `AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"}`,
+    );
+    expect(mainContent).toContain("AllowCredentials: true,");
+    expect(mainContent).toContain("MaxAge:           86400,");
+  });
+
+  it("generates cors middleware without optional fields when not set", async () => {
+    const result = await buildBase();
+    const astWithCors = {
+      ...result.ast!,
+      router: {
+        ...result.ast!.router,
+        cors: defineCors({
+          allowOrigins: ["*"],
+          allowMethods: ["GET"],
+          allowHeaders: ["Content-Type"],
+        }),
+      },
+    };
+    const patch = generateServer(astWithCors, result.architecture!, moduleInfo, {
+      name: "gin",
+      transport: "http",
+      generateRoute: () => "",
+      generateMiddleware: () => "",
+      generateServer: () => "",
+    } as unknown as AdapterPlugin);
+    const mainContent = patch.regions[1].content;
+    expect(mainContent).toContain("cors.New(cors.Config{");
+    expect(mainContent).not.toContain("AllowCredentials");
+    expect(mainContent).not.toContain("MaxAge:");
+    expect(mainContent).not.toContain("ExposeHeaders");
+  });
+
+  it("generates cors with exposeHeaders when configured", async () => {
+    const result = await buildBase();
+    const astWithCors = {
+      ...result.ast!,
+      router: {
+        ...result.ast!.router,
+        cors: defineCors({
+          allowOrigins: ["*"],
+          allowMethods: ["GET"],
+          allowHeaders: ["Content-Type"],
+          exposeHeaders: ["X-Custom-Header"],
+        }),
+      },
+    };
+    const patch = generateServer(astWithCors, result.architecture!, moduleInfo, {
+      name: "gin",
+      transport: "http",
+      generateRoute: () => "",
+      generateMiddleware: () => "",
+      generateServer: () => "",
+    } as unknown as AdapterPlugin);
+    const mainContent = patch.regions[1].content;
+    expect(mainContent).toContain(`ExposeHeaders:    []string{"X-Custom-Header"}`);
   });
 });

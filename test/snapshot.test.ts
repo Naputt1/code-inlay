@@ -16,6 +16,7 @@ import {
   defineResponseFormat,
   defineMiddleware,
   defineError,
+  defineCors,
   HttpStatus,
   defineValidationError,
 } from "../src/index.js";
@@ -433,7 +434,17 @@ describe("full pipeline snapshot", () => {
 
     const app = defineApp({
       architecture: "clean",
-      router: defineRouter({ adapter: "gin", prefix: "/api/v1" }),
+      router: defineRouter({
+        adapter: "gin",
+        prefix: "/api/v1",
+        cors: defineCors({
+          allowOrigins: ["http://localhost:5173"],
+          allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+          allowHeaders: ["Origin", "Content-Type", "Authorization"],
+          allowCredentials: true,
+          maxAge: 86400,
+        }),
+      }),
       extensions: [gorm],
       services: [
         gorm({ name: "mygorm", driver: "sqlite", close: true }),

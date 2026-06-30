@@ -27,6 +27,10 @@ export function generateServer(
       `"syscall"`,
       `"time"`,
     );
+
+    if (ast.router.cors) {
+      imports.push(`cors "github.com/gin-contrib/cors"`);
+    }
   }
 
   const routesPkg = "genroutes";
@@ -70,6 +74,34 @@ export function generateServer(
 
   mainBody.push(``);
   mainBody.push(`\tr := gin.Default()`);
+
+  if (ast.router.cors) {
+    const c = ast.router.cors;
+    mainBody.push(`\tr.Use(cors.New(cors.Config{`);
+    mainBody.push(
+      `\t\tAllowOrigins:     []string{${c.allowOrigins.map((o) => JSON.stringify(o)).join(", ")}},`,
+    );
+    mainBody.push(
+      `\t\tAllowMethods:     []string{${c.allowMethods.map((m) => JSON.stringify(m)).join(", ")}},`,
+    );
+    mainBody.push(
+      `\t\tAllowHeaders:     []string{${c.allowHeaders.map((h) => JSON.stringify(h)).join(", ")}},`,
+    );
+    if (c.allowCredentials !== undefined) {
+      mainBody.push(`\t\tAllowCredentials: ${c.allowCredentials},`);
+    }
+    if (c.exposeHeaders && c.exposeHeaders.length > 0) {
+      mainBody.push(
+        `\t\tExposeHeaders:    []string{${c.exposeHeaders.map((h) => JSON.stringify(h)).join(", ")}},`,
+      );
+    }
+    if (c.maxAge !== undefined) {
+      mainBody.push(`\t\tMaxAge:           ${c.maxAge},`);
+    }
+    mainBody.push(`\t}))`);
+    mainBody.push(``);
+  }
+
   mainBody.push(`\tapi := r.Group("${ast.router.prefix}")`);
   mainBody.push(`\t${routesPkg}.RegisterRoutes(${routeArgs.join(", ")})`);
   mainBody.push(``);

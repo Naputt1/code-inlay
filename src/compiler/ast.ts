@@ -81,6 +81,7 @@ export function buildAst(app: AppDefinition, diagnostics: Diagnostic[]): AppAst 
       adapter: router.adapter,
       prefix: router.prefix,
       middleware: router.middleware.map((middleware) => toMiddlewareAst(middleware, "router")),
+      cors: router.cors,
     },
     modules: app.modules.map((module): ModuleAst => {
       const moduleArchitecture = module.architecture

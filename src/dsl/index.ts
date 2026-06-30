@@ -11,6 +11,7 @@ import type {
   BackendExtension,
   CodeTarget,
   CompileSettings,
+  CorsConfig,
   DialectMethodCtx,
   ErrorDefinition,
   HttpMethod,
@@ -155,16 +156,29 @@ export function defineServiceExtension<TOptions extends Record<string, unknown>>
     ((opts: { name: string; close?: boolean } & TOptions) => ServiceExtensionResult);
 }
 
+export function defineCors(config: CorsConfig): CorsConfig {
+  return {
+    allowOrigins: config.allowOrigins,
+    allowMethods: config.allowMethods,
+    allowHeaders: config.allowHeaders,
+    allowCredentials: config.allowCredentials,
+    exposeHeaders: config.exposeHeaders,
+    maxAge: config.maxAge,
+  };
+}
+
 export function defineRouter(input: {
   adapter: AdapterRef;
   prefix?: string;
   middleware?: MiddlewareDefinition[];
+  cors?: CorsConfig;
 }): RouterDefinition {
   return {
     kind: "RouterDefinition",
     adapter: input.adapter,
     prefix: input.prefix ?? "",
     middleware: input.middleware ?? [],
+    cors: input.cors,
   };
 }
 
