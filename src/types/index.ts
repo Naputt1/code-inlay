@@ -462,6 +462,7 @@ export type RuntimeConfig = {
   middleware?: string[];
   tracing?: "otel" | "none";
   logger?: "zerolog" | "slog" | "logrus" | "none";
+  shutdownTimeout?: number;
 };
 
 export type ValidationErrorConfig = {
