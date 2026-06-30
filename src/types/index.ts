@@ -195,6 +195,7 @@ export type CompileSettings = {
   testing?: TestingConfig;
   metadata?: MetadataConfig;
   sandbox?: SandboxConfig;
+  validationError?: ValidationErrorConfig;
 };
 
 export type RouteDefinition<
@@ -461,6 +462,11 @@ export type RuntimeConfig = {
   middleware?: string[];
   tracing?: "otel" | "none";
   logger?: "zerolog" | "slog" | "logrus" | "none";
+};
+
+export type ValidationErrorConfig = {
+  httpStatus?: HttpStatusCode;
+  body?: SchemaLike;
 };
 
 export type TestingConfig = {

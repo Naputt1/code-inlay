@@ -1,7 +1,7 @@
 import type { ErrorDefinition, GeneratedFilePatch, RouteAst, SchemaLike } from "../types/index.js";
 import { featuresPath, pascalCase } from "../utils/naming.js";
 
-const httpStatusConsts: Record<number, string> = {
+export const httpStatusConsts: Record<number, string> = {
   400: "http.StatusBadRequest",
   401: "http.StatusUnauthorized",
   402: "http.StatusPaymentRequired",

@@ -133,6 +133,106 @@ function entity(): ZodTypeAny {
   return ZodEntity.create();
 }
 
+// --- Validation error placeholder types ---
+
+interface ZodFieldDef extends ZodTypeDef {
+  typeName: "ZodField";
+}
+
+class ZodField extends ZodType<string, ZodFieldDef, string> {
+  _parse(input: ParseInput): ParseReturnType<string> {
+    return OK(String(input.data));
+  }
+  static create(): ZodField {
+    return new ZodField({ typeName: "ZodField" });
+  }
+}
+
+interface ZodTagDef extends ZodTypeDef {
+  typeName: "ZodTag";
+}
+
+class ZodTag extends ZodType<string, ZodTagDef, string> {
+  _parse(input: ParseInput): ParseReturnType<string> {
+    return OK(String(input.data));
+  }
+  static create(): ZodTag {
+    return new ZodTag({ typeName: "ZodTag" });
+  }
+}
+
+interface ZodParamDef extends ZodTypeDef {
+  typeName: "ZodParam";
+}
+
+class ZodParam extends ZodType<string, ZodParamDef, string> {
+  _parse(input: ParseInput): ParseReturnType<string> {
+    return OK(String(input.data));
+  }
+  static create(): ZodParam {
+    return new ZodParam({ typeName: "ZodParam" });
+  }
+}
+
+interface ZodValueDef extends ZodTypeDef {
+  typeName: "ZodValue";
+}
+
+class ZodValue extends ZodType<unknown, ZodValueDef, unknown> {
+  _parse(input: ParseInput): ParseReturnType<unknown> {
+    return OK(input.data);
+  }
+  static create(): ZodValue {
+    return new ZodValue({ typeName: "ZodValue" });
+  }
+}
+
+interface ZodKindDef extends ZodTypeDef {
+  typeName: "ZodKind";
+}
+
+class ZodKind extends ZodType<string, ZodKindDef, string> {
+  _parse(input: ParseInput): ParseReturnType<string> {
+    return OK(String(input.data));
+  }
+  static create(): ZodKind {
+    return new ZodKind({ typeName: "ZodKind" });
+  }
+}
+
+interface ZodActualDef extends ZodTypeDef {
+  typeName: "ZodActual";
+}
+
+class ZodActual extends ZodType<string, ZodActualDef, string> {
+  _parse(input: ParseInput): ParseReturnType<string> {
+    return OK(String(input.data));
+  }
+  static create(): ZodActual {
+    return new ZodActual({ typeName: "ZodActual" });
+  }
+}
+
+const validationExtras = {
+  field: () => ZodField.create(),
+  tag: () => ZodTag.create(),
+  param: () => ZodParam.create(),
+  value: () => ZodValue.create(),
+  kind: () => ZodKind.create(),
+  actual: () => ZodActual.create(),
+  isZodField,
+  isZodTag,
+  isZodParam,
+  isZodValue,
+  isZodKind,
+  isZodActual,
+};
+
+export const validationZ: typeof zod & typeof validationExtras = Object.assign(
+  Object.create(zod),
+  validationExtras,
+);
+
 function isEntityPlaceholder(schema: SchemaLike): boolean {
   return (schema._def as { typeName?: string }).typeName === "ZodEntity";
 }
@@ -225,6 +325,41 @@ const extras = {
   unwrap,
   isZodEntity,
 };
+
+export function isZodField(schema: SchemaLike): boolean {
+  return typeName(schema) === "ZodField";
+}
+export function isZodTag(schema: SchemaLike): boolean {
+  return typeName(schema) === "ZodTag";
+}
+export function isZodParam(schema: SchemaLike): boolean {
+  return typeName(schema) === "ZodParam";
+}
+export function isZodValue(schema: SchemaLike): boolean {
+  return typeName(schema) === "ZodValue";
+}
+export function isZodKind(schema: SchemaLike): boolean {
+  return typeName(schema) === "ZodKind";
+}
+export function isZodActual(schema: SchemaLike): boolean {
+  return typeName(schema) === "ZodActual";
+}
+
+export function isValidationType(typeName: string): boolean {
+  return ["ZodField", "ZodTag", "ZodParam", "ZodValue", "ZodKind", "ZodActual"].includes(typeName);
+}
+
+export function validationTypeToGoExpr(typeName: string, idxVar: string): string {
+  const map: Record<string, string> = {
+    ZodField: `${idxVar}.Field()`,
+    ZodTag: `${idxVar}.Tag()`,
+    ZodParam: `${idxVar}.Param()`,
+    ZodValue: `fmt.Sprintf("%v", ${idxVar}.Value())`,
+    ZodKind: `${idxVar}.Kind().String()`,
+    ZodActual: `${idxVar}.ActualTag()`,
+  };
+  return map[typeName] ?? `"${typeName}"`;
+}
 
 export const z: typeof zod & typeof extras = Object.assign(Object.create(zod), extras);
 

@@ -3,6 +3,7 @@ package orders
 import (
 	"errors"
 	"net/http"
+	"snapshot/internal/httperr"
 	"github.com/gin-gonic/gin"
 )
 
@@ -17,7 +18,8 @@ type OrdersHandler struct {
 func (h *OrdersHandler) AdminListAllOrders(c *gin.Context) {
 	var input AdminListAllOrdersRequest
 	if err := c.ShouldBindQuery(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		status, body := httperr.ResolveBindingError(err)
+		c.JSON(status, body)
 		return
 	}
 	output, err := h.AdminListAllOrdersUsecase.Execute(c.Request.Context(), input)
@@ -36,7 +38,8 @@ func (h *OrdersHandler) AdminListAllOrders(c *gin.Context) {
 func (h *OrdersHandler) CancelOrder(c *gin.Context) {
 	var input CancelOrdersRequest
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		status, body := httperr.ResolveBindingError(err)
+		c.JSON(status, body)
 		return
 	}
 	input.Id = c.Param("id")
@@ -56,7 +59,8 @@ func (h *OrdersHandler) CancelOrder(c *gin.Context) {
 func (h *OrdersHandler) CreateOrder(c *gin.Context) {
 	var binding CreateOrdersRequest
 	if err := c.ShouldBindJSON(&binding); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		status, body := httperr.ResolveBindingError(err)
+		c.JSON(status, body)
 		return
 	}
 	// @gen:start 9221510d
@@ -94,7 +98,8 @@ func (h *OrdersHandler) GetOrder(c *gin.Context) {
 func (h *OrdersHandler) ListOrders(c *gin.Context) {
 	var input ListOrdersRequest
 	if err := c.ShouldBindQuery(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		status, body := httperr.ResolveBindingError(err)
+		c.JSON(status, body)
 		return
 	}
 	output, err := h.ListOrdersUsecase.Execute(c.Request.Context(), input)

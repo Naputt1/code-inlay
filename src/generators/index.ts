@@ -34,6 +34,8 @@ import { generateUsecaseInterface, generateUsecaseScaffold } from "./usecase.js"
 import { generateHandlerStructs } from "./handler.js";
 import { generateMiddlewareFiles } from "./middleware.js";
 import { generateStandardErrors, generateModuleErrors, collectModuleErrors } from "./errors.js";
+import { generateBindingErrorFunction, doesSchemaNeedFmt } from "./validation.js";
+import type { BindingErrorConfig } from "./validation.js";
 import type { ScaffoldPart } from "./types.js";
 
 export function generateCode(
@@ -128,6 +130,11 @@ export function generateCode(
         const handlerFile = defaultFileForLayer(route, "handler", featuresDir);
         if (!handlerImportsAdded.has(handlerFile)) {
           handlerImportsAdded.add(handlerFile);
+          const extraImports: string[] = [];
+          if (moduleInfo) {
+            const httperrPkgPath = featuresPath("internal/httperr", featuresDir);
+            extraImports.push(`\t"${moduleInfo.modulePath}/${httperrPkgPath}"`);
+          }
           add(handlerFile, {
             id: `${route.moduleName}.0handler.imports`,
             stableHash: `${handlerFile}:imports`,
@@ -137,6 +144,7 @@ export function generateCode(
               `import (`,
               `\t"errors"`,
               `\t"net/http"`,
+              ...extraImports,
               ``,
               `\t"github.com/gin-gonic/gin"`,
               `)`,
@@ -620,6 +628,43 @@ export function generateCode(
         });
       }
     }
+  }
+
+  {
+    const valConfig: BindingErrorConfig = {
+      httpStatus: ast.options.validationError?.httpStatus ?? 400,
+      bodySchema: ast.options.validationError?.body,
+    };
+
+    const needsFmt = doesSchemaNeedFmt(valConfig.bodySchema);
+    const bindingFunc = generateBindingErrorFunction(valConfig);
+    const httperrResolvePath = featuresPath("internal/httperr/resolve.go", featuresDir);
+
+    add(httperrResolvePath, {
+      id: "httperr.resolveBindingError.imports",
+      stableHash: `httperr:resolveBindingError:imports`,
+      owner: "code-inlay",
+      language: "go",
+      content: [
+        `import (`,
+        `\t"errors"`,
+        ...(needsFmt ? [`\t"fmt"`] : []),
+        `\t"net/http"`,
+        `\t"github.com/gin-gonic/gin"`,
+        ...(valConfig.bodySchema ? [`\t"github.com/go-playground/validator/v10"`] : []),
+        `)`,
+      ].join("\n"),
+    });
+
+    add(httperrResolvePath, {
+      id: "httperr.resolveBindingError",
+      stableHash: `httperr:resolveBindingError:global`,
+      owner: "code-inlay",
+      language: "go",
+      content: bindingFunc,
+      symbolName: "ResolveBindingError",
+      expectsUserCode: true,
+    });
   }
 
   batchEnrichGoRegions(files);

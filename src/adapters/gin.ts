@@ -119,10 +119,15 @@ function emitErrAndResp(body: string[], method: string) {
   }
 }
 
+function emitBindErrorResponse(body: string[]) {
+  body.push(`\tstatus, body := httperr.ResolveBindingError(err)`);
+  body.push(`\tc.JSON(status, body)`);
+}
+
 function emitBindQuery(body: string[], reqType: string, pathParams: string[], route: RouteAst) {
   body.push(`var input ${reqType}`);
   body.push(`if err := c.ShouldBindQuery(&input); err != nil {`);
-  body.push(`\tc.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})`);
+  emitBindErrorResponse(body);
   body.push(`\treturn`);
   body.push(`}`);
   for (const param of pathParams) {
@@ -136,7 +141,7 @@ function emitBindQuery(body: string[], reqType: string, pathParams: string[], ro
 function emitBindJSON(body: string[], reqType: string, pathParams: string[], route: RouteAst) {
   body.push(`var input ${reqType}`);
   body.push(`if err := c.ShouldBindJSON(&input); err != nil {`);
-  body.push(`\tc.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})`);
+  emitBindErrorResponse(body);
   body.push(`\treturn`);
   body.push(`}`);
   for (const param of pathParams) {
@@ -198,12 +203,12 @@ export function generateGinHandler(
         const bn = routeTypeName(route, "Body");
         body.push(`var query ${qn}`);
         body.push(`if err := c.ShouldBindQuery(&query); err != nil {`);
-        body.push(`\tc.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})`);
+        emitBindErrorResponse(body);
         body.push(`\treturn`);
         body.push(`}`);
         body.push(`var requestBody ${bn}`);
         body.push(`if err := c.ShouldBindJSON(&requestBody); err != nil {`);
-        body.push(`\tc.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})`);
+        emitBindErrorResponse(body);
         body.push(`\treturn`);
         body.push(`}`);
         body.push(`// @gen:start ${handlerSh}`);
@@ -213,7 +218,7 @@ export function generateGinHandler(
       } else if (hasBody) {
         body.push(`var binding ${reqType}`);
         body.push(`if err := c.ShouldBindJSON(&binding); err != nil {`);
-        body.push(`\tc.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})`);
+        emitBindErrorResponse(body);
         body.push(`\treturn`);
         body.push(`}`);
         body.push(`// @gen:start ${handlerSh}`);
@@ -223,7 +228,7 @@ export function generateGinHandler(
       } else if (hasQuery) {
         body.push(`var binding ${reqType}`);
         body.push(`if err := c.ShouldBindQuery(&binding); err != nil {`);
-        body.push(`\tc.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})`);
+        emitBindErrorResponse(body);
         body.push(`\treturn`);
         body.push(`}`);
         body.push(`// @gen:start ${handlerSh}`);
@@ -242,7 +247,7 @@ export function generateGinHandler(
       const handlerSh = shortHash(defaultRegionId(route, "handler"));
       body.push(`var binding ${reqType}`);
       body.push(`if err := c.ShouldBindJSON(&binding); err != nil {`);
-      body.push(`\tc.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})`);
+      emitBindErrorResponse(body);
       body.push(`\treturn`);
       body.push(`}`);
       if (pathParams.length > 0) {
@@ -259,7 +264,7 @@ export function generateGinHandler(
     } else if (verb === "Set") {
       body.push(`var binding ${reqType}`);
       body.push(`if err := c.ShouldBindJSON(&binding); err != nil {`);
-      body.push(`\tc.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})`);
+      emitBindErrorResponse(body);
       body.push(`\treturn`);
       body.push(`}`);
       if (pathParams.length > 0) {
@@ -273,7 +278,7 @@ export function generateGinHandler(
       if (hasQuery) {
         body.push(`var input ${reqType}`);
         body.push(`if err := c.ShouldBindQuery(&input); err != nil {`);
-        body.push(`\tc.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})`);
+        emitBindErrorResponse(body);
         body.push(`\treturn`);
         body.push(`}`);
         body.push(`output, err := h.${usecaseField}.Execute(c.Request.Context(), input)`);
@@ -288,12 +293,12 @@ export function generateGinHandler(
         body.push(`var input ${reqType}`);
         body.push(`var query ${queryType}`);
         body.push(`if err := c.ShouldBindQuery(&query); err != nil {`);
-        body.push(`\tc.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})`);
+        emitBindErrorResponse(body);
         body.push(`\treturn`);
         body.push(`}`);
         body.push(`var requestBody ${bodyType}`);
         body.push(`if err := c.ShouldBindJSON(&requestBody); err != nil {`);
-        body.push(`\tc.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})`);
+        emitBindErrorResponse(body);
         body.push(`\treturn`);
         body.push(`}`);
         const queryFields = getSchemaFieldNames(route.query!);
@@ -329,12 +334,12 @@ export function generateGinHandler(
       body.push(`var input ${reqType}`);
       body.push(`var query ${queryType}`);
       body.push(`if err := c.ShouldBindQuery(&query); err != nil {`);
-      body.push(`\tc.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})`);
+      emitBindErrorResponse(body);
       body.push(`\treturn`);
       body.push(`}`);
       body.push(`var requestBody ${bodyType}`);
       body.push(`if err := c.ShouldBindJSON(&requestBody); err != nil {`);
-      body.push(`\tc.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})`);
+      emitBindErrorResponse(body);
       body.push(`\treturn`);
       body.push(`}`);
       const queryFields = getSchemaFieldNames(route.query!);
