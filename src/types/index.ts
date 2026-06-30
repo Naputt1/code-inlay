@@ -240,11 +240,21 @@ export type ModuleDefinition = {
   middleware: MiddlewareDefinition[];
 };
 
+export type CorsConfig = {
+  allowOrigins: string[];
+  allowMethods: string[];
+  allowHeaders: string[];
+  allowCredentials?: boolean;
+  exposeHeaders?: string[];
+  maxAge?: number;
+};
+
 export type RouterDefinition = {
   kind: "RouterDefinition";
   adapter: AdapterRef;
   prefix: string;
   middleware: MiddlewareDefinition[];
+  cors?: CorsConfig;
 };
 
 export type ArchitectureRef = BuiltInArchitectureName | ArchitecturePlugin;
@@ -308,6 +318,7 @@ export type RouterAst = AstNodeBase<"Router"> & {
   adapter: AdapterRef;
   prefix: string;
   middleware: MiddlewareAst[];
+  cors?: CorsConfig;
 };
 
 export type ModuleAst = AstNodeBase<"Module"> & {

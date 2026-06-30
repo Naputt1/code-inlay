@@ -13,6 +13,7 @@ import (
 	"strings"
 	"syscall"
 	"time"
+	cors "github.com/gin-contrib/cors"
 	genroutes "snapshot/internal/http"
 )
 
@@ -40,6 +41,14 @@ func main() {
 	}
 
 	r := gin.Default()
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:5173"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		AllowCredentials: true,
+		MaxAge:           86400,
+	}))
+
 	api := r.Group("/api/v1")
 	genroutes.RegisterRoutes(api, mygormSvc, redisSvc)
 
