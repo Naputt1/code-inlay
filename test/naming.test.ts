@@ -43,6 +43,7 @@ function mockRoute(overrides: Partial<RouteAst> = {}): RouteAst {
     resolvedArchitectures: [],
     resolvedAdapters: [],
     middleware: [],
+    errors: [],
     metadata: {},
     ...overrides,
   } as RouteAst;

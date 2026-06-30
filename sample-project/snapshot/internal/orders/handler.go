@@ -1,6 +1,7 @@
 package orders
 
 import (
+	"errors"
 	"net/http"
 	"github.com/gin-gonic/gin"
 )
@@ -21,7 +22,12 @@ func (h *OrdersHandler) AdminListAllOrders(c *gin.Context) {
 	}
 	output, err := h.AdminListAllOrdersUsecase.Execute(c.Request.Context(), input)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		var httpErr interface{ HTTPStatus() int }
+		if errors.As(err, &httpErr) {
+			c.JSON(httpErr.HTTPStatus(), err)
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
 		return
 	}
 	c.JSON(http.StatusOK, output)
@@ -36,7 +42,12 @@ func (h *OrdersHandler) CancelOrder(c *gin.Context) {
 	input.Id = c.Param("id")
 	output, err := h.CancelOrderUsecase.Execute(c.Request.Context(), input)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		var httpErr interface{ HTTPStatus() int }
+		if errors.As(err, &httpErr) {
+			c.JSON(httpErr.HTTPStatus(), err)
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
 		return
 	}
 	c.JSON(http.StatusOK, output)
@@ -54,7 +65,12 @@ func (h *OrdersHandler) CreateOrder(c *gin.Context) {
 	// @gen:end 9221510d
 	output, err := h.CreateOrderUsecase.Execute(c.Request.Context(), entity)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		var httpErr interface{ HTTPStatus() int }
+		if errors.As(err, &httpErr) {
+			c.JSON(httpErr.HTTPStatus(), err)
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
 		return
 	}
 	c.JSON(http.StatusOK, output)
@@ -64,7 +80,12 @@ func (h *OrdersHandler) GetOrder(c *gin.Context) {
 	id := OrdersID(c.Param("id"))
 	output, err := h.GetOrderUsecase.Execute(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		var httpErr interface{ HTTPStatus() int }
+		if errors.As(err, &httpErr) {
+			c.JSON(httpErr.HTTPStatus(), err)
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
 		return
 	}
 	c.JSON(http.StatusOK, output)
@@ -78,7 +99,12 @@ func (h *OrdersHandler) ListOrders(c *gin.Context) {
 	}
 	output, err := h.ListOrdersUsecase.Execute(c.Request.Context(), input)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		var httpErr interface{ HTTPStatus() int }
+		if errors.As(err, &httpErr) {
+			c.JSON(httpErr.HTTPStatus(), err)
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
 		return
 	}
 	c.JSON(http.StatusOK, output)

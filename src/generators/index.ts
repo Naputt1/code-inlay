@@ -33,6 +33,7 @@ import { generateServiceFile } from "./service.js";
 import { generateUsecaseInterface, generateUsecaseScaffold } from "./usecase.js";
 import { generateHandlerStructs } from "./handler.js";
 import { generateMiddlewareFiles } from "./middleware.js";
+import { generateStandardErrors, generateModuleErrors, collectModuleErrors } from "./errors.js";
 import type { ScaffoldPart } from "./types.js";
 
 export function generateCode(
@@ -49,6 +50,13 @@ export function generateCode(
     regions.push(region);
     files.set(path, regions);
   };
+
+  const standardErrorPatches = generateStandardErrors(featuresDir);
+  for (const patch of standardErrorPatches) {
+    for (const region of patch.regions) {
+      add(patch.path, region);
+    }
+  }
 
   const routeLinesByFile = new Map<string, Array<{ content: string; group: string }>>();
   const middlewareByFile = new Map<string, Set<string>>();
@@ -125,9 +133,14 @@ export function generateCode(
             stableHash: `${handlerFile}:imports`,
             owner: "code-inlay",
             language: "go",
-            content: [`import (`, `\t"net/http"`, ``, `\t"github.com/gin-gonic/gin"`, `)`].join(
-              "\n",
-            ),
+            content: [
+              `import (`,
+              `\t"errors"`,
+              `\t"net/http"`,
+              ``,
+              `\t"github.com/gin-gonic/gin"`,
+              `)`,
+            ].join("\n"),
           });
         }
         add(handlerFile, {
@@ -179,6 +192,18 @@ export function generateCode(
       language: "go",
       content: domainContent,
     });
+  }
+
+  for (const mod of ast.modules) {
+    const moduleErrors = collectModuleErrors(mod.routes);
+    if (moduleErrors.length > 0) {
+      const errorPatches = generateModuleErrors(mod.name, moduleErrors, featuresDir);
+      for (const patch of errorPatches) {
+        for (const region of patch.regions) {
+          add(patch.path, region);
+        }
+      }
+    }
   }
 
   const getModuleServices = (moduleName: string): AppServiceDef[] => {

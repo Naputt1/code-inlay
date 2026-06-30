@@ -9,10 +9,18 @@ import {
   defineServiceExtension,
   defineResponseFormat,
   defineService,
+  defineError,
+  HttpStatus,
 } from "@code-inlay/backend-gen";
 
 const jwtAuth = defineMiddleware({ name: "JwtAuth" });
 const adminAuth = defineMiddleware({ name: "AdminAuth" });
+
+const OrderShippedError = defineError({
+  name: "OrderShippedError",
+  httpStatus: HttpStatus.Conflict,
+  fields: z.object({ orderId: z.string(), shippedAt: z.string() }),
+});
 
 const stdFormat = defineResponseFormat({
   wrapper: z.object({
@@ -198,6 +206,7 @@ const orderRoutes = defineRouteGroup({
       id: "cancel",
       method: "POST",
       path: "/:id/cancel",
+      errors: [OrderShippedError],
       body: z.object({ reason: z.string().optional() }),
       handler: "CancelOrder",
     }),

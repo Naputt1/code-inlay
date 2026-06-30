@@ -83,6 +83,51 @@ export type UsecaseOrganization = {
   scaffold?: boolean;
 };
 
+export const HttpStatus = {
+  BadRequest: 400,
+  Unauthorized: 401,
+  PaymentRequired: 402,
+  Forbidden: 403,
+  NotFound: 404,
+  MethodNotAllowed: 405,
+  NotAcceptable: 406,
+  ProxyAuthRequired: 407,
+  RequestTimeout: 408,
+  Conflict: 409,
+  Gone: 410,
+  LengthRequired: 411,
+  PreconditionFailed: 412,
+  RequestEntityTooLarge: 413,
+  RequestURITooLong: 414,
+  UnsupportedMediaType: 415,
+  RequestedRangeNotSatisfiable: 416,
+  ExpectationFailed: 417,
+  Teapot: 418,
+  MisdirectedRequest: 421,
+  UnprocessableEntity: 422,
+  Locked: 423,
+  FailedDependency: 424,
+  UpgradeRequired: 426,
+  PreconditionRequired: 428,
+  TooManyRequests: 429,
+  RequestHeaderFieldsTooLarge: 431,
+  UnavailableForLegalReasons: 451,
+  InternalServerError: 500,
+  NotImplemented: 501,
+  BadGateway: 502,
+  ServiceUnavailable: 503,
+  GatewayTimeout: 504,
+} as const;
+
+export type HttpStatusCode = (typeof HttpStatus)[keyof typeof HttpStatus] | (number & {});
+
+export type ErrorDefinition = {
+  kind: "ErrorDefinition";
+  name: string;
+  httpStatus: HttpStatusCode;
+  fields?: SchemaLike;
+};
+
 export type ResponseFormat = {
   kind: "ResponseFormat";
   wrapper: SchemaLike;
@@ -165,6 +210,7 @@ export type RouteDefinition<
   adapter?: AdapterRef | AdapterRef[] | AdapterSelection;
   adapters?: AdapterRef[] | AdapterSelection;
   responseFormat?: ResponseFormat;
+  errors?: ErrorDefinition[];
   query?: TQuery;
   body?: TBody;
   response?: TResponse;
@@ -188,6 +234,7 @@ export type ModuleDefinition = {
   services?: string[];
   usecaseOrganization?: UsecaseOrganization;
   responseFormat?: ResponseFormat;
+  errors?: ErrorDefinition[];
   routes: RouteDefinition<SchemaLike | undefined, SchemaLike | undefined, SchemaLike | undefined>[];
   middleware: MiddlewareDefinition[];
 };
@@ -216,6 +263,7 @@ export type AppDefinition = {
   transformers: AstTransformer[];
   plugins: BackendCompilerPlugin[];
   targets?: CodeTarget[];
+  errors?: ErrorDefinition[];
   options: CompileSettings;
 };
 
@@ -251,6 +299,7 @@ export type AppAst = AstNodeBase<"App"> & {
   serviceExtensions: BackendExtension[];
   plugins: BackendCompilerPlugin[];
   targets: CodeTarget[];
+  errors: ErrorDefinition[];
   options: CompileSettings;
 };
 
@@ -282,6 +331,7 @@ export type RouteAst = AstNodeBase<"Route"> & {
   resolvedArchitectures: ArchitectureRef[];
   resolvedAdapters: AdapterTarget[];
   responseFormat?: ResponseFormat;
+  errors: ErrorDefinition[];
   query?: SchemaLike;
   body?: SchemaLike;
   response?: SchemaLike;

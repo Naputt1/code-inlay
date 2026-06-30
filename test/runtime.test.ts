@@ -26,6 +26,7 @@ function minimalAst(overrides?: Partial<AppAst>): AppAst {
     serviceExtensions: [],
     plugins: [],
     targets: [],
+    errors: [],
     options: { fileCreation: "skeleton" },
     ...overrides,
   };

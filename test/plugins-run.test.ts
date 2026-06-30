@@ -36,6 +36,7 @@ async function baseAstAndRegistry(): Promise<{ ast: AppAst; registry: PluginRegi
     serviceExtensions: [],
     plugins: [],
     targets: [],
+    errors: [],
     options: { fileCreation: "skeleton" },
   };
   return { ast, registry };

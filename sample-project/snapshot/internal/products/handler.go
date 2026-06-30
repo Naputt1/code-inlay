@@ -1,6 +1,7 @@
 package products
 
 import (
+	"errors"
 	"net/http"
 	"github.com/gin-gonic/gin"
 )
@@ -25,7 +26,12 @@ func (h *ProductsHandler) CreateProduct(c *gin.Context) {
 	// @gen:end f5ea9736
 	output, err := h.CreateProductUsecase.Execute(c.Request.Context(), entity)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		var httpErr interface{ HTTPStatus() int }
+		if errors.As(err, &httpErr) {
+			c.JSON(httpErr.HTTPStatus(), err)
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
 		return
 	}
 	c.JSON(http.StatusOK, output)
@@ -35,7 +41,12 @@ func (h *ProductsHandler) GetProduct(c *gin.Context) {
 	id := ProductsID(c.Param("id"))
 	output, err := h.GetProductUsecase.Execute(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		var httpErr interface{ HTTPStatus() int }
+		if errors.As(err, &httpErr) {
+			c.JSON(httpErr.HTTPStatus(), err)
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
 		return
 	}
 	c.JSON(http.StatusOK, output)
@@ -49,7 +60,12 @@ func (h *ProductsHandler) ListProducts(c *gin.Context) {
 	}
 	output, err := h.ListProductsUsecase.Execute(c.Request.Context(), input)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		var httpErr interface{ HTTPStatus() int }
+		if errors.As(err, &httpErr) {
+			c.JSON(httpErr.HTTPStatus(), err)
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
 		return
 	}
 	c.JSON(http.StatusOK, output)
@@ -65,7 +81,12 @@ func (h *ProductsHandler) RemoveProduct(c *gin.Context) {
 	id := ProductsID(c.Param("id"))
 	output, err := h.RemoveProductUsecase.Execute(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		var httpErr interface{ HTTPStatus() int }
+		if errors.As(err, &httpErr) {
+			c.Status(httpErr.HTTPStatus())
+		} else {
+			c.Status(http.StatusInternalServerError)
+		}
 		return
 	}
 	_ = output
@@ -85,7 +106,12 @@ func (h *ProductsHandler) UpdateProduct(c *gin.Context) {
 	// @gen:end 250be001
 	output, err := h.UpdateProductUsecase.Execute(c.Request.Context(), id, entity)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		var httpErr interface{ HTTPStatus() int }
+		if errors.As(err, &httpErr) {
+			c.JSON(httpErr.HTTPStatus(), err)
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
 		return
 	}
 	c.JSON(http.StatusOK, output)

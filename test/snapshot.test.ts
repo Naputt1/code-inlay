@@ -15,6 +15,8 @@ import {
   defineServiceExtension,
   defineResponseFormat,
   defineMiddleware,
+  defineError,
+  HttpStatus,
 } from "../src/index.js";
 
 const SNAPSHOT_DIR = resolve(process.cwd(), "sample-project/snapshot");
@@ -142,6 +144,12 @@ describe("full pipeline snapshot", () => {
   it("generates expected output for complex API config", { timeout: 30000 }, async () => {
     const jwtAuth = defineMiddleware({ name: "JwtAuth" });
     const adminAuth = defineMiddleware({ name: "AdminAuth" });
+
+    const OrderShippedError = defineError({
+      name: "OrderShippedError",
+      httpStatus: HttpStatus.Conflict,
+      fields: z.object({ orderId: z.string(), shippedAt: z.string() }),
+    });
 
     const stdFormat = defineResponseFormat({
       wrapper: z.object({
@@ -327,6 +335,7 @@ describe("full pipeline snapshot", () => {
           id: "cancel",
           method: "POST",
           path: "/:id/cancel",
+          errors: [OrderShippedError],
           body: z.object({ reason: z.string().optional() }),
           handler: "CancelOrder",
         }),
@@ -438,6 +447,7 @@ describe("full pipeline snapshot", () => {
         defineModule({
           name: "orders",
           services: ["mygorm", "redis"],
+          errors: [OrderShippedError],
           routes: [...orderRoutes, ...adminOrderRoutes],
         }),
         defineModule({
