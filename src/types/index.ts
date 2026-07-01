@@ -467,6 +467,12 @@ export type CodeTarget = {
   generate(ctx: TargetContext): MaybePromise<GeneratedFilePatch[]>;
 };
 
+export type HealthCheckConfig = {
+  enabled?: boolean;
+  livenessPath?: string;
+  readinessPath?: string;
+};
+
 export type RuntimeConfig = {
   enabled: boolean;
   di?: "wire" | "manual" | "google-wire" | "uber-fx";
@@ -474,6 +480,7 @@ export type RuntimeConfig = {
   tracing?: "otel" | "none";
   logger?: "zerolog" | "slog" | "logrus" | "none";
   shutdownTimeout?: number;
+  healthCheck?: HealthCheckConfig;
 };
 
 export type ValidationErrorConfig = {

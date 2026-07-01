@@ -49,6 +49,13 @@ func main() {
 		MaxAge:           86400,
 	}))
 
+
+	r.GET("/healthz", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
+	r.GET("/readyz", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ready"})
+	})
 	api := r.Group("/api/v1")
 	genroutes.RegisterRoutes(api, mygormSvc, redisSvc)
 
