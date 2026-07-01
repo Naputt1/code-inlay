@@ -6,6 +6,7 @@ import {
   defineRouter,
   defineMiddleware,
   defineApp,
+  defineEnv,
   defineServiceExtension,
   defineResponseFormat,
   defineService,
@@ -304,6 +305,9 @@ const gorm = defineServiceExtension({
 });
 
 export default defineApp({
+  env: defineEnv({
+    PORT: z.string().default("8080").describe("Server listen port"),
+  }),
   architecture: "clean",
   router: defineRouter({
     adapter: "gin",

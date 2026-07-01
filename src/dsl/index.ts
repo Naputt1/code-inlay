@@ -120,11 +120,16 @@ export function defineModule(input: {
   };
 }
 
-export function defineService(input: { name: string; close?: boolean }): ServiceDefinition {
+export function defineService(input: {
+  name: string;
+  close?: boolean;
+  env?: string[];
+}): ServiceDefinition {
   return {
     kind: "ServiceDefinition",
     name: input.name,
     close: input.close,
+    env: input.env,
   };
 }
 
@@ -182,7 +187,22 @@ export function defineRouter(input: {
   };
 }
 
+export function defineEnv(input: Record<string, z.ZodTypeAny>): Record<string, z.ZodTypeAny> {
+  for (const [key, schema] of Object.entries(input)) {
+    let inner: z.ZodTypeAny = schema;
+    while (inner._def?.innerType) inner = inner._def.innerType as z.ZodTypeAny;
+    const typeName = (inner._def as { typeName?: string })?.typeName;
+    if (typeName !== "ZodString" && typeName !== "ZodNumber" && typeName !== "ZodBoolean") {
+      throw new Error(
+        `defineEnv: "${key}" must be z.string(), z.number(), or z.boolean() (got ${typeName})`,
+      );
+    }
+  }
+  return input;
+}
+
 export function defineApp(input: {
+  env?: Record<string, z.ZodTypeAny>;
   architecture?: ArchitectureRef | ArchitectureRef[] | ArchitectureSelection;
   architectures?: ArchitectureRef[] | ArchitectureSelection;
   adapters?: AdapterRef[] | AdapterSelection;
@@ -201,6 +221,7 @@ export function defineApp(input: {
 }): AppDefinition {
   return {
     kind: "AppDefinition",
+    env: input.env,
     architecture: input.architecture,
     architectures: input.architectures,
     adapters: input.adapters,

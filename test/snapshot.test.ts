@@ -15,6 +15,7 @@ import {
   defineServiceExtension,
   defineResponseFormat,
   defineMiddleware,
+  defineEnv,
   defineError,
   defineCors,
   HttpStatus,
@@ -433,6 +434,9 @@ describe("full pipeline snapshot", () => {
     });
 
     const app = defineApp({
+      env: defineEnv({
+        PORT: z.string().default("8080").describe("Server listen port"),
+      }),
       architecture: "clean",
       router: defineRouter({
         adapter: "gin",

@@ -9,7 +9,9 @@ type MygormService interface {
 	Close() error
 }
 
-type mygormServiceImpl struct {}
+type mygormServiceImpl struct {
+
+}
 
 func NewMygormService() (*mygormServiceImpl, error) {
 	return &mygormServiceImpl{}, nil

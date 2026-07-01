@@ -8,6 +8,8 @@ import type {
   AdapterTarget,
   BackendExtension,
   Diagnostic,
+  EnvVarInfo,
+  EnvVarType,
   ErrorDefinition,
   MiddlewareAst,
   ModuleAst,
@@ -19,6 +21,45 @@ import type {
 import { joinPath, serviceTypeName } from "../utils/naming.js";
 import { stableHash } from "../utils/hash.js";
 import { hasEntityPlaceholder } from "../schema/extras.js";
+
+export function parseEnvDefs(
+  env: Record<string, { _def: Record<string, unknown> }> | undefined,
+): Record<string, EnvVarInfo> | undefined {
+  if (!env) return undefined;
+
+  const result: Record<string, EnvVarInfo> = {};
+
+  for (const [key, schema] of Object.entries(env)) {
+    let required = true;
+    let description = schema._def.description as string | undefined;
+    let defaultValue: string | undefined;
+    let inner: { _def: Record<string, unknown> } = schema;
+
+    if (inner._def.typeName === "ZodOptional") {
+      required = false;
+      inner = inner._def.innerType as { _def: Record<string, unknown> };
+    }
+
+    if (inner._def.typeName === "ZodDefault") {
+      required = false;
+      const defaultFn = inner._def.defaultValue as () => unknown;
+      defaultValue = String(defaultFn());
+      description ??= inner._def.description as string | undefined;
+      inner = inner._def.innerType as { _def: Record<string, unknown> };
+    }
+
+    const typeName = inner._def.typeName as string;
+    let type: EnvVarType;
+    if (typeName === "ZodString") type = "string";
+    else if (typeName === "ZodNumber") type = "number";
+    else if (typeName === "ZodBoolean") type = "boolean";
+    else throw new Error(`parseEnvDefs: "${key}" has unsupported type ${typeName}`);
+
+    result[key] = { type, default: defaultValue, required, description };
+  }
+
+  return result;
+}
 
 export function buildAst(app: AppDefinition, diagnostics: Diagnostic[]): AppAst {
   const router = app.router ?? {
@@ -56,6 +97,7 @@ export function buildAst(app: AppDefinition, diagnostics: Diagnostic[]): AppAst 
       name: s.name,
       close: s.close,
       typeName: serviceTypeName(s.name),
+      env: s.env,
     };
   };
 
@@ -67,6 +109,7 @@ export function buildAst(app: AppDefinition, diagnostics: Diagnostic[]): AppAst 
     stableId: nodeStableId("app"),
     annotations: {},
     pluginData: {},
+    env: parseEnvDefs(app.env),
     architecture: appArchitecture,
     adapters: appAdapters,
     services: (app.services ?? []).map(toAppService),
