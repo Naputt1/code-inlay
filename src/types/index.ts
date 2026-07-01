@@ -137,6 +137,7 @@ export type ServiceDefinition = {
   kind: "ServiceDefinition";
   name: string;
   close?: boolean;
+  env?: string[];
 };
 
 export type ServiceFileCtx<TOptions> = {
@@ -262,8 +263,18 @@ export type AdapterRef = BuiltInAdapterName | AdapterPlugin;
 export type BuiltInArchitectureName = "clean" | "minimal" | "atomic" | "layered";
 export type BuiltInAdapterName = "gin";
 
+export type EnvVarType = "string" | "number" | "boolean";
+
+export type EnvVarInfo = {
+  type: EnvVarType;
+  default?: string;
+  required: boolean;
+  description?: string;
+};
+
 export type AppDefinition = {
   kind: "AppDefinition";
+  env?: Record<string, z.ZodTypeAny>;
   architecture?: ArchitectureRef | ArchitectureRef[] | ArchitectureSelection;
   architectures?: ArchitectureRef[] | ArchitectureSelection;
   adapters?: AdapterRef[] | AdapterSelection;
@@ -294,6 +305,7 @@ export type AppServiceDef = {
   close?: boolean;
   typeName: string;
   extension?: string;
+  env?: string[];
   extensionOptions?: Record<string, unknown>;
   provides?: string;
   dbAccessor?: string;
@@ -302,6 +314,7 @@ export type AppServiceDef = {
 };
 
 export type AppAst = AstNodeBase<"App"> & {
+  env?: Record<string, EnvVarInfo>;
   architecture: ArchitectureSelection;
   adapters: AdapterSelection;
   router: RouterAst;

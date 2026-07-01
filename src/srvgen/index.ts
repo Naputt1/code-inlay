@@ -43,12 +43,28 @@ export function generateServer(
     }
   }
 
+  const hasConfig = ast.env && Object.keys(ast.env).length > 0;
+  if (hasConfig) {
+    const cfgPath = `"${moduleInfo.modulePath}/internal/config"`;
+    if (!imports.includes(cfgPath)) {
+      imports.push(cfgPath);
+    }
+  }
+
   const routeArgs = ["api"];
   const mainBody: string[] = [];
+
+  if (hasConfig) {
+    mainBody.push(`\tcfg := config.Load()`);
+    mainBody.push(``);
+  }
+
   for (const svc of ast.services) {
     const ctorName = serviceConstructorName(svc.name);
     const varName = lowerSvcVar(svc.name);
-    mainBody.push(`\t${varName}, err := service.${ctorName}()`);
+    const needsCfg = hasConfig && svc.env && svc.env.length > 0;
+    const ctorArgs = needsCfg ? "cfg" : "";
+    mainBody.push(`\t${varName}, err := service.${ctorName}(${ctorArgs})`);
     mainBody.push(`\tif err != nil {`);
     mainBody.push(`\t\tpanic(err)`);
     mainBody.push(`\t}`);
@@ -119,17 +135,20 @@ export function generateServer(
 
   mainBody.push(`\tapi := r.Group("${ast.router.prefix}")`);
   mainBody.push(`\t${routesPkg}.RegisterRoutes(${routeArgs.join(", ")})`);
-  mainBody.push(``);
-  mainBody.push(`\taddr := os.Getenv("PORT")`);
-  mainBody.push(`\tif addr == "" {`);
-  mainBody.push(`\t\taddr = ":8080"`);
-  mainBody.push(`\t}`);
-  mainBody.push(`\tif !strings.HasPrefix(addr, ":") {`);
-  mainBody.push(`\t\taddr = ":" + addr`);
-  mainBody.push(`\t}`);
+
+  if (!hasConfig) {
+    mainBody.push(``);
+    mainBody.push(`\taddr := os.Getenv("PORT")`);
+    mainBody.push(`\tif addr == "" {`);
+    mainBody.push(`\t\taddr = ":8080"`);
+    mainBody.push(`\t}`);
+    mainBody.push(`\tif !strings.HasPrefix(addr, ":") {`);
+    mainBody.push(`\t\taddr = ":" + addr`);
+    mainBody.push(`\t}`);
+  }
   mainBody.push(``);
   mainBody.push(`\tsrv := &http.Server{`);
-  mainBody.push(`\t\tAddr:    addr,`);
+  mainBody.push(`\t\tAddr:    ${hasConfig ? "cfg.PORT" : "addr"},`);
   mainBody.push(`\t\tHandler: r,`);
   mainBody.push(`\t}`);
   mainBody.push(``);

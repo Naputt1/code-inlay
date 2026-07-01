@@ -27,6 +27,7 @@ import {
 import { generateEntityStructs, generateRouteTypes } from "../schema/index.js";
 import { generateGinHandler, resolveAdapters } from "../adapters/gin.js";
 import { generateServer, serverFilePath } from "../srvgen/index.js";
+import { generateEnvConfigFile } from "../srvgen/config.js";
 import { batchEnrichGoRegions } from "../plugins/enrich.js";
 import { generateRepository } from "./repository.js";
 import { generateServiceFile } from "./service.js";
@@ -267,7 +268,7 @@ export function generateCode(
 
   for (const svc of ast.services) {
     const svcFile = serviceFilePath(svc.name);
-    const svcParts = generateServiceFile(svc, ast.serviceExtensions);
+    const svcParts = generateServiceFile(svc, ast.serviceExtensions, moduleInfo?.modulePath);
     const svcSuffix = (part: ScaffoldPart): string => {
       if (part.kind === "imports") return ".0imports";
       if (part.kind === "interface") return "";
@@ -626,6 +627,13 @@ export function generateCode(
           stableHash: region.stableHash ?? `${adapter.name}:server:${serverFilePath}`,
           owner: adapter.name,
         });
+      }
+    }
+
+    const configPatch = generateEnvConfigFile(ast.env ?? {}, moduleInfo);
+    if (configPatch) {
+      for (const region of configPatch.regions) {
+        add(configPatch.path, region);
       }
     }
   }

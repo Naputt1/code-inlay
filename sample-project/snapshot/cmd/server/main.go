@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"reflect"
+	"snapshot/internal/config"
 	"snapshot/internal/service"
 	"strings"
 	"syscall"
@@ -18,6 +19,8 @@ import (
 )
 
 func main() {
+	cfg := config.Load()
+
 	mygormSvc, err := service.NewMygormService()
 	if err != nil {
 		panic(err)
@@ -59,16 +62,8 @@ func main() {
 	api := r.Group("/api/v1")
 	genroutes.RegisterRoutes(api, mygormSvc, redisSvc)
 
-	addr := os.Getenv("PORT")
-	if addr == "" {
-		addr = ":8080"
-	}
-	if !strings.HasPrefix(addr, ":") {
-		addr = ":" + addr
-	}
-
 	srv := &http.Server{
-		Addr:    addr,
+		Addr:    cfg.PORT,
 		Handler: r,
 	}
 

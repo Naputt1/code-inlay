@@ -5,10 +5,12 @@ import type { ScaffoldPart } from "./types.js";
 export function generateServiceFile(
   svc: AppServiceDef,
   extensions?: BackendExtension[],
+  modulePath?: string,
 ): ScaffoldPart[] {
   const typeName = serviceTypeName(svc.name);
   const implName = serviceImplName(svc.name);
   const ctorName = serviceConstructorName(svc.name);
+  const needsConfig = svc.env && svc.env.length > 0;
 
   if (svc.extension && extensions) {
     const ext = extensions.find((e) => e.name === svc.extension);
@@ -61,23 +63,41 @@ export function generateServiceFile(
     isStub: false,
   });
 
+  const structFields: string[] = [];
+  if (needsConfig) {
+    structFields.push(`\tcfg config.Config`);
+  }
   parts.push({
     kind: "struct" as const,
     symbolName: implName,
-    content: `type ${implName} struct {}`,
+    content: `type ${implName} struct {\n${structFields.join("\n")}\n}`,
     expectsUserCode: false,
     isStub: false,
   });
 
-  const ctorSig = `func ${ctorName}() (*${implName}, error)`;
+  const ctorParams = needsConfig ? "cfg config.Config" : "";
+  const ctorArg = needsConfig ? "cfg: cfg" : "";
+  const ctorSig = `func ${ctorName}(${ctorParams}) (*${implName}, error)`;
   parts.push({
     kind: "function" as const,
     symbolName: ctorName,
     signature: ctorSig,
-    content: `\treturn &${implName}{}, nil`,
+    content: `\treturn &${implName}{${ctorArg}}, nil`,
     expectsUserCode: false,
     isStub: false,
   });
+
+  if (needsConfig && modulePath) {
+    const cfgPath = `"${modulePath}/internal/config"`;
+    parts.push({
+      kind: "imports" as const,
+      symbolName: "",
+      content: `import ${cfgPath}`,
+      expectsUserCode: false,
+      isStub: false,
+      imports: [cfgPath],
+    });
+  }
 
   if (svc.dbAccessor && svc.dbType) {
     const accessorName = svc.dbAccessor;
