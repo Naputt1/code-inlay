@@ -102,6 +102,21 @@ export function generateServer(
     mainBody.push(``);
   }
 
+  const hc = ast.options.runtime?.healthCheck;
+  const hcEnabled = hc?.enabled ?? true;
+  const livenessPath = hc?.livenessPath ?? "/healthz";
+  const readinessPath = hc?.readinessPath ?? "/readyz";
+
+  if (hcEnabled) {
+    mainBody.push(``);
+    mainBody.push(`\tr.GET("${livenessPath}", func(c *gin.Context) {`);
+    mainBody.push(`\t\tc.JSON(http.StatusOK, gin.H{"status": "ok"})`);
+    mainBody.push(`\t})`);
+    mainBody.push(`\tr.GET("${readinessPath}", func(c *gin.Context) {`);
+    mainBody.push(`\t\tc.JSON(http.StatusOK, gin.H{"status": "ready"})`);
+    mainBody.push(`\t})`);
+  }
+
   mainBody.push(`\tapi := r.Group("${ast.router.prefix}")`);
   mainBody.push(`\t${routesPkg}.RegisterRoutes(${routeArgs.join(", ")})`);
   mainBody.push(``);
