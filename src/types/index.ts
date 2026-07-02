@@ -486,12 +486,18 @@ export type HealthCheckConfig = {
   readinessPath?: string;
 };
 
+export type LoggerConfig = {
+  provider: "zerolog" | "slog" | "logrus" | "none";
+  level?: "debug" | "info" | "warn" | "error";
+  format?: "json" | "text";
+};
+
 export type RuntimeConfig = {
   enabled: boolean;
   di?: "wire" | "manual" | "google-wire" | "uber-fx";
   middleware?: string[];
   tracing?: "otel" | "none";
-  logger?: "zerolog" | "slog" | "logrus" | "none";
+  logger?: LoggerConfig;
   shutdownTimeout?: number;
   healthCheck?: HealthCheckConfig;
 };

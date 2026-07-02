@@ -11,6 +11,7 @@ import (
 	"reflect"
 	"snapshot/internal/config"
 	"snapshot/internal/service"
+	"snapshot/runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -20,6 +21,12 @@ import (
 
 func main() {
 	cfg := config.Load()
+
+	logger := runtime.NewLogger(runtime.LoggerConfig{
+		Level:    "info",
+		Format:   "json",
+	})
+	runtime.SetDefaultLogger(logger)
 
 	mygormSvc, err := service.NewMygormService()
 	if err != nil {
@@ -44,6 +51,8 @@ func main() {
 	}
 
 	r := gin.Default()
+	r.Use(runtime.RequestContextMiddleware())
+
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:5173"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},

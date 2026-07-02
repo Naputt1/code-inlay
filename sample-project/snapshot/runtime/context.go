@@ -1,0 +1,24 @@
+package runtime
+
+import "context"
+
+// Context carries request-scoped values, tracing, and logging.
+type Context interface {
+	context.Context
+	Logger() Logger
+	RequestID() string
+	Param(name string) string
+}
+
+// Logger is a structured logging interface.
+type Logger interface {
+	Info(msg string, keysAndValues ...any)
+	Error(msg string, keysAndValues ...any)
+	With(keysAndValues ...any) Logger
+}
+
+// Middleware is a request pipeline function.
+type Middleware func(ctx Context, next func(Context) error) error
+
+// Handler is a typed request handler.
+type Handler[Req, Res any] func(ctx Context, req Req) (Res, error)
