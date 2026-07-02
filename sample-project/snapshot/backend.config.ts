@@ -7,6 +7,7 @@ import {
   defineMiddleware,
   defineApp,
   defineEnv,
+  defineRuntime,
   defineServiceExtension,
   defineResponseFormat,
   defineService,
@@ -341,6 +342,10 @@ export default defineApp({
       routes: authRoutes,
     }),
   ],
+  runtime: defineRuntime({
+    enabled: true,
+    logger: { provider: "slog", level: "info", format: "json" },
+  }),
   metadata: { enabled: true, routeRegistry: true, schemaReflection: false },
   options: {
     responseFormat: stdFormat,

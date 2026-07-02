@@ -1,5 +1,11 @@
 import { serviceConstructorName } from "../utils/naming.js";
-import type { AppAst, ArchitectureAst, GeneratedFilePatch, AdapterPlugin } from "../types/index.js";
+import type {
+  AppAst,
+  ArchitectureAst,
+  GeneratedFilePatch,
+  AdapterPlugin,
+  RuntimeConfig,
+} from "../types/index.js";
 import type { GoModuleInfo } from "../utils/env.js";
 
 export const serverFilePath = "cmd/server/main.go";
@@ -51,11 +57,26 @@ export function generateServer(
     }
   }
 
+  const runtimeConfig = ast.options.runtime;
+  const hasLogger = runtimeConfig?.enabled && runtimeConfig?.logger != null;
+
+  if (hasLogger) {
+    const runtimePath = `"${moduleInfo.modulePath}/runtime"`;
+    if (!imports.includes(runtimePath)) {
+      imports.push(runtimePath);
+    }
+  }
+
   const routeArgs = ["api"];
   const mainBody: string[] = [];
 
   if (hasConfig) {
     mainBody.push(`\tcfg := config.Load()`);
+    mainBody.push(``);
+  }
+
+  if (hasLogger) {
+    mainBody.push(...generateLoggerInit(runtimeConfig!.logger!));
     mainBody.push(``);
   }
 
@@ -90,6 +111,11 @@ export function generateServer(
 
   mainBody.push(``);
   mainBody.push(`\tr := gin.Default()`);
+
+  if (hasLogger) {
+    mainBody.push(`\tr.Use(runtime.RequestContextMiddleware())`);
+    mainBody.push(``);
+  }
 
   if (ast.router.cors) {
     const c = ast.router.cors;
@@ -200,4 +226,17 @@ export function generateServer(
 
 function lowerSvcVar(name: string): string {
   return name.charAt(0).toLowerCase() + name.slice(1) + "Svc";
+}
+
+function generateLoggerInit(loggerConfig: NonNullable<RuntimeConfig["logger"]>): string[] {
+  const level = loggerConfig.level ?? "info";
+  const format = loggerConfig.format ?? "json";
+
+  return [
+    `\tlogger := runtime.NewLogger(runtime.LoggerConfig{`,
+    `\t\tLevel:    "${level}",`,
+    `\t\tFormat:   "${format}",`,
+    `\t})`,
+    `\truntime.SetDefaultLogger(logger)`,
+  ];
 }

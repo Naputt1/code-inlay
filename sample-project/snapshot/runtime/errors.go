@@ -1,0 +1,23 @@
+package runtime
+
+// HTTPError is an error that carries an HTTP status code.
+// Return this from a usecase to control the HTTP response status.
+type HTTPError interface {
+	error
+	HTTPStatus() int
+}
+
+// StatusError is a simple implementation of HTTPError.
+type StatusError struct {
+	Msg    string `json:"error"`
+	Status int    `json:"-"`
+}
+
+func (e *StatusError) Error() string { return e.Msg }
+
+func (e *StatusError) HTTPStatus() int { return e.Status }
+
+// NewStatusError creates a new StatusError.
+func NewStatusError(msg string, status int) *StatusError {
+	return &StatusError{Msg: msg, Status: status}
+}

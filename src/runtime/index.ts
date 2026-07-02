@@ -1,5 +1,6 @@
 import type { AppAst, RuntimeConfig, GeneratedFilePatch } from "../types/index.js";
 import { contentHash } from "../utils/hash.js";
+import { generateLoggerCode } from "./loggers.js";
 
 export function generateRuntimeCode(
   ast: AppAst,
@@ -9,9 +10,22 @@ export function generateRuntimeCode(
 
   const patches: GeneratedFilePatch[] = [];
   const middlewareNames = runtimeConfig.middleware ?? [];
+  const loggerConfig = runtimeConfig.logger;
 
   patches.push(generateRuntimeTypes());
   patches.push(generateHTTPError());
+
+  if (loggerConfig) {
+    const loggerPatches = generateLoggerCode(loggerConfig);
+    patches.push(...loggerPatches);
+
+    patches.push(...generateRuntimeContext(loggerConfig));
+
+    const hasGin = ast.router.adapter === "gin";
+    if (hasGin) {
+      patches.push(generateRequestContextMiddleware());
+    }
+  }
 
   if (middlewareNames.length > 0) {
     patches.push(generateMiddlewareChain());
@@ -23,8 +37,6 @@ export function generateRuntimeCode(
 function generateHTTPError(): GeneratedFilePatch {
   const content = [
     `package runtime`,
-    ``,
-    `import "net/http"`,
     ``,
     `// HTTPError is an error that carries an HTTP status code.`,
     `// Return this from a usecase to control the HTTP response status.`,
@@ -100,6 +112,117 @@ function generateRuntimeTypes(): GeneratedFilePatch {
         owner: "runtime",
         language: "go",
         content,
+      },
+    ],
+  };
+}
+
+function generateRuntimeContext(
+  loggerConfig: NonNullable<RuntimeConfig["logger"]>,
+): GeneratedFilePatch[] {
+  const hasNewLogger = loggerConfig.provider !== "none";
+  const body = [
+    `package runtime`,
+    ``,
+    `import "context"`,
+    ``,
+    `// runtimeContext is a concrete implementation of Context.`,
+    `type runtimeContext struct {`,
+    `\tcontext.Context`,
+    hasNewLogger ? `\tlogger    Logger` : ``,
+    `\trequestID string`,
+    `\tparams    map[string]string`,
+    `}`,
+    ``,
+    hasNewLogger
+      ? `// NewContext creates a new Context with the given logger.
+func NewContext(ctx context.Context, logger Logger) Context {
+\treturn &runtimeContext{
+\t\tContext: ctx,
+\t\tlogger:  logger,
+\t}
+}`
+      : `// NewContext creates a new Context.
+func NewContext(ctx context.Context) Context {
+\treturn &runtimeContext{
+\t\tContext: ctx,
+\t}
+}`,
+    ``,
+    hasNewLogger
+      ? `func (c *runtimeContext) Logger() Logger { return c.logger }`
+      : `func (c *runtimeContext) Logger() Logger { return &noopLogger{} }`,
+    `func (c *runtimeContext) RequestID() string { return c.requestID }`,
+    `func (c *runtimeContext) Param(name string) string { return c.params[name] }`,
+  ].join("\n");
+
+  return [
+    {
+      path: "runtime/runtime_context.go",
+      regions: [
+        {
+          id: "runtime.context.impl",
+          stableHash: `runtime:context:impl:${contentHash(body)}`,
+          owner: "runtime",
+          language: "go",
+          content: body,
+        },
+      ],
+    },
+  ];
+}
+
+function generateRequestContextMiddleware(): GeneratedFilePatch {
+  const body = [
+    `package runtime`,
+    ``,
+    `import (`,
+    `\t"context"`,
+    `\t"crypto/rand"`,
+    `\t"encoding/hex"`,
+    `\t"time"`,
+    ``,
+    `\t"github.com/gin-gonic/gin"`,
+    `)`,
+    ``,
+    `// RequestContextMiddleware enriches the request context with request_id, route, and method.`,
+    `// It also logs an access log entry with duration and status when the request completes.`,
+    `func RequestContextMiddleware() gin.HandlerFunc {`,
+    `\treturn func(c *gin.Context) {`,
+    `\t\tstart := time.Now()`,
+    `\t\treqID := generateRequestID()`,
+    ``,
+    `\t\tctx := c.Request.Context()`,
+    `\t\tctx = context.WithValue(ctx, ctxKeyRequestID, reqID)`,
+    `\t\tctx = context.WithValue(ctx, ctxKeyRoute, c.FullPath())`,
+    `\t\tctx = context.WithValue(ctx, ctxKeyMethod, c.Request.Method)`,
+    `\t\tc.Request = c.Request.WithContext(ctx)`,
+    ``,
+    `\t\tc.Next()`,
+    ``,
+    `\t\tCtxLogger(ctx).Info("request completed",`,
+    `\t\t\t"status", c.Writer.Status(),`,
+    `\t\t\t"duration_ms", time.Since(start).Milliseconds(),`,
+    `\t\t)`,
+    `\t}`,
+    `}`,
+    ``,
+    `func generateRequestID() string {`,
+    `\tb := make([]byte, 8)`,
+    `\t_, _ = rand.Read(b)`,
+    `\treturn hex.EncodeToString(b)`,
+    `}`,
+  ].join("\n");
+
+  return {
+    path: "runtime/request_context.go",
+    regions: [
+      {
+        id: "runtime.request_context.middleware",
+        stableHash: `runtime:request_context:middleware`,
+        owner: "runtime",
+        language: "go",
+        content: body,
       },
     ],
   };

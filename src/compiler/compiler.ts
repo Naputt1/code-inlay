@@ -17,6 +17,7 @@ import { generateCode } from "../generators/index.js";
 import { formatFile, formatGoSnippet } from "../utils/format.js";
 import { checkGoEnvironment } from "../utils/env.js";
 import { generateRuntimeCode } from "../runtime/index.js";
+import { getLoggerGoModules } from "../runtime/loggers.js";
 import {
   computePluginManifestHash,
   createPluginRegistry,
@@ -72,6 +73,21 @@ export async function compile(options: CompileOptions): Promise<CompileResult> {
       if (!gm) continue;
       const modules = typeof gm === "function" ? gm(svc.extensionOptions ?? {}) : gm;
       for (const mod of modules) {
+        const result = spawnSync("go", ["get", mod], { cwd, stdio: "pipe", encoding: "utf8" });
+        if (result.status !== 0) {
+          diagnostics.push({
+            level: "error",
+            code: "go-get-failed",
+            message: `Failed to run "go get ${mod}": ${(result.stderr || result.stdout || "unknown error").trim()}`,
+          });
+        }
+      }
+    }
+
+    const loggerConfig = ast.options.runtime?.logger;
+    if (loggerConfig) {
+      const loggerModules = getLoggerGoModules(loggerConfig);
+      for (const mod of loggerModules) {
         const result = spawnSync("go", ["get", mod], { cwd, stdio: "pipe", encoding: "utf8" });
         if (result.status !== 0) {
           diagnostics.push({

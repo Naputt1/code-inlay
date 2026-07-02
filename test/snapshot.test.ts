@@ -16,6 +16,7 @@ import {
   defineResponseFormat,
   defineMiddleware,
   defineEnv,
+  defineRuntime,
   defineError,
   defineCors,
   HttpStatus,
@@ -471,6 +472,10 @@ describe("full pipeline snapshot", () => {
           routes: authRoutes,
         }),
       ],
+      runtime: defineRuntime({
+        enabled: true,
+        logger: { provider: "slog", level: "info", format: "json" },
+      }),
       metadata: { enabled: true, routeRegistry: true, schemaReflection: false },
       options: {
         responseFormat: stdFormat,
