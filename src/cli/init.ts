@@ -12,7 +12,7 @@ export async function initCommand(parsed: ParsedArgs): Promise<void> {
     mkdirSync(targetDir, { recursive: true });
   }
 
-  const configContent = `import { z, defineRoute, defineModule, defineRouter, defineApp, defineEnv } from "@code-inlay/backend-gen";
+  const configContent = `import { z, defineRoute, defineRouter, defineApp, defineEnv } from "@code-inlay/backend-gen";
 
 const listItems = defineRoute({
   id: "listItems",
@@ -27,7 +27,7 @@ const listItems = defineRoute({
   handler: "ListItems",
 });
 
-export default defineApp({
+const app = defineApp({
   // Uncomment to define env vars used at runtime:
   // env: defineEnv({
   //   PORT: z.string().default("8080").describe("Server listen port"),
@@ -35,10 +35,11 @@ export default defineApp({
   // }),
   architecture: "clean",
   router: defineRouter({ adapter: "gin" }),
-  modules: [
-    defineModule({ name: "items", routes: [listItems] }),
-  ],
 });
+
+app.defineModule({ name: "items", routes: [listItems] });
+
+export default app;
 `;
 
   const configPath = resolve(targetDir, "backend.config.ts");

@@ -17,7 +17,7 @@ describe("service layer", () => {
     const app = defineApp({
       architecture: "clean",
       router: defineRouter({ adapter: "gin" }),
-      services: [defineService({ name: "payment", close: true })],
+      services: { payment: defineService({ close: true }) },
       modules: [
         defineModule({
           name: "payment",
@@ -63,7 +63,7 @@ describe("service layer", () => {
     const app = defineApp({
       architecture: "clean",
       router: defineRouter({ adapter: "gin" }),
-      services: [defineService({ name: "search", close: false })],
+      services: { search: defineService({ close: false }) },
       modules: [
         defineModule({
           name: "search",
@@ -103,7 +103,7 @@ describe("service layer", () => {
     const app = defineApp({
       architecture: "clean",
       router: defineRouter({ adapter: "gin" }),
-      services: [defineService({ name: "payment", close: true })],
+      services: { payment: defineService({ close: true }) },
       modules: [
         defineModule({
           name: "payment",
@@ -145,7 +145,7 @@ describe("service layer", () => {
     const app = defineApp({
       architecture: "clean",
       router: defineRouter({ adapter: "gin" }),
-      services: [defineService({ name: "payment", close: true })],
+      services: { payment: defineService({ close: true }) },
       modules: [
         defineModule({
           name: "payment",
@@ -178,7 +178,7 @@ describe("service layer", () => {
     const app = defineApp({
       architecture: "clean",
       router: defineRouter({ adapter: "gin" }),
-      services: [defineService({ name: "payment", close: true })],
+      services: { payment: defineService({ close: true }) },
       modules: [
         defineModule({
           name: "payment",
@@ -214,10 +214,10 @@ describe("service layer", () => {
     const app = defineApp({
       architecture: "clean",
       router: defineRouter({ adapter: "gin" }),
-      services: [
-        defineService({ name: "payment", close: true }),
-        defineService({ name: "notification", close: false }),
-      ],
+      services: {
+        payment: defineService({ close: true }),
+        notification: defineService({ close: false }),
+      },
       modules: [
         defineModule({
           name: "payment",
@@ -265,7 +265,7 @@ describe("service layer", () => {
     const app = defineApp({
       architecture: "clean",
       router: defineRouter({ adapter: "gin" }),
-      services: [defineService({ name: "payment", close: true })],
+      services: { payment: defineService({ close: true }) },
       modules: [
         defineModule({
           name: "auth",
@@ -304,7 +304,7 @@ describe("service layer", () => {
     const app = defineApp({
       architecture: "minimal",
       router: defineRouter({ adapter: "gin" }),
-      services: [defineService({ name: "search", close: true })],
+      services: { search: defineService({ close: true }) },
       modules: [
         defineModule({
           name: "search",
@@ -333,7 +333,7 @@ describe("service layer", () => {
     const app = defineApp({
       architecture: "clean",
       router: defineRouter({ adapter: "gin" }),
-      services: [defineService({ name: "payment", close: true })],
+      services: { payment: defineService({ close: true }) },
       modules: [
         defineModule({
           name: "payment",
@@ -369,7 +369,7 @@ describe("service layer", () => {
     const app = defineApp({
       architecture: "clean",
       router: defineRouter({ adapter: "gin" }),
-      services: [defineService({ name: "payment", close: true })],
+      services: { payment: defineService({ close: true }) },
       modules: [
         defineModule({
           name: "payment",

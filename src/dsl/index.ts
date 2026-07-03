@@ -29,6 +29,7 @@ import type {
   ServiceDefinition,
   ServiceExtensionResult,
   ServiceFileCtx,
+  ServiceInput,
   TestingConfig,
   AdapterSelection,
   UsecaseOrganization,
@@ -121,13 +122,11 @@ export function defineModule(input: {
 }
 
 export function defineService(input: {
-  name: string;
   close?: boolean;
   env?: string[];
-}): ServiceDefinition {
+}): Omit<ServiceDefinition, "name"> {
   return {
     kind: "ServiceDefinition",
-    name: input.name,
     close: input.close,
     env: input.env,
   };
@@ -146,10 +145,9 @@ export function defineServiceExtension<TOptions extends Record<string, unknown>>
     generateDialectMethod?: (ctx: DialectMethodCtx<TOptions>) => string;
   };
 }): BackendExtension &
-  ((opts: { name: string; close?: boolean } & TOptions) => ServiceExtensionResult) {
-  const factory = (opts: { name: string; close?: boolean } & TOptions): ServiceExtensionResult => ({
+  ((opts: { close?: boolean } & TOptions) => Omit<ServiceExtensionResult, "name">) {
+  const factory = (opts: { close?: boolean } & TOptions): Omit<ServiceExtensionResult, "name"> => ({
     kind: "ServiceExtensionResult",
-    name: opts.name,
     extension: input.name,
     close: opts.close,
     options: input.service.optionsSchema.parse(opts) as Record<string, unknown>,
@@ -158,7 +156,29 @@ export function defineServiceExtension<TOptions extends Record<string, unknown>>
     name: { value: input.name, writable: false },
     service: { value: input.service, writable: false },
   }) as BackendExtension &
-    ((opts: { name: string; close?: boolean } & TOptions) => ServiceExtensionResult);
+    ((opts: { close?: boolean } & TOptions) => Omit<ServiceExtensionResult, "name">);
+}
+
+export interface AppBuilder<
+  TEnv extends Record<string, z.ZodTypeAny> = Record<string, z.ZodTypeAny>,
+  TServiceNames extends string = string,
+  TModuleNames extends string = string,
+> extends AppDefinition {
+  defineModule<const TName extends string>(input: {
+    name: TName;
+    architecture?: ArchitectureRef | ArchitectureRef[] | ArchitectureSelection;
+    adapters?: AdapterRef[] | AdapterSelection;
+    services?: TServiceNames[];
+    usecaseOrganization?: UsecaseOrganization;
+    responseFormat?: ResponseFormat;
+    errors?: ErrorDefinition[];
+    routes?: RouteDefinition<
+      SchemaLike | undefined,
+      SchemaLike | undefined,
+      SchemaLike | undefined
+    >[];
+    middleware?: MiddlewareDefinition[];
+  }): AppBuilder<TEnv, TServiceNames, TModuleNames | TName>;
 }
 
 export function defineCors(config: CorsConfig): CorsConfig {
@@ -187,7 +207,7 @@ export function defineRouter(input: {
   };
 }
 
-export function defineEnv(input: Record<string, z.ZodTypeAny>): Record<string, z.ZodTypeAny> {
+export function defineEnv<const T extends Record<string, z.ZodTypeAny>>(input: T): T {
   for (const [key, schema] of Object.entries(input)) {
     let inner: z.ZodTypeAny = schema;
     while (inner._def?.innerType) inner = inner._def.innerType as z.ZodTypeAny;
@@ -201,15 +221,18 @@ export function defineEnv(input: Record<string, z.ZodTypeAny>): Record<string, z
   return input;
 }
 
-export function defineApp(input: {
-  env?: Record<string, z.ZodTypeAny>;
+export function defineApp<
+  const TEnv extends Record<string, z.ZodTypeAny> = Record<string, z.ZodTypeAny>,
+  const TServices extends Record<string, ServiceInput> = Record<string, never>,
+>(input: {
+  env?: TEnv;
   architecture?: ArchitectureRef | ArchitectureRef[] | ArchitectureSelection;
   architectures?: ArchitectureRef[] | ArchitectureSelection;
   adapters?: AdapterRef[] | AdapterSelection;
   router?: RouterDefinition;
-  modules: ModuleDefinition[];
+  modules?: ModuleDefinition[];
   extensions?: BackendExtension[];
-  services?: (ServiceDefinition | ServiceExtensionResult)[];
+  services?: TServices;
   transformers?: AstTransformer[];
   plugins?: BackendCompilerPlugin[];
   targets?: CodeTarget[];
@@ -218,17 +241,22 @@ export function defineApp(input: {
   testing?: TestingConfig;
   metadata?: MetadataConfig;
   options?: Partial<CompileSettings>;
-}): AppDefinition {
-  return {
+}): AppBuilder<TEnv, keyof TServices & string, never> {
+  const serviceEntries = Object.entries(input.services ?? {}).map(([name, svc]) => ({
+    ...svc,
+    name,
+  })) as (ServiceDefinition | ServiceExtensionResult)[];
+
+  const state: AppDefinition = {
     kind: "AppDefinition",
     env: input.env,
     architecture: input.architecture,
     architectures: input.architectures,
     adapters: input.adapters,
     router: input.router,
-    modules: input.modules,
+    modules: input.modules ?? [],
     extensions: input.extensions,
-    services: input.services ?? [],
+    services: serviceEntries,
     transformers: input.transformers ?? [],
     plugins: input.plugins ?? [],
     targets: input.targets ?? [],
@@ -254,6 +282,41 @@ export function defineApp(input: {
       validationError: input.options?.validationError,
     },
   };
+
+  const builder: Record<string, unknown> & AppDefinition = {
+    ...state,
+    defineModule: <const TName extends string>(modInput: {
+      name: TName;
+      architecture?: ArchitectureRef | ArchitectureRef[] | ArchitectureSelection;
+      adapters?: AdapterRef[] | AdapterSelection;
+      services?: (keyof TServices & string)[];
+      usecaseOrganization?: UsecaseOrganization;
+      responseFormat?: ResponseFormat;
+      errors?: ErrorDefinition[];
+      routes?: RouteDefinition<
+        SchemaLike | undefined,
+        SchemaLike | undefined,
+        SchemaLike | undefined
+      >[];
+      middleware?: MiddlewareDefinition[];
+    }) => {
+      state.modules.push({
+        kind: "ModuleDefinition",
+        name: modInput.name,
+        architecture: modInput.architecture,
+        adapters: modInput.adapters,
+        services: modInput.services,
+        usecaseOrganization: modInput.usecaseOrganization,
+        responseFormat: modInput.responseFormat,
+        errors: modInput.errors,
+        routes: modInput.routes ?? [],
+        middleware: modInput.middleware ?? [],
+      });
+      return builder;
+    },
+  };
+
+  return builder as unknown as AppBuilder<TEnv, keyof TServices & string, never>;
 }
 
 export function defineRouteGroup<

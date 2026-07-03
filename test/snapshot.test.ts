@@ -455,10 +455,10 @@ describe("full pipeline snapshot", () => {
         }),
       }),
       extensions: [gorm],
-      services: [
-        gorm({ name: "mygorm", driver: "sqlite", close: true }),
-        defineService({ name: "redis", close: true }),
-      ],
+      services: {
+        mygorm: gorm({ driver: "sqlite", close: true }),
+        redis: defineService({ close: true }),
+      },
       modules: [
         defineModule({
           name: "products",

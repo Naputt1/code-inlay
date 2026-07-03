@@ -241,6 +241,8 @@ export type ModuleDefinition = {
   middleware: MiddlewareDefinition[];
 };
 
+export type ServiceInput = Omit<ServiceDefinition, "name"> | Omit<ServiceExtensionResult, "name">;
+
 export type CorsConfig = {
   allowOrigins: string[];
   allowMethods: string[];

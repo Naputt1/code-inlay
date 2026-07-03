@@ -791,10 +791,10 @@ describe("compiler", () => {
         architecture: "clean",
         router: defineRouter({ adapter: "gin" }),
         extensions: [gorm],
-        services: [
-          gorm({ name: "mygorm", driver: "mysql", close: true }),
-          defineService({ name: "db", close: true }),
-        ],
+        services: {
+          mygorm: gorm({ driver: "mysql", close: true }),
+          db: defineService({ close: true }),
+        },
         modules: [
           defineModule({
             name: "ticket",
@@ -862,7 +862,7 @@ describe("compiler", () => {
       const app = defineApp({
         architecture: "clean",
         router: defineRouter({ adapter: "gin" }),
-        services: [defineService({ name: "db", close: true })],
+        services: { db: defineService({ close: true }) },
         modules: [
           defineModule({
             name: "ticket",
@@ -904,7 +904,7 @@ describe("compiler", () => {
       architecture: "clean",
       router: defineRouter({ adapter: "gin" }),
       extensions: [gorm],
-      services: [gorm({ name: "mygorm", driver: "sqlite", close: true })],
+      services: { mygorm: gorm({ driver: "sqlite", close: true }) },
       modules: [
         defineModule({
           name: "user",
@@ -964,7 +964,7 @@ describe("compiler", () => {
       architecture: "clean",
       router: defineRouter({ adapter: "gin" }),
       extensions: [gorm],
-      services: [gorm({ name: "mygorm", driver: "sqlite", close: true })],
+      services: { mygorm: gorm({ driver: "sqlite", close: true }) },
       modules: [
         defineModule({
           name: "auth",

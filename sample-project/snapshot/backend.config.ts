@@ -2,7 +2,6 @@ import {
   z,
   defineRoute,
   defineRouteGroup,
-  defineModule,
   defineRouter,
   defineMiddleware,
   defineApp,
@@ -305,7 +304,7 @@ const gorm = defineServiceExtension({
   },
 });
 
-export default defineApp({
+const app = defineApp({
   env: defineEnv({
     PORT: z.string().default("8080").describe("Server listen port"),
   }),
@@ -322,26 +321,10 @@ export default defineApp({
     }),
   }),
   extensions: [gorm],
-  services: [
-    gorm({ name: "mygorm", driver: "sqlite", close: true }),
-    defineService({ name: "redis", close: true }),
-  ],
-  modules: [
-    defineModule({
-      name: "products",
-      services: ["mygorm"],
-      routes: productRoutes,
-    }),
-    defineModule({
-      name: "orders",
-      services: ["mygorm", "redis"],
-      routes: [...orderRoutes, ...adminOrderRoutes],
-    }),
-    defineModule({
-      name: "auth",
-      routes: authRoutes,
-    }),
-  ],
+  services: {
+    mygorm: gorm({ driver: "sqlite", close: true }),
+    redis: defineService({ close: true }),
+  },
   runtime: defineRuntime({
     enabled: true,
     logger: { provider: "slog", level: "info", format: "json" },
@@ -370,3 +353,13 @@ export default defineApp({
     }),
   },
 });
+
+app.defineModule({ name: "products", services: ["mygorm"], routes: productRoutes });
+app.defineModule({
+  name: "orders",
+  services: ["mygorm", "redis"],
+  routes: [...orderRoutes, ...adminOrderRoutes],
+});
+app.defineModule({ name: "auth", routes: authRoutes });
+
+export default app;
