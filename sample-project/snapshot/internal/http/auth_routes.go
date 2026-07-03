@@ -1,8 +1,9 @@
 package http
 
 import (
-	"github.com/gin-gonic/gin"
 	"snapshot/internal/auth"
+
+	"github.com/gin-gonic/gin"
 )
 
 func registerAuthRoutes(api *gin.RouterGroup) {

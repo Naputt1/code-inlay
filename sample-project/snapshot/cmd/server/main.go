@@ -2,29 +2,30 @@ package main
 
 import (
 	"context"
-	"github.com/gin-gonic/gin"
-	"github.com/gin-gonic/gin/binding"
-	"github.com/go-playground/validator/v10"
 	"net/http"
 	"os"
 	"os/signal"
 	"reflect"
 	"snapshot/internal/config"
+	genroutes "snapshot/internal/http"
 	"snapshot/internal/service"
 	"snapshot/runtime"
 	"strings"
 	"syscall"
 	"time"
+
 	cors "github.com/gin-contrib/cors"
-	genroutes "snapshot/internal/http"
+	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
+	"github.com/go-playground/validator/v10"
 )
 
 func main() {
 	cfg := config.Load()
 
 	logger := runtime.NewLogger(runtime.LoggerConfig{
-		Level:    "info",
-		Format:   "json",
+		Level:  "info",
+		Format: "json",
 	})
 	runtime.SetDefaultLogger(logger)
 
@@ -60,7 +61,6 @@ func main() {
 		AllowCredentials: true,
 		MaxAge:           86400,
 	}))
-
 
 	r.GET("/healthz", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})

@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { dirname, join, resolve } from "node:path";
 import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync, existsSync } from "node:fs";
+import { formatFile } from "../src/utils/format.js";
 import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
 import {
@@ -112,6 +113,9 @@ function writeGenerated(outputDir: string, files: { path: string; regions: Regio
     const filePath = join(outputDir, file.path);
     mkdirSync(dirname(filePath), { recursive: true });
     writeFileSync(filePath, toCleanContent(file.path, file.regions), "utf8");
+    if (file.path.endsWith(".go")) {
+      formatFile(filePath, []);
+    }
   }
 }
 

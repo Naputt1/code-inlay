@@ -4,14 +4,15 @@ import (
 	"errors"
 	"net/http"
 	"snapshot/internal/httperr"
+
 	"github.com/gin-gonic/gin"
 )
 
 type OrdersHandler struct {
-	CreateOrderUsecase CreateOrderUsecase
-	ListOrdersUsecase ListOrdersUsecase
-	GetOrderUsecase GetOrderUsecase
-	CancelOrderUsecase CancelOrderUsecase
+	CreateOrderUsecase        CreateOrderUsecase
+	ListOrdersUsecase         ListOrdersUsecase
+	GetOrderUsecase           GetOrderUsecase
+	CancelOrderUsecase        CancelOrderUsecase
 	AdminListAllOrdersUsecase AdminListAllOrdersUsecase
 }
 

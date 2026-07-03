@@ -8,8 +8,8 @@ import (
 
 // LoggerConfig configures the logger level and output format.
 type LoggerConfig struct {
-	Level    string `json:"level"    yaml:"level"`
-	Format   string `json:"format"   yaml:"format"`
+	Level  string `json:"level"    yaml:"level"`
+	Format string `json:"format"   yaml:"format"`
 }
 
 type ctxKey string
@@ -39,7 +39,9 @@ func L() Logger { return defaultLogger }
 // Use this in handlers and usecases instead of L() to get route, method, and request_id in log output.
 func CtxLogger(ctx context.Context) Logger {
 	l := L()
-	if ctx == nil { return l }
+	if ctx == nil {
+		return l
+	}
 	if id, ok := ctx.Value(ctxKeyRequestID).(string); ok && id != "" {
 		l = l.With("request_id", id)
 	}

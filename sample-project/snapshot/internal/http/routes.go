@@ -1,8 +1,9 @@
 package http
 
 import (
-	"github.com/gin-gonic/gin"
 	"snapshot/internal/service"
+
+	"github.com/gin-gonic/gin"
 )
 
 func RegisterRoutes(api *gin.RouterGroup, mygormSvc service.MygormService, redisSvc service.RedisService) {

@@ -1,10 +1,11 @@
 package http
 
 import (
-	"github.com/gin-gonic/gin"
 	"snapshot/internal/middleware"
 	"snapshot/internal/orders"
 	"snapshot/internal/service"
+
+	"github.com/gin-gonic/gin"
 )
 
 func registerOrdersRoutes(api *gin.RouterGroup, mygormSvc service.MygormService, redisSvc service.RedisService) {

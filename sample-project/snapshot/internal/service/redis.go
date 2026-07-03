@@ -5,7 +5,6 @@ type RedisService interface {
 }
 
 type redisServiceImpl struct {
-
 }
 
 func NewRedisService() (*redisServiceImpl, error) {
