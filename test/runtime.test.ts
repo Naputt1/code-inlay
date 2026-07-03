@@ -95,7 +95,7 @@ describe("generateLoggerCode", () => {
   it("generates runtime/logger.go patch", () => {
     const patches = generateLoggerCode({ provider: "slog", level: "info", format: "json" });
     expect(patches).toHaveLength(1);
-    expect(patches[0].path).toBe("runtime/logger.go");
+    expect(patches[0].path).toBe("pkg/runtime/logger.go");
     expect(patches[0].regions).toHaveLength(1);
   });
 

@@ -62,7 +62,7 @@ function generateHTTPError(): GeneratedFilePatch {
   ].join("\n");
 
   return {
-    path: "runtime/errors.go",
+    path: "pkg/runtime/errors.go",
     regions: [
       {
         id: "runtime.errors.types",
@@ -104,7 +104,7 @@ function generateRuntimeTypes(): GeneratedFilePatch {
   ].join("\n");
 
   return {
-    path: "runtime/context.go",
+    path: "pkg/runtime/context.go",
     regions: [
       {
         id: "runtime.context.types",
@@ -158,7 +158,7 @@ func NewContext(ctx context.Context) Context {
 
   return [
     {
-      path: "runtime/runtime_context.go",
+      path: "pkg/runtime/runtime_context.go",
       regions: [
         {
           id: "runtime.context.impl",
@@ -215,7 +215,7 @@ function generateRequestContextMiddleware(): GeneratedFilePatch {
   ].join("\n");
 
   return {
-    path: "runtime/request_context.go",
+    path: "pkg/runtime/request_context.go",
     regions: [
       {
         id: "runtime.request_context.middleware",
@@ -248,7 +248,7 @@ function generateMiddlewareChain(): GeneratedFilePatch {
   ].join("\n");
 
   return {
-    path: "runtime/middleware.go",
+    path: "pkg/runtime/middleware.go",
     regions: [
       {
         id: "runtime.middleware.chain",

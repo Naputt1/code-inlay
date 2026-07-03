@@ -1129,7 +1129,7 @@ describe("compiler", () => {
     const result = await compile({ app, dryRun: true });
     expect(result.diagnostics.filter((d) => d.level === "error")).toEqual([]);
 
-    const runtimeFiles = result.generation.files.filter((f) => f.path.startsWith("runtime/"));
+    const runtimeFiles = result.generation.files.filter((f) => f.path.startsWith("pkg/runtime/"));
     expect(runtimeFiles.length).toBeGreaterThan(0);
     expect(runtimeFiles.some((f) => f.path.endsWith("context.go"))).toBe(true);
   });

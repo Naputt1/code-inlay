@@ -79,7 +79,7 @@ export function generateServer(
   const hasLogger = runtimeConfig?.enabled && runtimeConfig?.logger != null;
 
   if (hasLogger) {
-    const runtimePath = `"${moduleInfo.modulePath}/runtime"`;
+    const runtimePath = `"${moduleInfo.modulePath}/pkg/runtime"`;
     if (!imports.includes(runtimePath)) {
       imports.push(runtimePath);
     }

@@ -9,7 +9,7 @@ import (
 	"snapshot/internal/config"
 	genroutes "snapshot/internal/http"
 	"snapshot/internal/service"
-	"snapshot/runtime"
+	"snapshot/pkg/runtime"
 	"strings"
 	"syscall"
 	"time"
