@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
+import semver from "semver";
 import type { PluginPackage, PluginCompatibility, Diagnostic } from "../types/index.js";
 import { AST_VERSION, COMPILER_VERSION } from "../types/index.js";
 import { stableHash } from "../utils/hash.js";
@@ -147,67 +148,7 @@ export function readPluginLock(
 }
 
 function satisfies(version: string, range: string): boolean {
-  version = version.trim();
-  range = range.trim();
-  if (range === "*" || range === "x") return true;
-  if (range.startsWith(">=")) {
-    const min = range.slice(2);
-    return compareVersions(version, min) >= 0;
-  }
-  if (range.startsWith("^")) {
-    const min = range.slice(1);
-    const parts = min.split(".");
-    return version.startsWith(parts[0] + ".");
-  }
-  if (range.startsWith("~")) {
-    const min = range.slice(1);
-    const parts = min.split(".");
-    return parts.length >= 2
-      ? version.startsWith(parts[0] + "." + parts[1])
-      : version.startsWith(parts[0]);
-  }
-  if (range.includes("x")) {
-    const parts = range.split(".");
-    const versionParts = version.split(".");
-    for (let i = 0; i < parts.length; i++) {
-      if (parts[i] === "x") return true;
-      if (versionParts[i] === undefined) return false;
-      if (parts[i] !== versionParts[i]) return false;
-    }
-    return true;
-  }
-
-  const [op, target] = range.split(/([<>=]+)/).filter(Boolean);
-  if (op && target) {
-    const cmp = compareVersions(version, target);
-    switch (op) {
-      case ">=":
-        return cmp >= 0;
-      case ">":
-        return cmp > 0;
-      case "<=":
-        return cmp <= 0;
-      case "<":
-        return cmp < 0;
-      case "=":
-      case "==":
-        return cmp === 0;
-      default:
-        return version === range;
-    }
-  }
-
-  return version === range;
-}
-
-function compareVersions(a: string, b: string): number {
-  const partsA = a.trim().split(".").map(Number);
-  const partsB = b.trim().split(".").map(Number);
-  for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
-    const nA = partsA[i] ?? 0;
-    const nB = partsB[i] ?? 0;
-    if (nA > nB) return 1;
-    if (nA < nB) return -1;
-  }
-  return 0;
+  const v = semver.coerce(version);
+  if (!v) return false;
+  return semver.satisfies(v, range);
 }
