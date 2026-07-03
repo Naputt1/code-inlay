@@ -12,7 +12,6 @@ describe("openapi target", () => {
           name: "pet",
           routes: [
             defineRoute({
-              id: "getPet",
               method: "GET",
               path: "/pets/:id",
               handler: "GetPet",
@@ -40,7 +39,6 @@ describe("openapi target", () => {
           name: "todo",
           routes: [
             defineRoute({
-              id: "create",
               method: "POST",
               path: "/todos",
               handler: "CreateTodo",
@@ -70,7 +68,6 @@ describe("openapi target", () => {
           name: "pet",
           routes: [
             defineRoute({
-              id: "create",
               method: "POST",
               path: "/pets",
               handler: "CreatePet",
@@ -102,7 +99,6 @@ describe("openapi target", () => {
           name: "profile",
           routes: [
             defineRoute({
-              id: "update",
               method: "PUT",
               path: "/profile",
               handler: "UpdateProfile",
@@ -131,7 +127,6 @@ describe("openapi target", () => {
           name: "raw",
           routes: [
             defineRoute({
-              id: "store",
               method: "POST",
               path: "/raw",
               handler: "StoreRaw",
@@ -157,7 +152,6 @@ describe("openapi target", () => {
           name: "cart",
           routes: [
             defineRoute({
-              id: "add",
               method: "POST",
               path: "/cart",
               handler: "AddToCart",
@@ -183,7 +177,6 @@ describe("openapi target", () => {
           name: "ping",
           routes: [
             defineRoute({
-              id: "ping",
               method: "GET",
               path: "/ping",
               handler: "Ping",
@@ -211,7 +204,6 @@ describe("ts-client target", () => {
           name: "pet",
           routes: [
             defineRoute({
-              id: "getPet",
               method: "GET",
               path: "/pets/:id",
               handler: "GetPet",
@@ -238,7 +230,6 @@ describe("ts-client target", () => {
           name: "item",
           routes: [
             defineRoute({
-              id: "update",
               method: "PUT",
               path: "/items/:id",
               handler: "UpdateItem",
@@ -265,7 +256,6 @@ describe("ts-client target", () => {
           name: "health",
           routes: [
             defineRoute({
-              id: "ping",
               method: "GET",
               path: "/ping",
               handler: "Ping",
@@ -287,7 +277,6 @@ describe("ts-client target", () => {
           name: "search",
           routes: [
             defineRoute({
-              id: "find",
               method: "GET",
               path: "/search",
               handler: "FindItems",
@@ -314,7 +303,6 @@ describe("ts-client target", () => {
           name: "user",
           routes: [
             defineRoute({
-              id: "getById",
               method: "GET",
               path: "/users/:id",
               handler: "GetUserById",

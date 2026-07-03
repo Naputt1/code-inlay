@@ -21,12 +21,11 @@ import {
 describe("compiler", () => {
   it("generates deterministic clean architecture patches", async () => {
     const route = defineRoute({
-      id: "create",
       method: "POST",
       path: "/users",
       body: z.object({ name: z.string(), active: z.boolean().optional() }),
       response: z.object({ id: z.string() }),
-      handler: "CreateUser",
+      handler: "Create",
     });
     const input = { name: "Ada" };
 
@@ -134,11 +133,10 @@ describe("compiler", () => {
           name: "user",
           routes: [
             defineRoute({
-              id: "create",
               method: "POST",
               path: "/users",
               body: z.object({ name: z.string() }),
-              handler: "CreateUser",
+              handler: "Create",
             }),
           ],
         }),
@@ -162,8 +160,8 @@ describe("compiler", () => {
     ]);
     expect(handler).toContain("func Manual() {}");
     expect(handler).toContain("type UserHandler struct");
-    expect(handler).toContain("CreateUserUsecase CreateUserUsecase");
-    expect(handler).toContain("func (h *UserHandler) CreateUser(c *gin.Context)");
+    expect(handler).toContain("CreateUsecase CreateUsecase");
+    expect(handler).toContain("func (h *UserHandler) Create(c *gin.Context)");
   });
 
   it("uses ShouldBindQuery for GET routes with query schema", async () => {
@@ -175,12 +173,11 @@ describe("compiler", () => {
           name: "user",
           routes: [
             defineRoute({
-              id: "list",
               method: "GET",
               path: "/users",
               query: z.object({ page: z.number().optional(), limit: z.number().optional() }),
               response: z.object({ items: z.array(z.object({ id: z.string() })) }),
-              handler: "ListUsers",
+              handler: "List",
             }),
           ],
         }),
@@ -207,11 +204,10 @@ describe("compiler", () => {
           name: "user",
           routes: [
             defineRoute({
-              id: "remove",
               method: "DELETE",
               path: "/users/:id",
               query: z.object({ reason: z.string().optional() }),
-              handler: "RemoveUser",
+              handler: "Remove",
             }),
           ],
         }),
@@ -238,12 +234,11 @@ describe("compiler", () => {
           name: "user",
           routes: [
             defineRoute({
-              id: "create",
               method: "POST",
               path: "/users",
               body: z.object({ name: z.string() }),
               response: z.object({ id: z.string() }),
-              handler: "CreateUser",
+              handler: "Create",
             }),
           ],
         }),
@@ -270,11 +265,10 @@ describe("compiler", () => {
           name: "user",
           routes: [
             defineRoute({
-              id: "list",
               method: "GET",
               path: "/users",
               query: z.object({ page: z.number(), q: z.string().optional() }),
-              handler: "ListUsers",
+              handler: "List",
             }),
           ],
         }),
@@ -310,7 +304,6 @@ describe("compiler", () => {
           name: "user",
           routes: [
             defineRoute({
-              id: "create",
               method: "POST",
               path: "/users",
               body: z.object({
@@ -319,7 +312,7 @@ describe("compiler", () => {
                 codes: z.optional(z.nullable(z.array(z.string()))),
                 note: z.string().optional(),
               }),
-              handler: "CreateUser",
+              handler: "Create",
             }),
           ],
         }),
@@ -357,11 +350,10 @@ describe("compiler", () => {
           name: "user",
           routes: [
             defineRoute({
-              id: "create",
               method: "POST",
               path: "/users",
               body: z.object({ name: z.string().min(3).max(100) }),
-              handler: "CreateUser",
+              handler: "Create",
             }),
           ],
         }),
@@ -387,11 +379,10 @@ describe("compiler", () => {
           name: "user",
           routes: [
             defineRoute({
-              id: "create",
               method: "POST",
               path: "/users",
               body: z.object({ email: z.string().email() }),
-              handler: "CreateUser",
+              handler: "Create",
             }),
           ],
         }),
@@ -417,11 +408,10 @@ describe("compiler", () => {
           name: "user",
           routes: [
             defineRoute({
-              id: "create",
               method: "POST",
               path: "/users",
               body: z.object({ age: z.number().positive() }),
-              handler: "CreateUser",
+              handler: "Create",
             }),
           ],
         }),
@@ -447,11 +437,10 @@ describe("compiler", () => {
           name: "user",
           routes: [
             defineRoute({
-              id: "create",
               method: "POST",
               path: "/users",
               body: z.object({ role: z.enum(["admin", "user", "moderator"]) }),
-              handler: "CreateUser",
+              handler: "Create",
             }),
           ],
         }),
@@ -477,11 +466,10 @@ describe("compiler", () => {
           name: "user",
           routes: [
             defineRoute({
-              id: "create",
               method: "POST",
               path: "/users",
               body: z.object({ email: z.string().email().optional() }),
-              handler: "CreateUser",
+              handler: "Create",
             }),
           ],
         }),
@@ -508,11 +496,10 @@ describe("compiler", () => {
           name: "user",
           routes: [
             defineRoute({
-              id: "get",
               method: "GET",
               path: "/users/:id",
               response: z.object({ id: z.string(), name: z.string().min(3) }),
-              handler: "GetUser",
+              handler: "Get",
             }),
           ],
         }),
@@ -540,13 +527,12 @@ describe("compiler", () => {
           name: "user",
           routes: [
             defineRoute({
-              id: "create",
               method: "POST",
               path: "/users",
               query: z.object({ source: z.string().optional() }),
               body: z.object({ name: z.string() }),
               response: z.object({ id: z.string() }),
-              handler: "CreateUser",
+              handler: "Create",
             }),
           ],
         }),
@@ -582,12 +568,11 @@ describe("compiler", () => {
         defineModule({
           name: "user",
           routes: [
-            defineRoute({ id: "create", method: "POST", path: "/users", handler: "CreateUser" }),
+            defineRoute({ method: "POST", path: "/users", handler: "Create" }),
             defineRoute({
-              id: "delete",
               method: "DELETE",
               path: "/users/:id",
-              handler: "DeleteUser",
+              handler: "Delete",
             }),
           ],
         }),
@@ -611,20 +596,18 @@ describe("compiler", () => {
           defineModule({
             name: "staff",
             routes: [
-              defineRoute({ id: "list", method: "GET", path: "", handler: "ListStaff" }),
-              defineRoute({ id: "get", method: "GET", path: "/:id", handler: "GetStaff" }),
-              defineRoute({ id: "new", method: "POST", path: "/new", handler: "NewStaff" }),
+              defineRoute({ method: "GET", path: "", handler: "List" }),
+              defineRoute({ method: "GET", path: "/:id", handler: "Get" }),
+              defineRoute({ method: "POST", path: "/new", handler: "New" }),
               defineRoute({
-                id: "update",
                 method: "POST",
                 path: "/:id/update",
-                handler: "UpdateStaff",
+                handler: "Update",
               }),
               defineRoute({
-                id: "delete",
                 method: "POST",
                 path: "/:id/delete",
-                handler: "DeleteStaff",
+                handler: "Delete",
               }),
             ],
           }),
@@ -661,25 +644,22 @@ describe("compiler", () => {
           defineModule({
             name: "bus",
             routes: [
-              defineRoute({ id: "list", method: "GET", path: "", handler: "ListBus" }),
-              defineRoute({ id: "timeList", method: "GET", path: "/time", handler: "ListBusTime" }),
+              defineRoute({ method: "GET", path: "", handler: "List" }),
+              defineRoute({ method: "GET", path: "/time", handler: "ListTime" }),
               defineRoute({
-                id: "timeCreate",
                 method: "POST",
                 path: "/time",
-                handler: "CreateBusTime",
+                handler: "CreateTime",
               }),
               defineRoute({
-                id: "timeUpdate",
                 method: "POST",
                 path: "/time/:id/update",
-                handler: "UpdateBusTime",
+                handler: "UpdateTime",
               }),
               defineRoute({
-                id: "timeDelete",
                 method: "POST",
                 path: "/time/:id/delete",
-                handler: "DeleteBusTime",
+                handler: "DeleteTime",
               }),
             ],
           }),
@@ -697,12 +677,9 @@ describe("compiler", () => {
       const content = repoRegion!.content;
       expect(content).toContain("type BusRepository interface");
       expect(content).toContain("FindAll(ctx context.Context) ([]Bus, error)");
-      expect(content).toContain("FindAllTime(ctx context.Context) ([]BusTime, error)");
-      expect(content).toContain("CreateTime(ctx context.Context, entity BusTime) (BusTime, error)");
-      expect(content).toContain(
-        "UpdateTime(ctx context.Context, id BusID, entity BusTime) (BusTime, error)",
-      );
-      expect(content).toContain("DeleteTime(ctx context.Context, id BusID) error");
+      expect(content).toContain("Create(ctx context.Context, entity Bus) (Bus, error)");
+      expect(content).toContain("Update(ctx context.Context, id BusID, entity Bus) (Bus, error)");
+      expect(content).toContain("Delete(ctx context.Context, id BusID) error");
       expect(content).not.toContain("busRepositoryImpl");
     });
 
@@ -714,8 +691,8 @@ describe("compiler", () => {
           defineModule({
             name: "item",
             routes: [
-              defineRoute({ id: "list", method: "GET", path: "", handler: "ListItem" }),
-              defineRoute({ id: "listAll", method: "GET", path: "/all", handler: "ListItem" }),
+              defineRoute({ method: "GET", path: "", handler: "List" }),
+              defineRoute({ method: "GET", path: "/all", handler: "ListAll" }),
             ],
           }),
         ],
@@ -746,8 +723,8 @@ describe("compiler", () => {
           defineModule({
             name: "auth",
             routes: [
-              defineRoute({ id: "login", method: "POST", path: "/login", handler: "Login" }),
-              defineRoute({ id: "logout", method: "POST", path: "/logout", handler: "Logout" }),
+              defineRoute({ method: "POST", path: "/login", handler: "Login" }),
+              defineRoute({ method: "POST", path: "/logout", handler: "Logout" }),
             ],
           }),
         ],
@@ -800,13 +777,12 @@ describe("compiler", () => {
             name: "ticket",
             services: ["db", "mygorm"],
             routes: [
-              defineRoute({ id: "list", method: "GET", path: "", handler: "ListTicket" }),
-              defineRoute({ id: "get", method: "GET", path: "/:id", handler: "GetTicket" }),
+              defineRoute({ method: "GET", path: "", handler: "List" }),
+              defineRoute({ method: "GET", path: "/:id", handler: "Get" }),
               defineRoute({
-                id: "create",
                 method: "POST",
                 path: "/create",
-                handler: "CreateTicket",
+                handler: "Create",
               }),
             ],
           }),
@@ -867,7 +843,7 @@ describe("compiler", () => {
           defineModule({
             name: "ticket",
             services: ["db"],
-            routes: [defineRoute({ id: "list", method: "GET", path: "", handler: "ListTicket" })],
+            routes: [defineRoute({ method: "GET", path: "", handler: "List" })],
           }),
         ],
       });
@@ -911,12 +887,11 @@ describe("compiler", () => {
           services: ["mygorm"],
           routes: [
             defineRoute({
-              id: "create",
               method: "POST",
               path: "/users",
               body: z.object({ name: z.string() }),
               response: z.object({ id: z.string() }),
-              handler: "CreateUser",
+              handler: "Create",
             }),
           ],
         }),
@@ -939,10 +914,10 @@ describe("compiler", () => {
     expect(ctorRegion).toBeDefined();
     expect(execRegion).toBeDefined();
 
-    expect(structRegion!.content).toContain("type createUserUsecaseImpl struct");
+    expect(structRegion!.content).toContain("type createUsecaseImpl struct");
     expect(structRegion!.content).toContain("repo UserRepository");
     expect(ctorRegion!.signature).toBe(
-      "func NewCreateUserUsecase(repo UserRepository) *createUserUsecaseImpl",
+      "func NewCreateUsecase(repo UserRepository) *createUsecaseImpl",
     );
     expect(execRegion!.content).toContain("created, err := uc.repo.Create(ctx, entity)");
     expect(execRegion!.content).toContain("return resp, nil");
@@ -971,7 +946,6 @@ describe("compiler", () => {
           services: ["mygorm"],
           routes: [
             defineRoute({
-              id: "login",
               method: "POST",
               path: "/login",
               handler: "Login",
@@ -1014,7 +988,6 @@ describe("compiler", () => {
           name: "auth",
           routes: [
             defineRoute({
-              id: "login",
               method: "POST",
               path: "/login",
               handler: "Login",
@@ -1061,11 +1034,10 @@ describe("compiler", () => {
           name: "user",
           routes: [
             defineRoute({
-              id: "create",
               method: "POST",
               path: "/users",
               body: z.object({ name: z.string() }),
-              handler: "CreateUser",
+              handler: "Create",
             }),
           ],
         }),
@@ -1084,12 +1056,11 @@ describe("compiler", () => {
 
   it("handles concurrent compile calls without error", async () => {
     const route = defineRoute({
-      id: "create",
       method: "POST",
       path: "/users",
       body: z.object({ name: z.string() }),
       response: z.object({ id: z.string() }),
-      handler: "CreateUser",
+      handler: "Create",
     });
 
     const app = defineApp({
@@ -1114,10 +1085,9 @@ describe("compiler", () => {
 
   it("merges runtime code generation into output files", async () => {
     const route = defineRoute({
-      id: "create",
       method: "POST",
       path: "/users",
-      handler: "CreateUser",
+      handler: "Create",
     });
 
     const app = defineApp({
@@ -1138,10 +1108,9 @@ describe("compiler", () => {
 describe("multi-architecture", () => {
   it("composes layers from multiple architectures in append mode", async () => {
     const route = defineRoute({
-      id: "create",
       method: "POST",
       path: "/users",
-      handler: "CreateUser",
+      handler: "Create",
     });
 
     const app = defineApp({
@@ -1169,10 +1138,9 @@ describe("multi-architecture", () => {
 
   it("detects duplicate symbols across architectures", async () => {
     const route = defineRoute({
-      id: "create",
       method: "POST",
       path: "/users",
-      handler: "CreateUser",
+      handler: "Create",
     });
 
     const app = defineApp({
@@ -1195,10 +1163,9 @@ describe("multi-architecture", () => {
 describe("multi-adapter", () => {
   it("handles multiple adapters per route", async () => {
     const route = defineRoute({
-      id: "get",
       method: "GET",
       path: "/users/:id",
-      handler: "GetUser",
+      handler: "Get",
     });
 
     const app = defineApp({
@@ -1218,10 +1185,9 @@ describe("multi-adapter", () => {
 describe("pipeline integration", () => {
   it("runs full pipeline without errors", async () => {
     const route = defineRoute({
-      id: "list",
       method: "GET",
       path: "/items",
-      handler: "ListItems",
+      handler: "List",
     });
 
     const app = defineApp({
@@ -1238,10 +1204,9 @@ describe("pipeline integration", () => {
 
   it("generates deterministic output across runs", async () => {
     const route = defineRoute({
-      id: "get",
       method: "GET",
       path: "/items/:id",
-      handler: "GetItem",
+      handler: "Get",
     });
 
     const app = defineApp({
@@ -1311,12 +1276,11 @@ describe("responseFormat", () => {
       wrapper: z.object({ result: z.entity() }),
     });
     const route = defineRoute({
-      id: "get",
       method: "GET",
       path: "/users/:id",
       response: z.object({ id: z.string(), name: z.string() }),
       responseFormat: rf,
-      handler: "GetUser",
+      handler: "Get",
     });
     const app = defineApp({
       architecture: "clean",
@@ -1342,11 +1306,10 @@ describe("responseFormat", () => {
       wrapper: z.object({ data: z.entity() }),
     });
     const route = defineRoute({
-      id: "get",
       method: "GET",
       path: "/users/:id",
       responseFormat: rf,
-      handler: "GetUser",
+      handler: "Get",
     });
     const app = defineApp({
       architecture: "clean",
@@ -1378,12 +1341,11 @@ describe("responseFormat", () => {
       wrapper: z.object({ data: z.string() }),
     });
     const route = defineRoute({
-      id: "get",
       method: "GET",
       path: "/users/:id",
       response: z.object({ id: z.string() }),
       responseFormat: rf,
-      handler: "GetUser",
+      handler: "Get",
     });
     const app = defineApp({
       architecture: "clean",
@@ -1400,11 +1362,10 @@ describe("responseFormat", () => {
       wrapper: z.object({ data: z.entity() }),
     });
     const route = defineRoute({
-      id: "get",
       method: "GET",
       path: "/users/:id",
       response: z.object({ id: z.string() }),
-      handler: "GetUser",
+      handler: "Get",
     });
     const app = defineApp({
       architecture: "clean",
@@ -1437,12 +1398,11 @@ describe("responseFormat", () => {
       wrapper: z.object({ routeWrap: z.entity() }),
     });
     const route = defineRoute({
-      id: "get",
       method: "GET",
       path: "/users/:id",
       response: z.object({ id: z.string() }),
       responseFormat: routeRf,
-      handler: "GetUser",
+      handler: "Get",
     });
     const app = defineApp({
       architecture: "clean",
@@ -1471,12 +1431,11 @@ describe("responseFormat", () => {
       wrapper: z.object({ data: z.entity() }),
     });
     const route = defineRoute({
-      id: "get",
       method: "GET",
       path: "/users/:id",
       response: z.object({ id: z.string(), name: z.string() }),
       responseFormat: rf,
-      handler: "GetUser",
+      handler: "Get",
     });
     const app = defineApp({
       architecture: "clean",
@@ -1500,12 +1459,11 @@ describe("responseFormat", () => {
       wrapper: z.object({ result: z.entity() }),
     });
     const route = defineRoute({
-      id: "get",
       method: "GET",
       path: "/users/:id",
       response: z.object({ id: z.string(), name: z.string() }),
       responseFormat: rf,
-      handler: "GetUser",
+      handler: "Get",
     });
     const app = defineApp({
       architecture: "clean",
@@ -1535,12 +1493,11 @@ describe("responseFormat", () => {
       wrapper: z.object({ result: z.entity() }),
     });
     const route = defineRoute({
-      id: "get",
       method: "GET",
       path: "/users/:id",
       response: z.object({ id: z.string(), name: z.string() }),
       responseFormat: rf,
-      handler: "GetUser",
+      handler: "Get",
     });
     const app = defineApp({
       architecture: "clean",
@@ -1563,11 +1520,10 @@ describe("responseFormat", () => {
       wrapper: z.object({ appData: z.entity() }),
     });
     const route = defineRoute({
-      id: "list",
       method: "GET",
       path: "/items",
       response: z.object({ title: z.string() }),
-      handler: "ListItems",
+      handler: "List",
     });
     const app = defineApp({
       architecture: "clean",

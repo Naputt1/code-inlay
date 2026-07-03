@@ -105,7 +105,7 @@ describe("buildAst validation", () => {
     expect(diagnostics.some((d) => d.code === "invalid-module-name")).toBe(true);
   });
 
-  it("adds diagnostic for invalid route id", () => {
+  it("does not add diagnostic for valid auto-derived route id", () => {
     const app = defineApp({
       architecture: "clean",
       modules: [
@@ -113,7 +113,6 @@ describe("buildAst validation", () => {
           name: "user",
           routes: [
             defineRoute({
-              id: "bad id!",
               method: "GET",
               path: "/users",
               handler: "GetUsers",
@@ -124,7 +123,7 @@ describe("buildAst validation", () => {
     });
     const diagnostics: Diagnostic[] = [];
     buildAst(app, diagnostics);
-    expect(diagnostics.some((d) => d.code === "invalid-route-id")).toBe(true);
+    expect(diagnostics.some((d) => d.code === "invalid-route-id")).toBe(false);
   });
 
   it("resolves adapter selection from route adapters field", () => {
@@ -136,7 +135,6 @@ describe("buildAst validation", () => {
           adapters: { mode: "replace", refs: ["gin"] },
           routes: [
             defineRoute({
-              id: "list",
               method: "GET",
               path: "/users",
               handler: "ListUsers",
@@ -156,11 +154,11 @@ describe("buildAst validation", () => {
       modules: [
         defineModule({
           name: "user",
-          routes: [defineRoute({ id: "get", method: "GET", path: "/users", handler: "GetUsers" })],
+          routes: [defineRoute({ method: "GET", path: "/users", handler: "GetUsers" })],
         }),
         defineModule({
           name: "admin",
-          routes: [defineRoute({ id: "get", method: "GET", path: "/admin", handler: "GetAdmin" })],
+          routes: [defineRoute({ method: "GET", path: "/admin", handler: "GetAdmin" })],
         }),
       ],
     });
@@ -176,8 +174,8 @@ describe("buildAst validation", () => {
         defineModule({
           name: "user",
           routes: [
-            defineRoute({ id: "list", method: "GET", path: "/users", handler: "ListUsers" }),
-            defineRoute({ id: "list", method: "GET", path: "/users2", handler: "ListUsers2" }),
+            defineRoute({ method: "GET", path: "/users", handler: "ListUsers" }),
+            defineRoute({ method: "GET", path: "/users2", handler: "ListUsers" }),
           ],
         }),
       ],
@@ -196,7 +194,6 @@ describe("buildAst validation", () => {
           responseFormat: { kind: "ResponseFormat", wrapper: z.object({ data: z.string() }) },
           routes: [
             defineRoute({
-              id: "list",
               method: "GET",
               path: "/users",
               handler: "ListUsers",
@@ -219,7 +216,6 @@ describe("buildAst validation", () => {
           routes: [
             {
               kind: "RouteDefinition",
-              id: "getBad",
               method: "GET",
               path: "/users",
               handler: "GetUser",

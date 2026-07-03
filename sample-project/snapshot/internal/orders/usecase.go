@@ -6,22 +6,22 @@ import (
 )
 
 type AdminListAllOrdersUsecase interface {
-	Execute(ctx context.Context, input AdminListAllOrdersRequest) (AdminListAllOrdersResponse, error)
+	Execute(ctx context.Context, input AdminListAllOrdersOrdersRequest) (AdminListAllOrdersOrdersResponse, error)
 }
 
-type CancelOrderUsecase interface {
+type CancelUsecase interface {
 	Execute(ctx context.Context, input CancelOrdersRequest) (CancelOrdersResponse, error)
 }
 
-type CreateOrderUsecase interface {
+type CreateUsecase interface {
 	Execute(ctx context.Context, entity Orders) (CreateOrdersResponse, error)
 }
 
-type GetOrderUsecase interface {
+type GetUsecase interface {
 	Execute(ctx context.Context, id OrdersID) (GetOrdersResponse, error)
 }
 
-type ListOrdersUsecase interface {
+type ListUsecase interface {
 	Execute(ctx context.Context, input ListOrdersRequest) (ListOrdersResponse, error)
 }
 
@@ -30,22 +30,22 @@ type adminListAllOrdersUsecaseImpl struct {
 	redisSvc service.RedisService
 }
 
-type cancelOrderUsecaseImpl struct {
+type cancelUsecaseImpl struct {
 	repo     OrdersRepository
 	redisSvc service.RedisService
 }
 
-type createOrderUsecaseImpl struct {
+type createUsecaseImpl struct {
 	repo     OrdersRepository
 	redisSvc service.RedisService
 }
 
-type getOrderUsecaseImpl struct {
+type getUsecaseImpl struct {
 	repo     OrdersRepository
 	redisSvc service.RedisService
 }
 
-type listOrdersUsecaseImpl struct {
+type listUsecaseImpl struct {
 	repo     OrdersRepository
 	redisSvc service.RedisService
 }
@@ -57,71 +57,71 @@ func NewAdminListAllOrdersUsecase(repo OrdersRepository, redisSvc service.RedisS
 	}
 }
 
-func (uc *adminListAllOrdersUsecaseImpl) Execute(ctx context.Context, input AdminListAllOrdersRequest) (AdminListAllOrdersResponse, error) {
+func (uc *adminListAllOrdersUsecaseImpl) Execute(ctx context.Context, input AdminListAllOrdersOrdersRequest) (AdminListAllOrdersOrdersResponse, error) {
 	// TODO: implement AdminListAllOrdersUsecase
-	return AdminListAllOrdersResponse{}, nil
+	return AdminListAllOrdersOrdersResponse{}, nil
 }
 
-func NewCancelOrderUsecase(repo OrdersRepository, redisSvc service.RedisService) *cancelOrderUsecaseImpl {
-	return &cancelOrderUsecaseImpl{
+func NewCancelUsecase(repo OrdersRepository, redisSvc service.RedisService) *cancelUsecaseImpl {
+	return &cancelUsecaseImpl{
 		repo:     repo,
 		redisSvc: redisSvc,
 	}
 }
 
-func (uc *cancelOrderUsecaseImpl) Execute(ctx context.Context, input CancelOrdersRequest) (CancelOrdersResponse, error) {
-	// TODO: implement CancelOrderUsecase
+func (uc *cancelUsecaseImpl) Execute(ctx context.Context, input CancelOrdersRequest) (CancelOrdersResponse, error) {
+	// TODO: implement CancelUsecase
 	return CancelOrdersResponse{}, nil
 }
 
-func NewCreateOrderUsecase(repo OrdersRepository, redisSvc service.RedisService) *createOrderUsecaseImpl {
-	return &createOrderUsecaseImpl{
+func NewCreateUsecase(repo OrdersRepository, redisSvc service.RedisService) *createUsecaseImpl {
+	return &createUsecaseImpl{
 		repo:     repo,
 		redisSvc: redisSvc,
 	}
 }
 
-func (uc *createOrderUsecaseImpl) Execute(ctx context.Context, entity Orders) (CreateOrdersResponse, error) {
+func (uc *createUsecaseImpl) Execute(ctx context.Context, entity Orders) (CreateOrdersResponse, error) {
 	created, err := uc.repo.Create(ctx, entity)
 	if err != nil {
 		return CreateOrdersResponse{}, err
 	}
-	// @gen:start 45022a1a
+	// @gen:start ed69ff53
 	// TODO: map created to CreateOrdersResponse
 	_ = created
 	var resp CreateOrdersResponse
-	// @gen:end 45022a1a
+	// @gen:end ed69ff53
 	return resp, nil
 }
 
-func NewGetOrderUsecase(repo OrdersRepository, redisSvc service.RedisService) *getOrderUsecaseImpl {
-	return &getOrderUsecaseImpl{
+func NewGetUsecase(repo OrdersRepository, redisSvc service.RedisService) *getUsecaseImpl {
+	return &getUsecaseImpl{
 		repo:     repo,
 		redisSvc: redisSvc,
 	}
 }
 
-func (uc *getOrderUsecaseImpl) Execute(ctx context.Context, id OrdersID) (GetOrdersResponse, error) {
+func (uc *getUsecaseImpl) Execute(ctx context.Context, id OrdersID) (GetOrdersResponse, error) {
 	result, err := uc.repo.FindByID(ctx, id)
 	if err != nil {
 		return GetOrdersResponse{}, err
 	}
-	// @gen:start 8017b89c
+	// @gen:start d4b7abc4
 	// TODO: map result to GetOrdersResponse
 	_ = result
 	var resp GetOrdersResponse
-	// @gen:end 8017b89c
+	// @gen:end d4b7abc4
 	return resp, nil
 }
 
-func NewListOrdersUsecase(repo OrdersRepository, redisSvc service.RedisService) *listOrdersUsecaseImpl {
-	return &listOrdersUsecaseImpl{
+func NewListUsecase(repo OrdersRepository, redisSvc service.RedisService) *listUsecaseImpl {
+	return &listUsecaseImpl{
 		repo:     repo,
 		redisSvc: redisSvc,
 	}
 }
 
-func (uc *listOrdersUsecaseImpl) Execute(ctx context.Context, input ListOrdersRequest) (ListOrdersResponse, error) {
-	// TODO: implement ListOrdersUsecase
+func (uc *listUsecaseImpl) Execute(ctx context.Context, input ListOrdersRequest) (ListOrdersResponse, error) {
+	// TODO: implement ListUsecase
 	return ListOrdersResponse{}, nil
 }

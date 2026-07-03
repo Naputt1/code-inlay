@@ -11,7 +11,6 @@ describe("middleware file generation", () => {
           name: "api",
           routes: [
             defineRoute({
-              id: "list",
               method: "GET",
               path: "/items",
               handler: "ListItems",
@@ -38,7 +37,6 @@ describe("middleware file generation", () => {
           name: "process",
           routes: [
             defineRoute({
-              id: "run",
               method: "POST",
               path: "/process",
               handler: "ProcessItem",
@@ -61,7 +59,6 @@ describe("middleware file generation", () => {
           middleware: [defineMiddleware({ name: "ratelimit" })],
           routes: [
             defineRoute({
-              id: "list",
               method: "GET",
               path: "/items",
               handler: "ListItems",

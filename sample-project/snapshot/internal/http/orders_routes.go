@@ -19,19 +19,19 @@ func registerOrdersRoutes(api *gin.RouterGroup, mygormSvc service.MygormService,
 	ordersRepo := orders.NewOrdersRepository(mygormSvc.DB())
 
 	ordersHandler := &orders.OrdersHandler{
-		CreateOrderUsecase:        orders.NewCreateOrderUsecase(ordersRepo, redisSvc),
-		ListOrdersUsecase:         orders.NewListOrdersUsecase(ordersRepo, redisSvc),
-		GetOrderUsecase:           orders.NewGetOrderUsecase(ordersRepo, redisSvc),
-		CancelOrderUsecase:        orders.NewCancelOrderUsecase(ordersRepo, redisSvc),
+		CreateUsecase:             orders.NewCreateUsecase(ordersRepo, redisSvc),
+		ListUsecase:               orders.NewListUsecase(ordersRepo, redisSvc),
+		GetUsecase:                orders.NewGetUsecase(ordersRepo, redisSvc),
+		CancelUsecase:             orders.NewCancelUsecase(ordersRepo, redisSvc),
 		AdminListAllOrdersUsecase: orders.NewAdminListAllOrdersUsecase(ordersRepo, redisSvc),
 	}
 
 	orders := api.Group("/orders", middleware.AdminAuth, middleware.JwtAuth)
 	{
-		orders.POST("", ordersHandler.CreateOrder)
-		orders.GET("", ordersHandler.ListOrders)
-		orders.GET("/:id", ordersHandler.GetOrder)
-		orders.POST("/:id/cancel", ordersHandler.CancelOrder)
+		orders.POST("", ordersHandler.Create)
+		orders.GET("", ordersHandler.List)
+		orders.GET("/:id", ordersHandler.Get)
+		orders.POST("/:id/cancel", ordersHandler.Cancel)
 		orders.GET("/admin/all", ordersHandler.AdminListAllOrders)
 	}
 }

@@ -205,7 +205,6 @@ export type RouteDefinition<
   TResponse extends SchemaLike | undefined = undefined,
 > = {
   kind: "RouteDefinition";
-  id: string;
   method: HttpMethod;
   path: string;
   architecture?: ArchitectureRef | ArchitectureRef[] | ArchitectureSelection;

@@ -57,7 +57,6 @@ describe("defineRouteGroup", () => {
       prefix: "/api",
       routes: [
         defineRoute({
-          id: "list",
           method: "GET",
           path: "/items",
           handler: "ListItems",
@@ -73,7 +72,6 @@ describe("defineRouteGroup", () => {
       middleware: [{ name: "auth", kind: "MiddlewareDefinition", handler: "AuthMiddleware" }],
       routes: [
         defineRoute({
-          id: "delete",
           method: "DELETE",
           path: "/users/:id",
           handler: "DeleteUser",
@@ -91,7 +89,6 @@ describe("defineRouteGroup", () => {
       prefix: "",
       routes: [
         defineRoute({
-          id: "list",
           method: "GET",
           path: "/items",
           handler: "ListItems",

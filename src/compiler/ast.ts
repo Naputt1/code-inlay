@@ -174,10 +174,11 @@ export function buildAst(app: AppDefinition, diagnostics: Diagnostic[]): AppAst 
           );
           const routeErrors = mergeErrors(moduleErrors, route.errors ?? []);
 
+          const routeId = route.handler.charAt(0).toLowerCase() + route.handler.slice(1);
           return {
             kind: "Route",
-            id: route.id,
-            stableId: nodeStableId(`module:${module.name}:route:${route.id}`),
+            id: routeId,
+            stableId: nodeStableId(`module:${module.name}:route:${routeId}`),
             annotations: {},
             pluginData: {},
             moduleName: module.name,
@@ -195,7 +196,7 @@ export function buildAst(app: AppDefinition, diagnostics: Diagnostic[]): AppAst 
             body: route.body,
             response: route.response,
             middleware: route.middleware.map((middleware) =>
-              toMiddlewareAst(middleware, `module:${module.name}:route:${route.id}`),
+              toMiddlewareAst(middleware, `module:${module.name}:route:${routeId}`),
             ),
             usecaseGroup: route.usecaseGroup,
             metadata: route.metadata,

@@ -19,13 +19,11 @@ describe("renderGraph", () => {
           name: "user",
           routes: [
             defineRoute({
-              id: "list",
               method: "GET",
               path: "/users",
               handler: "ListUsers",
             }),
             defineRoute({
-              id: "create",
               method: "POST",
               path: "/users",
               handler: "CreateUser",
@@ -82,7 +80,6 @@ describe("renderGraph", () => {
           name: "user",
           routes: [
             defineRoute({
-              id: "list",
               method: "GET",
               path: "/users",
               handler: "ListUsers",

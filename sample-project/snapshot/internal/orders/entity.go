@@ -1,16 +1,16 @@
 package orders
 
-type AdminListAllOrdersRequest struct {
+type AdminListAllOrdersOrdersRequest struct {
 	Page     *int32 `json:"page,omitempty" form:"page"`
 	PageSize *int32 `json:"pageSize,omitempty" form:"pageSize"`
 }
 
-type AdminListAllOrdersResponse struct {
-	Result  []AdminListAllOrdersResponseResultItem `json:"result"`
-	Success bool                                   `json:"success"`
+type AdminListAllOrdersOrdersResponse struct {
+	Result  []AdminListAllOrdersOrdersResponseResultItem `json:"result"`
+	Success bool                                         `json:"success"`
 }
 
-type AdminListAllOrdersResponseResultItem struct {
+type AdminListAllOrdersOrdersResponseResultItem struct {
 	Id         string  `json:"id"`
 	Status     string  `json:"status"`
 	TotalPrice float64 `json:"totalPrice"`

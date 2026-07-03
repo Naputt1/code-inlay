@@ -50,17 +50,17 @@ export interface RegisterAuthResponse {
   };
 }
 
-export interface AdminListAllOrdersQuery {
+export interface AdminListAllOrdersOrdersQuery {
   page?: unknown | undefined;
   pageSize?: unknown | undefined;
 }
 
-export interface AdminListAllOrdersRequest {
+export interface AdminListAllOrdersOrdersRequest {
   page?: unknown | undefined;
   pageSize?: unknown | undefined;
 }
 
-export interface AdminListAllOrdersResponse {
+export interface AdminListAllOrdersOrdersResponse {
   success: boolean;
   result: {
     id: string;

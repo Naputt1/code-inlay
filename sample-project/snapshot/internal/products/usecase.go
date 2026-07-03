@@ -4,123 +4,123 @@ import (
 	"context"
 )
 
-type CreateProductUsecase interface {
+type CreateUsecase interface {
 	Execute(ctx context.Context, entity Products) (CreateProductsResponse, error)
 }
 
-type GetProductUsecase interface {
+type GetUsecase interface {
 	Execute(ctx context.Context, id ProductsID) (GetProductsResponse, error)
 }
 
-type ListProductsUsecase interface {
+type ListUsecase interface {
 	Execute(ctx context.Context, input ListProductsRequest) (ListProductsResponse, error)
 }
 
-type RemoveProductUsecase interface {
+type RemoveUsecase interface {
 	Execute(ctx context.Context, id ProductsID) (RemoveProductsResponse, error)
 }
 
-type UpdateProductUsecase interface {
+type UpdateUsecase interface {
 	Execute(ctx context.Context, id ProductsID, entity Products) (UpdateProductsResponse, error)
 }
 
-type createProductUsecaseImpl struct {
+type createUsecaseImpl struct {
 	repo ProductsRepository
 }
 
-type getProductUsecaseImpl struct {
+type getUsecaseImpl struct {
 	repo ProductsRepository
 }
 
-type listProductsUsecaseImpl struct {
+type listUsecaseImpl struct {
 	repo ProductsRepository
 }
 
-type removeProductUsecaseImpl struct {
+type removeUsecaseImpl struct {
 	repo ProductsRepository
 }
 
-type updateProductUsecaseImpl struct {
+type updateUsecaseImpl struct {
 	repo ProductsRepository
 }
 
-func NewCreateProductUsecase(repo ProductsRepository) *createProductUsecaseImpl {
-	return &createProductUsecaseImpl{
+func NewCreateUsecase(repo ProductsRepository) *createUsecaseImpl {
+	return &createUsecaseImpl{
 		repo: repo,
 	}
 }
 
-func (uc *createProductUsecaseImpl) Execute(ctx context.Context, entity Products) (CreateProductsResponse, error) {
+func (uc *createUsecaseImpl) Execute(ctx context.Context, entity Products) (CreateProductsResponse, error) {
 	created, err := uc.repo.Create(ctx, entity)
 	if err != nil {
 		return CreateProductsResponse{}, err
 	}
-	// @gen:start e33c9189
+	// @gen:start 0a953e62
 	// TODO: map created to CreateProductsResponse
 	_ = created
 	var resp CreateProductsResponse
-	// @gen:end e33c9189
+	// @gen:end 0a953e62
 	return resp, nil
 }
 
-func NewGetProductUsecase(repo ProductsRepository) *getProductUsecaseImpl {
-	return &getProductUsecaseImpl{
+func NewGetUsecase(repo ProductsRepository) *getUsecaseImpl {
+	return &getUsecaseImpl{
 		repo: repo,
 	}
 }
 
-func (uc *getProductUsecaseImpl) Execute(ctx context.Context, id ProductsID) (GetProductsResponse, error) {
+func (uc *getUsecaseImpl) Execute(ctx context.Context, id ProductsID) (GetProductsResponse, error) {
 	result, err := uc.repo.FindByID(ctx, id)
 	if err != nil {
 		return GetProductsResponse{}, err
 	}
-	// @gen:start 42f4f774
+	// @gen:start 7699992e
 	// TODO: map result to GetProductsResponse
 	_ = result
 	var resp GetProductsResponse
-	// @gen:end 42f4f774
+	// @gen:end 7699992e
 	return resp, nil
 }
 
-func NewListProductsUsecase(repo ProductsRepository) *listProductsUsecaseImpl {
-	return &listProductsUsecaseImpl{
+func NewListUsecase(repo ProductsRepository) *listUsecaseImpl {
+	return &listUsecaseImpl{
 		repo: repo,
 	}
 }
 
-func (uc *listProductsUsecaseImpl) Execute(ctx context.Context, input ListProductsRequest) (ListProductsResponse, error) {
-	// TODO: implement ListProductsUsecase
+func (uc *listUsecaseImpl) Execute(ctx context.Context, input ListProductsRequest) (ListProductsResponse, error) {
+	// TODO: implement ListUsecase
 	return ListProductsResponse{}, nil
 }
 
-func NewRemoveProductUsecase(repo ProductsRepository) *removeProductUsecaseImpl {
-	return &removeProductUsecaseImpl{
+func NewRemoveUsecase(repo ProductsRepository) *removeUsecaseImpl {
+	return &removeUsecaseImpl{
 		repo: repo,
 	}
 }
 
-func (uc *removeProductUsecaseImpl) Execute(ctx context.Context, id ProductsID) (RemoveProductsResponse, error) {
+func (uc *removeUsecaseImpl) Execute(ctx context.Context, id ProductsID) (RemoveProductsResponse, error) {
 	if err := uc.repo.Delete(ctx, id); err != nil {
 		return RemoveProductsResponse{}, err
 	}
 	return RemoveProductsResponse{}, nil
 }
 
-func NewUpdateProductUsecase(repo ProductsRepository) *updateProductUsecaseImpl {
-	return &updateProductUsecaseImpl{
+func NewUpdateUsecase(repo ProductsRepository) *updateUsecaseImpl {
+	return &updateUsecaseImpl{
 		repo: repo,
 	}
 }
 
-func (uc *updateProductUsecaseImpl) Execute(ctx context.Context, id ProductsID, entity Products) (UpdateProductsResponse, error) {
+func (uc *updateUsecaseImpl) Execute(ctx context.Context, id ProductsID, entity Products) (UpdateProductsResponse, error) {
 	updated, err := uc.repo.Update(ctx, id, entity)
 	if err != nil {
 		return UpdateProductsResponse{}, err
 	}
-	// @gen:start a8b14139
+	// @gen:start cd6f32b2
 	// TODO: map updated to UpdateProductsResponse
 	_ = updated
 	var resp UpdateProductsResponse
-	// @gen:end a8b14139
+	// @gen:end cd6f32b2
 	return resp, nil
 }

@@ -16,19 +16,19 @@ func registerProductsRoutes(api *gin.RouterGroup, mygormSvc service.MygormServic
 	productsRepo := products.NewProductsRepository(mygormSvc.DB())
 
 	productsHandler := &products.ProductsHandler{
-		CreateProductUsecase: products.NewCreateProductUsecase(productsRepo),
-		ListProductsUsecase:  products.NewListProductsUsecase(productsRepo),
-		GetProductUsecase:    products.NewGetProductUsecase(productsRepo),
-		UpdateProductUsecase: products.NewUpdateProductUsecase(productsRepo),
-		RemoveProductUsecase: products.NewRemoveProductUsecase(productsRepo),
+		CreateUsecase: products.NewCreateUsecase(productsRepo),
+		ListUsecase:   products.NewListUsecase(productsRepo),
+		GetUsecase:    products.NewGetUsecase(productsRepo),
+		UpdateUsecase: products.NewUpdateUsecase(productsRepo),
+		RemoveUsecase: products.NewRemoveUsecase(productsRepo),
 	}
 
 	products := api.Group("/products", middleware.JwtAuth)
 	{
-		products.POST("", productsHandler.CreateProduct)
-		products.GET("", productsHandler.ListProducts)
-		products.GET("/:id", productsHandler.GetProduct)
-		products.PUT("/:id", productsHandler.UpdateProduct)
-		products.DELETE("/:id", productsHandler.RemoveProduct)
+		products.POST("", productsHandler.Create)
+		products.GET("", productsHandler.List)
+		products.GET("/:id", productsHandler.Get)
+		products.PUT("/:id", productsHandler.Update)
+		products.DELETE("/:id", productsHandler.Remove)
 	}
 }
