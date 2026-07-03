@@ -1,4 +1,4 @@
-import { execSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import type { PluginPackage } from "../types/index.js";
@@ -40,15 +40,12 @@ async function pluginAdd(args: string[], cwd: string): Promise<void> {
 
   console.log(`Installing plugin: ${packageName}...`);
 
-  try {
-    execSync(`npm install ${packageName}`, { cwd, stdio: "pipe" });
-  } catch {
-    try {
-      execSync(`pnpm add ${packageName}`, { cwd, stdio: "pipe" });
-    } catch {
-      try {
-        execSync(`yarn add ${packageName}`, { cwd, stdio: "pipe" });
-      } catch {
+  let result = spawnSync("npm", ["install", packageName], { cwd, stdio: "pipe" });
+  if (result.status !== 0) {
+    result = spawnSync("pnpm", ["add", packageName], { cwd, stdio: "pipe" });
+    if (result.status !== 0) {
+      result = spawnSync("yarn", ["add", packageName], { cwd, stdio: "pipe" });
+      if (result.status !== 0) {
         console.error(`Failed to install "${packageName}". Ensure npm/pnpm/yarn is available.`);
         process.exitCode = 1;
         return;
@@ -99,14 +96,9 @@ async function pluginRemove(args: string[], cwd: string): Promise<void> {
     return;
   }
 
-  try {
-    execSync(`npm uninstall ${packageName}`, { cwd, stdio: "pipe" });
-  } catch {
-    try {
-      execSync(`pnpm remove ${packageName}`, { cwd, stdio: "pipe" });
-    } catch {
-      // ignore uninstall errors
-    }
+  const result = spawnSync("npm", ["uninstall", packageName], { cwd, stdio: "pipe" });
+  if (result.status !== 0) {
+    spawnSync("pnpm", ["remove", packageName], { cwd, stdio: "pipe" });
   }
 
   const existing = readPluginLock(cwd) ?? [];
@@ -159,11 +151,7 @@ async function pluginUpdate(cwd: string): Promise<void> {
 
   for (const plugin of existing) {
     console.log(`Checking ${plugin.name}...`);
-    try {
-      execSync(`npm update ${plugin.name}`, { cwd, stdio: "pipe" });
-    } catch {
-      // ignore
-    }
+    spawnSync("npm", ["update", plugin.name], { cwd, stdio: "pipe" });
 
     const diagnostics: Array<{ level: string; code: string; message: string }> = [];
     const manifest = resolvePluginPackage(plugin.name, cwd, diagnostics as never);
