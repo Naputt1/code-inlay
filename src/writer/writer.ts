@@ -1,4 +1,12 @@
-import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, resolve } from "node:path";
 import type { CompilerCache, Diagnostic, FileDiff, GeneratedFilePatch } from "../types/index.js";
 import { contentHash } from "../utils/hash.js";
@@ -161,6 +169,7 @@ export function atomicWritePatches(
   const writtenPaths: string[] = [];
 
   const snapshots = dryRun ? [] : snapshotFiles(patches, cwd);
+  const newFiles: string[] = [];
 
   for (const patch of patches) {
     const absolutePath = resolve(cwd, patch.path);
@@ -169,6 +178,7 @@ export function atomicWritePatches(
     const hasSymbols = patch.regions.some((r) => r.symbolName);
 
     if (!fileExists) {
+      if (!dryRun) newFiles.push(patch.path);
       if (fileCreation === "disabled") {
         diagnostics.push({
           level: "error",
@@ -255,6 +265,11 @@ export function atomicWritePatches(
 
     if (hasFailures) {
       restoreFromSnapshot(snapshots, cwd, new Set());
+      for (const file of newFiles) {
+        const abs = resolve(cwd, file);
+        rmSync(abs, { force: true });
+        rmSync(abs + ".gen.failed", { force: true, recursive: true });
+      }
     }
   }
 
