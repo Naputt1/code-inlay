@@ -49,7 +49,7 @@ describe("checkPluginCompatibility", () => {
   it("handles caret range in core version", () => {
     const pkg: PluginPackage = {
       ...compatible,
-      compatibility: { astVersion: "2.0", coreVersion: "^0.1.0" },
+      compatibility: { astVersion: "2.0", coreVersion: "^0.2.0" },
     };
     const diagnostics: Diagnostic[] = [];
     expect(checkPluginCompatibility(pkg, diagnostics)).toBe(true);
