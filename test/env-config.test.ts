@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { defineApp, defineEnv, defineModule, defineRoute, compile } from "../src/index.js";
+import { defineApp, defineEnv, defineModule, defineRoute, compile, EnvRef } from "../src/index.js";
 import { parseEnvDefs } from "../src/compiler/ast.js";
 import { generateServer } from "../src/srvgen/index.js";
 import { generateEnvConfigFile } from "../src/srvgen/config.js";
@@ -63,6 +63,18 @@ describe("defineEnv", () => {
     expect(() => defineEnv({ BAD: z.enum(["a", "b"]) })).toThrow(
       'defineEnv: "BAD" must be z.string(), z.number(), or z.boolean()',
     );
+  });
+});
+
+describe("EnvRef", () => {
+  it("toString returns ${NAME}", () => {
+    expect(new EnvRef("PORT").toString()).toBe("${PORT}");
+  });
+
+  it("preserves env ref in template literal", () => {
+    const ref = new EnvRef("PORT");
+    const result = `http://localhost${ref}`;
+    expect(result).toBe("http://localhost${PORT}");
   });
 });
 

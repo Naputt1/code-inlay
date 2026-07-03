@@ -4,9 +4,27 @@ import type {
   ArchitectureAst,
   GeneratedFilePatch,
   AdapterPlugin,
+  EnvVarInfo,
   RuntimeConfig,
 } from "../types/index.js";
 import type { GoModuleInfo } from "../utils/env.js";
+
+function renderEnvString(s: string, env?: Record<string, EnvVarInfo>): string {
+  if (!env) return JSON.stringify(s);
+  const parts = s.split(/(\$\{[^}]+\})/);
+  if (parts.length === 1) return JSON.stringify(s);
+  const exprs = parts
+    .map((p) => {
+      const match = p.match(/^\$\{([^}]+)\}$/);
+      if (match && match[1] in env) return `cfg.${match[1]}`;
+      const quoted = JSON.stringify(p);
+      if (quoted === '""') return null;
+      return quoted;
+    })
+    .filter((e): e is string => e !== null);
+  if (exprs.length === 1) return exprs[0];
+  return exprs.join(" + ");
+}
 
 export const serverFilePath = "cmd/server/main.go";
 export const serverMainRegionId = "server.main";
@@ -121,20 +139,20 @@ export function generateServer(
     const c = ast.router.cors;
     mainBody.push(`\tr.Use(cors.New(cors.Config{`);
     mainBody.push(
-      `\t\tAllowOrigins:     []string{${c.allowOrigins.map((o) => JSON.stringify(o)).join(", ")}},`,
+      `\t\tAllowOrigins:     []string{${c.allowOrigins.map((o) => renderEnvString(o, ast.env)).join(", ")}},`,
     );
     mainBody.push(
-      `\t\tAllowMethods:     []string{${c.allowMethods.map((m) => JSON.stringify(m)).join(", ")}},`,
+      `\t\tAllowMethods:     []string{${c.allowMethods.map((m) => renderEnvString(m, ast.env)).join(", ")}},`,
     );
     mainBody.push(
-      `\t\tAllowHeaders:     []string{${c.allowHeaders.map((h) => JSON.stringify(h)).join(", ")}},`,
+      `\t\tAllowHeaders:     []string{${c.allowHeaders.map((h) => renderEnvString(h, ast.env)).join(", ")}},`,
     );
     if (c.allowCredentials !== undefined) {
       mainBody.push(`\t\tAllowCredentials: ${c.allowCredentials},`);
     }
     if (c.exposeHeaders && c.exposeHeaders.length > 0) {
       mainBody.push(
-        `\t\tExposeHeaders:    []string{${c.exposeHeaders.map((h) => JSON.stringify(h)).join(", ")}},`,
+        `\t\tExposeHeaders:    []string{${c.exposeHeaders.map((h) => renderEnvString(h, ast.env)).join(", ")}},`,
       );
     }
     if (c.maxAge !== undefined) {
