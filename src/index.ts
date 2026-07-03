@@ -11,7 +11,6 @@ export * from "./cache/index.js";
 export * from "./writer/writer.js";
 export * from "./writer/go-writer.js";
 export * from "./plugins/registry.js";
-export * from "./plugins/sandbox.js";
 export * from "./metadata/index.js";
 export * from "./docs/index.js";
 export * from "./cache/graph.js";

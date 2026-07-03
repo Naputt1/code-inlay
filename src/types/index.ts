@@ -195,7 +195,6 @@ export type CompileSettings = {
   runtime?: RuntimeConfig;
   testing?: TestingConfig;
   metadata?: MetadataConfig;
-  sandbox?: SandboxConfig;
   validationError?: ValidationErrorConfig;
 };
 
@@ -530,13 +529,6 @@ export type MetadataConfig = {
   enabled: boolean;
   routeRegistry: boolean;
   schemaReflection: boolean;
-};
-
-export type SandboxConfig = {
-  enabled: boolean;
-  timeout?: number;
-  allowedFs?: string[];
-  allowNet?: boolean;
 };
 
 export type PluginCompatibility = {
