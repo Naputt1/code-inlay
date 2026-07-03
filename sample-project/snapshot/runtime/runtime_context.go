@@ -18,6 +18,6 @@ func NewContext(ctx context.Context, logger Logger) Context {
 	}
 }
 
-func (c *runtimeContext) Logger() Logger { return c.logger }
-func (c *runtimeContext) RequestID() string { return c.requestID }
+func (c *runtimeContext) Logger() Logger           { return c.logger }
+func (c *runtimeContext) RequestID() string        { return c.requestID }
 func (c *runtimeContext) Param(name string) string { return c.params[name] }

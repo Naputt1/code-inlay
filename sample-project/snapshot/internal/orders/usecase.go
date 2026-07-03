@@ -26,33 +26,33 @@ type ListOrdersUsecase interface {
 }
 
 type adminListAllOrdersUsecaseImpl struct {
-	repo OrdersRepository
+	repo     OrdersRepository
 	redisSvc service.RedisService
 }
 
 type cancelOrderUsecaseImpl struct {
-	repo OrdersRepository
+	repo     OrdersRepository
 	redisSvc service.RedisService
 }
 
 type createOrderUsecaseImpl struct {
-	repo OrdersRepository
+	repo     OrdersRepository
 	redisSvc service.RedisService
 }
 
 type getOrderUsecaseImpl struct {
-	repo OrdersRepository
+	repo     OrdersRepository
 	redisSvc service.RedisService
 }
 
 type listOrdersUsecaseImpl struct {
-	repo OrdersRepository
+	repo     OrdersRepository
 	redisSvc service.RedisService
 }
 
 func NewAdminListAllOrdersUsecase(repo OrdersRepository, redisSvc service.RedisService) *adminListAllOrdersUsecaseImpl {
 	return &adminListAllOrdersUsecaseImpl{
-		repo: repo,
+		repo:     repo,
 		redisSvc: redisSvc,
 	}
 }
@@ -64,7 +64,7 @@ func (uc *adminListAllOrdersUsecaseImpl) Execute(ctx context.Context, input Admi
 
 func NewCancelOrderUsecase(repo OrdersRepository, redisSvc service.RedisService) *cancelOrderUsecaseImpl {
 	return &cancelOrderUsecaseImpl{
-		repo: repo,
+		repo:     repo,
 		redisSvc: redisSvc,
 	}
 }
@@ -76,7 +76,7 @@ func (uc *cancelOrderUsecaseImpl) Execute(ctx context.Context, input CancelOrder
 
 func NewCreateOrderUsecase(repo OrdersRepository, redisSvc service.RedisService) *createOrderUsecaseImpl {
 	return &createOrderUsecaseImpl{
-		repo: repo,
+		repo:     repo,
 		redisSvc: redisSvc,
 	}
 }
@@ -96,7 +96,7 @@ func (uc *createOrderUsecaseImpl) Execute(ctx context.Context, entity Orders) (C
 
 func NewGetOrderUsecase(repo OrdersRepository, redisSvc service.RedisService) *getOrderUsecaseImpl {
 	return &getOrderUsecaseImpl{
-		repo: repo,
+		repo:     repo,
 		redisSvc: redisSvc,
 	}
 }
@@ -116,7 +116,7 @@ func (uc *getOrderUsecaseImpl) Execute(ctx context.Context, id OrdersID) (GetOrd
 
 func NewListOrdersUsecase(repo OrdersRepository, redisSvc service.RedisService) *listOrdersUsecaseImpl {
 	return &listOrdersUsecaseImpl{
-		repo: repo,
+		repo:     repo,
 		redisSvc: redisSvc,
 	}
 }

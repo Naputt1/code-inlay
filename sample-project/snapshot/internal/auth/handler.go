@@ -4,12 +4,13 @@ import (
 	"errors"
 	"net/http"
 	"snapshot/internal/httperr"
+
 	"github.com/gin-gonic/gin"
 )
 
 type AuthHandler struct {
-	LoginUsecase LoginUsecase
-	LogoutUsecase LogoutUsecase
+	LoginUsecase    LoginUsecase
+	LogoutUsecase   LogoutUsecase
 	RegisterUsecase RegisterUsecase
 }
 

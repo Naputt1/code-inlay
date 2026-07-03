@@ -4,13 +4,14 @@ import (
 	"errors"
 	"net/http"
 	"snapshot/internal/httperr"
+
 	"github.com/gin-gonic/gin"
 )
 
 type ProductsHandler struct {
 	CreateProductUsecase CreateProductUsecase
-	ListProductsUsecase ListProductsUsecase
-	GetProductUsecase GetProductUsecase
+	ListProductsUsecase  ListProductsUsecase
+	GetProductUsecase    GetProductUsecase
 	UpdateProductUsecase UpdateProductUsecase
 	RemoveProductUsecase RemoveProductUsecase
 }
