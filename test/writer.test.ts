@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
@@ -395,6 +395,35 @@ describe("atomic write + rollback", () => {
     expect(readFileSync(join(cwd, "internal/user/a.go"), "utf8")).toBe(originalA);
     expect(readFileSync(join(cwd, "internal/user/b.go"), "utf8")).toBe(originalB);
     expect(diagnostics.some((d) => d.code === "concurrent-edit")).toBe(true);
+  });
+  it("rolls back deletes newly created files on write-failed", () => {
+    const cwd = join(tmpdir(), `backend-gen-phase2-rm-${Date.now()}`);
+    mkdirSync(join(cwd, "internal/user"), { recursive: true });
+
+    const originalA = "package user\n\n// @gen:start r1\noriginal\n// @gen:end r1\n";
+
+    writeFileSync(join(cwd, "internal/user/a.go"), originalA);
+
+    // Make writeAtomic fail for b.go by placing a directory at the temp path
+    mkdirSync(join(cwd, "internal/user/b.go.gen.tmp"));
+
+    const patches: GeneratedFilePatch[] = [
+      {
+        path: "internal/user/b.go",
+        regions: [{ id: "r1", content: "type Bar struct{}", language: "go" }],
+      },
+      {
+        path: "internal/user/a.go",
+        regions: [{ id: "r2", content: "type Foo struct{}", language: "go" }],
+      },
+    ];
+
+    const diagnostics: Diagnostic[] = [];
+    atomicWritePatches(patches, cwd, "skeleton", diagnostics);
+
+    expect(readFileSync(join(cwd, "internal/user/a.go"), "utf8")).toBe(originalA);
+    expect(existsSync(join(cwd, "internal/user/b.go"))).toBe(false);
+    expect(diagnostics.some((d) => d.code === "write-failed")).toBe(true);
   });
 });
 
