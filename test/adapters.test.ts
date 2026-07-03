@@ -15,7 +15,6 @@ describe("compile with adapter variants", () => {
           name: "item",
           routes: [
             defineRoute({
-              id: "update",
               method: "PUT",
               path: "/items/:id",
               handler: "UpdateItem",
@@ -37,7 +36,6 @@ describe("compile with adapter variants", () => {
           name: "item",
           routes: [
             defineRoute({
-              id: "patch",
               method: "PATCH",
               path: "/items/:id",
               handler: "PatchItem",
@@ -59,7 +57,6 @@ describe("compile with adapter variants", () => {
           name: "user",
           routes: [
             defineRoute({
-              id: "fetchByID",
               method: "GET",
               path: "/users/:id",
               handler: "FetchUserByID",
@@ -80,7 +77,6 @@ describe("compile with adapter variants", () => {
           name: "user",
           routes: [
             defineRoute({
-              id: "getById",
               method: "GET",
               path: "/users/:id",
               handler: "GetUserById",
@@ -101,7 +97,6 @@ describe("compile with adapter variants", () => {
           name: "item",
           routes: [
             defineRoute({
-              id: "update",
               method: "PUT",
               path: "/items/:id",
               handler: "UpdateItem",
@@ -124,7 +119,6 @@ describe("compile with adapter variants", () => {
           name: "item",
           routes: [
             defineRoute({
-              id: "create",
               method: "POST",
               path: "/items",
               handler: "CreateItem",
@@ -147,7 +141,6 @@ describe("compile with adapter variants", () => {
           name: "search",
           routes: [
             defineRoute({
-              id: "search",
               method: "GET",
               path: "/search",
               handler: "SearchItems",
@@ -169,7 +162,6 @@ describe("compile with adapter variants", () => {
           name: "data",
           routes: [
             defineRoute({
-              id: "submit",
               method: "POST",
               path: "/data",
               handler: "SubmitData",
@@ -191,7 +183,6 @@ describe("compile with adapter variants", () => {
           name: "search",
           routes: [
             defineRoute({
-              id: "search",
               method: "GET",
               path: "/search",
               handler: "Search",
@@ -213,7 +204,6 @@ describe("compile with adapter variants", () => {
           name: "data",
           routes: [
             defineRoute({
-              id: "submit",
               method: "POST",
               path: "/data",
               handler: "SubmitData",
@@ -235,7 +225,6 @@ describe("compile with adapter variants", () => {
           name: "test",
           routes: [
             defineRoute({
-              id: "head",
               method: "HEAD" as never,
               path: "/test",
               handler: "HeadTest",

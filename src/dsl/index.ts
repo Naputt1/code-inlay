@@ -43,7 +43,6 @@ export type DefineRouteInput<
   TBody extends SchemaLike | undefined,
   TResponse extends SchemaLike | undefined,
 > = {
-  id: string;
   path: string;
   architecture?: ArchitectureRef | ArchitectureRef[] | ArchitectureSelection;
   adapter?: AdapterRef | AdapterRef[] | AdapterSelection;
@@ -68,7 +67,6 @@ export function defineRoute<
 >(input: DefineRouteInput<TQuery, TBody, TResponse>): RouteDefinition<TQuery, TBody, TResponse> {
   return {
     kind: "RouteDefinition",
-    id: input.id,
     method: input.method,
     path: input.path,
     architecture: input.architecture,

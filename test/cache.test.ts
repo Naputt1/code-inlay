@@ -19,7 +19,6 @@ import type { CompilerCache, DependencyGraph, DependencyNode } from "../src/inde
 describe("cache + dependency graph", () => {
   it("builds dependency graph with correct node kinds", async () => {
     const route = defineRoute({
-      id: "get",
       method: "GET",
       path: "/users/:id",
       handler: "GetUser",
@@ -43,7 +42,6 @@ describe("cache + dependency graph", () => {
 
   it("includes schema nodes for routes with query and body", async () => {
     const route = defineRoute({
-      id: "search",
       method: "POST",
       path: "/search",
       handler: "Search",

@@ -18,7 +18,6 @@ describe("generateServer", () => {
           name: "user",
           routes: [
             defineRoute({
-              id: "list",
               method: "GET",
               path: "/users",
               handler: "ListUsers",

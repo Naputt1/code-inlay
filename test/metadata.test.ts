@@ -12,7 +12,6 @@ describe("generateMetadata", () => {
           name: "user",
           routes: [
             defineRoute({
-              id: "getUser",
               method: "GET",
               path: "/users/:id",
               handler: "GetUser",
@@ -35,7 +34,6 @@ describe("generateMetadata", () => {
           name: "user",
           routes: [
             defineRoute({
-              id: "getUser",
               method: "GET",
               path: "/users/:id",
               handler: "GetUser",
@@ -66,7 +64,6 @@ describe("generateMetadata", () => {
           name: "user",
           routes: [
             defineRoute({
-              id: "createUser",
               method: "POST",
               path: "/users",
               handler: "CreateUser",
@@ -99,7 +96,6 @@ describe("generateMetadata", () => {
           name: "item",
           routes: [
             defineRoute({
-              id: "list",
               method: "GET",
               path: "/items",
               handler: "ListItem",
@@ -128,7 +124,6 @@ describe("generateMetadata", () => {
           name: "feature",
           routes: [
             defineRoute({
-              id: "toggle",
               method: "POST",
               path: "/features",
               handler: "ToggleFeature",
@@ -159,7 +154,6 @@ describe("generateMetadata", () => {
           name: "raw",
           routes: [
             defineRoute({
-              id: "store",
               method: "POST",
               path: "/raw",
               handler: "StoreRaw",
@@ -186,7 +180,6 @@ describe("generateMetadata", () => {
           name: "user",
           routes: [
             defineRoute({
-              id: "createUser",
               method: "POST",
               path: "/users",
               handler: "CreateUser",

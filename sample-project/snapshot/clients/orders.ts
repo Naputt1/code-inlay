@@ -1,6 +1,6 @@
 import type {
-  AdminListAllOrdersRequest,
-  AdminListAllOrdersResponse,
+  AdminListAllOrdersOrdersRequest,
+  AdminListAllOrdersOrdersResponse,
   CancelOrdersRequest,
   CreateOrdersRequest,
   CreateOrdersResponse,
@@ -42,15 +42,15 @@ export class OrdersClient extends BaseApiClient {
     });
   }
 
-  async AdminListAll(
-    params: AdminListAllOrdersRequest,
+  async AdminListAllOrders(
+    params: AdminListAllOrdersOrdersRequest,
     options?: RequestInit,
-  ): Promise<AdminListAllOrdersResponse> {
+  ): Promise<AdminListAllOrdersOrdersResponse> {
     const query = Object.entries(params)
       .filter(([k]) => ["page", "pageSize"].includes(k))
       .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
       .join("&");
     const url = query ? `/api/v1/orders/admin/all?${query}` : `/api/v1/orders/admin/all`;
-    return this.request<AdminListAllOrdersResponse>(url, { method: "GET", ...options });
+    return this.request<AdminListAllOrdersOrdersResponse>(url, { method: "GET", ...options });
   }
 }

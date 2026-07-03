@@ -36,7 +36,6 @@ describe("extractEntityContext", () => {
 describe("generateEntityStructs", () => {
   it("returns empty for routes without responseFormat", async () => {
     const route = defineRoute({
-      id: "getPet",
       method: "GET",
       path: "/pets/:id",
       handler: "GetPet",
@@ -59,7 +58,6 @@ describe("generateEntityStructs", () => {
       wrapper: z.object({ data: z.string() }),
     };
     const route = defineRoute({
-      id: "getPet",
       method: "GET",
       path: "/pets/:id",
       handler: "GetPet",

@@ -23,7 +23,6 @@ describe("service layer", () => {
           name: "payment",
           routes: [
             defineRoute({
-              id: "process",
               method: "POST",
               path: "/payments",
               body: z.object({ amount: z.number() }),
@@ -69,7 +68,6 @@ describe("service layer", () => {
           name: "search",
           routes: [
             defineRoute({
-              id: "query",
               method: "GET",
               path: "/search",
               handler: "QuerySearch",
@@ -109,7 +107,6 @@ describe("service layer", () => {
           name: "payment",
           routes: [
             defineRoute({
-              id: "process",
               method: "POST",
               path: "/payments",
               body: z.object({ amount: z.number() }),
@@ -151,7 +148,6 @@ describe("service layer", () => {
           name: "payment",
           routes: [
             defineRoute({
-              id: "process",
               method: "POST",
               path: "/payments",
               handler: "ProcessPayment",
@@ -184,7 +180,6 @@ describe("service layer", () => {
           name: "payment",
           routes: [
             defineRoute({
-              id: "process",
               method: "POST",
               path: "/payments",
               handler: "ProcessPayment",
@@ -223,7 +218,6 @@ describe("service layer", () => {
           name: "payment",
           routes: [
             defineRoute({
-              id: "process",
               method: "POST",
               path: "/payments",
               handler: "ProcessPayment",
@@ -234,7 +228,6 @@ describe("service layer", () => {
           name: "notification",
           routes: [
             defineRoute({
-              id: "send",
               method: "POST",
               path: "/notifications",
               handler: "SendNotification",
@@ -271,7 +264,6 @@ describe("service layer", () => {
           name: "auth",
           routes: [
             defineRoute({
-              id: "login",
               method: "POST",
               path: "/login",
               handler: "Login",
@@ -310,7 +302,6 @@ describe("service layer", () => {
           name: "search",
           routes: [
             defineRoute({
-              id: "query",
               method: "GET",
               path: "/search",
               handler: "QuerySearch",
@@ -339,7 +330,6 @@ describe("service layer", () => {
           name: "payment",
           routes: [
             defineRoute({
-              id: "process",
               method: "POST",
               path: "/payments",
               body: z.object({ amount: z.number() }),
@@ -375,7 +365,6 @@ describe("service layer", () => {
           name: "payment",
           routes: [
             defineRoute({
-              id: "process",
               method: "POST",
               path: "/payments",
               body: z.object({ amount: z.number() }),

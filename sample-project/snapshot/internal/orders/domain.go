@@ -27,7 +27,7 @@ type OrdersGet struct {
 	UpdatedAt       *string               `json:"updatedAt,omitempty"`
 }
 
-type OrdersAdminListAll struct {
+type OrdersAdminListAllOrders struct {
 	Id         string  `json:"id"`
 	Status     string  `json:"status"`
 	TotalPrice float64 `json:"totalPrice"`

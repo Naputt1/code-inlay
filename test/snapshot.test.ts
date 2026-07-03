@@ -178,7 +178,6 @@ describe("full pipeline snapshot", () => {
       middleware: [jwtAuth],
       routes: [
         defineRoute({
-          id: "create",
           method: "POST",
           path: "",
           body: z.object({
@@ -194,10 +193,9 @@ describe("full pipeline snapshot", () => {
             name: z.string(),
             price: z.number(),
           }),
-          handler: "CreateProduct",
+          handler: "Create",
         }),
         defineRoute({
-          id: "list",
           method: "GET",
           path: "",
           query: z.object({
@@ -213,10 +211,9 @@ describe("full pipeline snapshot", () => {
               category: z.string(),
             }),
           ),
-          handler: "ListProducts",
+          handler: "List",
         }),
         defineRoute({
-          id: "get",
           method: "GET",
           path: "/:id",
           response: z.object({
@@ -236,10 +233,9 @@ describe("full pipeline snapshot", () => {
               )
               .optional(),
           }),
-          handler: "GetProduct",
+          handler: "Get",
         }),
         defineRoute({
-          id: "update",
           method: "PUT",
           path: "/:id",
           body: z.object({
@@ -250,14 +246,13 @@ describe("full pipeline snapshot", () => {
             active: z.boolean().optional(),
             metadata: z.object({}).passthrough().optional(),
           }),
-          handler: "UpdateProduct",
+          handler: "Update",
         }),
         defineRoute({
-          id: "remove",
           method: "DELETE",
           path: "/:id",
           query: z.object({ reason: z.string().optional() }),
-          handler: "RemoveProduct",
+          handler: "Remove",
         }),
       ],
     });
@@ -267,7 +262,6 @@ describe("full pipeline snapshot", () => {
       middleware: [jwtAuth],
       routes: [
         defineRoute({
-          id: "create",
           method: "POST",
           path: "",
           body: z.object({
@@ -289,10 +283,9 @@ describe("full pipeline snapshot", () => {
             estimatedDelivery: z.int64().optional(),
           }),
           responseFormat: orderFormat,
-          handler: "CreateOrder",
+          handler: "Create",
         }),
         defineRoute({
-          id: "list",
           method: "GET",
           path: "",
           query: z.object({
@@ -310,10 +303,9 @@ describe("full pipeline snapshot", () => {
             }),
           ),
           responseFormat: orderFormat,
-          handler: "ListOrders",
+          handler: "List",
         }),
         defineRoute({
-          id: "get",
           method: "GET",
           path: "/:id",
           response: z.object({
@@ -337,15 +329,14 @@ describe("full pipeline snapshot", () => {
             updatedAt: z.string().optional(),
           }),
           responseFormat: orderFormat,
-          handler: "GetOrder",
+          handler: "Get",
         }),
         defineRoute({
-          id: "cancel",
           method: "POST",
           path: "/:id/cancel",
           errors: [OrderShippedError],
           body: z.object({ reason: z.string().optional() }),
-          handler: "CancelOrder",
+          handler: "Cancel",
         }),
       ],
     });
@@ -355,7 +346,6 @@ describe("full pipeline snapshot", () => {
       middleware: [jwtAuth, adminAuth],
       routes: [
         defineRoute({
-          id: "adminListAll",
           method: "GET",
           path: "/admin/all",
           query: z.object({
@@ -380,7 +370,6 @@ describe("full pipeline snapshot", () => {
       prefix: "/auth",
       routes: [
         defineRoute({
-          id: "login",
           method: "POST",
           path: "/login",
           body: z.object({
@@ -399,13 +388,11 @@ describe("full pipeline snapshot", () => {
           handler: "Login",
         }),
         defineRoute({
-          id: "logout",
           method: "POST",
           path: "/logout",
           handler: "Logout",
         }),
         defineRoute({
-          id: "register",
           method: "POST",
           path: "/register",
           body: z.object({

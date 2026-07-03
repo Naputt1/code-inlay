@@ -11,7 +11,6 @@ describe("generateApiDocs", () => {
           name: "pet",
           routes: [
             defineRoute({
-              id: "create",
               method: "POST",
               path: "/pets",
               handler: "CreatePet",
@@ -35,7 +34,6 @@ describe("generateApiDocs", () => {
           name: "test",
           routes: [
             defineRoute({
-              id: "any",
               method: "POST",
               path: "/any",
               handler: "AnyHandler",
@@ -59,7 +57,6 @@ describe("generateApiDocs", () => {
           name: "status",
           routes: [
             defineRoute({
-              id: "set",
               method: "POST",
               path: "/status",
               handler: "SetStatus",
@@ -83,7 +80,6 @@ describe("generateApiDocs", () => {
           name: "test",
           routes: [
             defineRoute({
-              id: "raw",
               method: "POST",
               path: "/raw",
               handler: "RawHandler",
@@ -107,13 +103,11 @@ describe("generateApiDocs", () => {
           name: "user",
           routes: [
             defineRoute({
-              id: "list",
               method: "GET",
               path: "/users",
               handler: "ListUsers",
             }),
             defineRoute({
-              id: "create",
               method: "POST",
               path: "/users",
               handler: "CreateUser",
@@ -142,7 +136,6 @@ describe("generateApiDocs", () => {
           name: "user",
           routes: [
             defineRoute({
-              id: "get",
               method: "GET",
               path: "/users/:id",
               handler: "GetUser",
@@ -165,7 +158,6 @@ describe("generateApiDocs", () => {
           name: "todo",
           routes: [
             defineRoute({
-              id: "create",
               method: "POST",
               path: "/todos",
               handler: "CreateTodo",
@@ -192,7 +184,6 @@ describe("generateApiDocs", () => {
           name: "user",
           routes: [
             defineRoute({
-              id: "get",
               method: "GET",
               path: "/users/:id",
               handler: "GetUser",
@@ -217,7 +208,6 @@ describe("generateApiDocs", () => {
           name: "item",
           routes: [
             defineRoute({
-              id: "get",
               method: "GET",
               path: "/items/:id",
               handler: "GetItem",

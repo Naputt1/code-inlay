@@ -260,7 +260,7 @@
     },
     "/api/v1/orders/admin/all": {
       "get": {
-        "operationId": "orders.adminListAll",
+        "operationId": "orders.adminListAllOrders",
         "summary": "GET /api/v1/orders/admin/all",
         "tags": ["orders"],
         "responses": {
@@ -269,7 +269,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AdminListAllOrdersResponse"
+                  "$ref": "#/components/schemas/AdminListAllOrdersOrdersResponse"
                 }
               }
             }
@@ -724,7 +724,7 @@
         },
         "required": ["status", "data"]
       },
-      "AdminListAllOrdersResponse": {
+      "AdminListAllOrdersOrdersResponse": {
         "type": "object",
         "properties": {
           "success": {

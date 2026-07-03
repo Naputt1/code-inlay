@@ -48,7 +48,6 @@ describe("validation error pipeline", () => {
           name: "test",
           routes: [
             defineRoute({
-              id: "create",
               method: "POST",
               path: "/test",
               body: z.object({ name: z.string() }),
@@ -82,7 +81,6 @@ describe("validation error pipeline", () => {
           name: "test",
           routes: [
             defineRoute({
-              id: "create",
               method: "POST",
               path: "/test",
               body: z.object({ name: z.string() }),
@@ -116,7 +114,6 @@ describe("validation error pipeline", () => {
           name: "test",
           routes: [
             defineRoute({
-              id: "create",
               method: "POST",
               path: "/test",
               body: z.object({ name: z.string() }),
@@ -145,7 +142,6 @@ describe("validation error pipeline", () => {
           name: "test",
           routes: [
             defineRoute({
-              id: "create",
               method: "POST",
               path: "/test",
               body: z.object({ name: z.string() }),
@@ -175,7 +171,6 @@ describe("validation error pipeline", () => {
           name: "test",
           routes: [
             defineRoute({
-              id: "create",
               method: "POST",
               path: "/test",
               body: z.object({ name: z.string() }),

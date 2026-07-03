@@ -9,14 +9,14 @@ import (
 )
 
 type ProductsHandler struct {
-	CreateProductUsecase CreateProductUsecase
-	ListProductsUsecase  ListProductsUsecase
-	GetProductUsecase    GetProductUsecase
-	UpdateProductUsecase UpdateProductUsecase
-	RemoveProductUsecase RemoveProductUsecase
+	CreateUsecase CreateUsecase
+	ListUsecase   ListUsecase
+	GetUsecase    GetUsecase
+	UpdateUsecase UpdateUsecase
+	RemoveUsecase RemoveUsecase
 }
 
-func (h *ProductsHandler) CreateProduct(c *gin.Context) {
+func (h *ProductsHandler) Create(c *gin.Context) {
 	var binding CreateProductsRequest
 	if err := c.ShouldBindJSON(&binding); err != nil {
 		status, body := httperr.ResolveBindingError(err)
@@ -27,7 +27,7 @@ func (h *ProductsHandler) CreateProduct(c *gin.Context) {
 	// TODO: construct Products entity from binding
 	entity := Products{}
 	// @gen:end f5ea9736
-	output, err := h.CreateProductUsecase.Execute(c.Request.Context(), entity)
+	output, err := h.CreateUsecase.Execute(c.Request.Context(), entity)
 	if err != nil {
 		var httpErr interface{ HTTPStatus() int }
 		if errors.As(err, &httpErr) {
@@ -40,9 +40,9 @@ func (h *ProductsHandler) CreateProduct(c *gin.Context) {
 	c.JSON(http.StatusOK, output)
 }
 
-func (h *ProductsHandler) GetProduct(c *gin.Context) {
+func (h *ProductsHandler) Get(c *gin.Context) {
 	id := ProductsID(c.Param("id"))
-	output, err := h.GetProductUsecase.Execute(c.Request.Context(), id)
+	output, err := h.GetUsecase.Execute(c.Request.Context(), id)
 	if err != nil {
 		var httpErr interface{ HTTPStatus() int }
 		if errors.As(err, &httpErr) {
@@ -55,14 +55,14 @@ func (h *ProductsHandler) GetProduct(c *gin.Context) {
 	c.JSON(http.StatusOK, output)
 }
 
-func (h *ProductsHandler) ListProducts(c *gin.Context) {
+func (h *ProductsHandler) List(c *gin.Context) {
 	var input ListProductsRequest
 	if err := c.ShouldBindQuery(&input); err != nil {
 		status, body := httperr.ResolveBindingError(err)
 		c.JSON(status, body)
 		return
 	}
-	output, err := h.ListProductsUsecase.Execute(c.Request.Context(), input)
+	output, err := h.ListUsecase.Execute(c.Request.Context(), input)
 	if err != nil {
 		var httpErr interface{ HTTPStatus() int }
 		if errors.As(err, &httpErr) {
@@ -75,7 +75,7 @@ func (h *ProductsHandler) ListProducts(c *gin.Context) {
 	c.JSON(http.StatusOK, output)
 }
 
-func (h *ProductsHandler) RemoveProduct(c *gin.Context) {
+func (h *ProductsHandler) Remove(c *gin.Context) {
 	var input RemoveProductsRequest
 	if err := c.ShouldBindQuery(&input); err != nil {
 		status, body := httperr.ResolveBindingError(err)
@@ -84,7 +84,7 @@ func (h *ProductsHandler) RemoveProduct(c *gin.Context) {
 	}
 	input.Id = c.Param("id")
 	id := ProductsID(c.Param("id"))
-	output, err := h.RemoveProductUsecase.Execute(c.Request.Context(), id)
+	output, err := h.RemoveUsecase.Execute(c.Request.Context(), id)
 	if err != nil {
 		var httpErr interface{ HTTPStatus() int }
 		if errors.As(err, &httpErr) {
@@ -98,7 +98,7 @@ func (h *ProductsHandler) RemoveProduct(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-func (h *ProductsHandler) UpdateProduct(c *gin.Context) {
+func (h *ProductsHandler) Update(c *gin.Context) {
 	var binding UpdateProductsRequest
 	if err := c.ShouldBindJSON(&binding); err != nil {
 		status, body := httperr.ResolveBindingError(err)
@@ -110,7 +110,7 @@ func (h *ProductsHandler) UpdateProduct(c *gin.Context) {
 	// TODO: construct Products entity from binding
 	entity := Products{}
 	// @gen:end 250be001
-	output, err := h.UpdateProductUsecase.Execute(c.Request.Context(), id, entity)
+	output, err := h.UpdateUsecase.Execute(c.Request.Context(), id, entity)
 	if err != nil {
 		var httpErr interface{ HTTPStatus() int }
 		if errors.As(err, &httpErr) {

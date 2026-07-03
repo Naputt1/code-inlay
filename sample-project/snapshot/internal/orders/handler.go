@@ -9,15 +9,15 @@ import (
 )
 
 type OrdersHandler struct {
-	CreateOrderUsecase        CreateOrderUsecase
-	ListOrdersUsecase         ListOrdersUsecase
-	GetOrderUsecase           GetOrderUsecase
-	CancelOrderUsecase        CancelOrderUsecase
+	CreateUsecase             CreateUsecase
+	ListUsecase               ListUsecase
+	GetUsecase                GetUsecase
+	CancelUsecase             CancelUsecase
 	AdminListAllOrdersUsecase AdminListAllOrdersUsecase
 }
 
 func (h *OrdersHandler) AdminListAllOrders(c *gin.Context) {
-	var input AdminListAllOrdersRequest
+	var input AdminListAllOrdersOrdersRequest
 	if err := c.ShouldBindQuery(&input); err != nil {
 		status, body := httperr.ResolveBindingError(err)
 		c.JSON(status, body)
@@ -36,7 +36,7 @@ func (h *OrdersHandler) AdminListAllOrders(c *gin.Context) {
 	c.JSON(http.StatusOK, output)
 }
 
-func (h *OrdersHandler) CancelOrder(c *gin.Context) {
+func (h *OrdersHandler) Cancel(c *gin.Context) {
 	var input CancelOrdersRequest
 	if err := c.ShouldBindJSON(&input); err != nil {
 		status, body := httperr.ResolveBindingError(err)
@@ -44,7 +44,7 @@ func (h *OrdersHandler) CancelOrder(c *gin.Context) {
 		return
 	}
 	input.Id = c.Param("id")
-	output, err := h.CancelOrderUsecase.Execute(c.Request.Context(), input)
+	output, err := h.CancelUsecase.Execute(c.Request.Context(), input)
 	if err != nil {
 		var httpErr interface{ HTTPStatus() int }
 		if errors.As(err, &httpErr) {
@@ -57,7 +57,7 @@ func (h *OrdersHandler) CancelOrder(c *gin.Context) {
 	c.JSON(http.StatusOK, output)
 }
 
-func (h *OrdersHandler) CreateOrder(c *gin.Context) {
+func (h *OrdersHandler) Create(c *gin.Context) {
 	var binding CreateOrdersRequest
 	if err := c.ShouldBindJSON(&binding); err != nil {
 		status, body := httperr.ResolveBindingError(err)
@@ -68,7 +68,7 @@ func (h *OrdersHandler) CreateOrder(c *gin.Context) {
 	// TODO: construct Orders entity from binding
 	entity := Orders{}
 	// @gen:end 9221510d
-	output, err := h.CreateOrderUsecase.Execute(c.Request.Context(), entity)
+	output, err := h.CreateUsecase.Execute(c.Request.Context(), entity)
 	if err != nil {
 		var httpErr interface{ HTTPStatus() int }
 		if errors.As(err, &httpErr) {
@@ -81,9 +81,9 @@ func (h *OrdersHandler) CreateOrder(c *gin.Context) {
 	c.JSON(http.StatusOK, output)
 }
 
-func (h *OrdersHandler) GetOrder(c *gin.Context) {
+func (h *OrdersHandler) Get(c *gin.Context) {
 	id := OrdersID(c.Param("id"))
-	output, err := h.GetOrderUsecase.Execute(c.Request.Context(), id)
+	output, err := h.GetUsecase.Execute(c.Request.Context(), id)
 	if err != nil {
 		var httpErr interface{ HTTPStatus() int }
 		if errors.As(err, &httpErr) {
@@ -96,14 +96,14 @@ func (h *OrdersHandler) GetOrder(c *gin.Context) {
 	c.JSON(http.StatusOK, output)
 }
 
-func (h *OrdersHandler) ListOrders(c *gin.Context) {
+func (h *OrdersHandler) List(c *gin.Context) {
 	var input ListOrdersRequest
 	if err := c.ShouldBindQuery(&input); err != nil {
 		status, body := httperr.ResolveBindingError(err)
 		c.JSON(status, body)
 		return
 	}
-	output, err := h.ListOrdersUsecase.Execute(c.Request.Context(), input)
+	output, err := h.ListUsecase.Execute(c.Request.Context(), input)
 	if err != nil {
 		var httpErr interface{ HTTPStatus() int }
 		if errors.As(err, &httpErr) {
