@@ -142,7 +142,7 @@ function collectFiles(dir: string): Record<string, string> {
 }
 
 function removeOldGenerated(baseDir: string) {
-  for (const dir of ["internal", "clients", "docs", "cmd"]) {
+  for (const dir of ["internal", "clients", "docs", "cmd", "pkg"]) {
     const full = join(baseDir, dir);
     if (existsSync(full)) rmSync(full, { recursive: true, force: true });
   }

@@ -1,7 +1,7 @@
 import type { LoggerConfig, GeneratedFilePatch } from "../types/index.js";
 
 const loggerImplId = "runtime.logger.impl";
-const loggerFilePath = "runtime/logger.go";
+const loggerFilePath = "pkg/runtime/logger.go";
 
 export function generateLoggerCode(loggerConfig: LoggerConfig): GeneratedFilePatch[] {
   const patches: GeneratedFilePatch[] = [];
