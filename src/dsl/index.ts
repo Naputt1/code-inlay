@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { validationZ } from "../schema/extras.js";
+import { EnvRef } from "../types/index.js";
 import type {
   AdapterRef,
   AppDefinition,
@@ -13,6 +14,7 @@ import type {
   CompileSettings,
   CorsConfig,
   DialectMethodCtx,
+  EnvContext,
   ErrorDefinition,
   HttpMethod,
   HttpStatusCode,
@@ -181,7 +183,8 @@ export interface AppBuilder<
   }): AppBuilder<TEnv, TServiceNames, TModuleNames | TName>;
 }
 
-export function defineCors(config: CorsConfig): CorsConfig {
+export function defineCors<T extends CorsConfig | ((ctx: EnvContext) => CorsConfig)>(config: T): T {
+  if (typeof config === "function") return config;
   return {
     allowOrigins: config.allowOrigins,
     allowMethods: config.allowMethods,
@@ -189,21 +192,57 @@ export function defineCors(config: CorsConfig): CorsConfig {
     allowCredentials: config.allowCredentials,
     exposeHeaders: config.exposeHeaders,
     maxAge: config.maxAge,
-  };
+  } as T;
 }
 
 export function defineRouter(input: {
   adapter: AdapterRef;
   prefix?: string;
   middleware?: MiddlewareDefinition[];
-  cors?: CorsConfig;
-}): RouterDefinition {
+  cors?: CorsConfig | ((ctx: EnvContext) => CorsConfig);
+}): RouterDefinition;
+export function defineRouter(
+  input: (ctx: EnvContext) => {
+    adapter: AdapterRef;
+    prefix?: string;
+    middleware?: MiddlewareDefinition[];
+    cors?: CorsConfig | ((ctx: EnvContext) => CorsConfig);
+  },
+): (ctx: EnvContext) => RouterDefinition;
+export function defineRouter(
+  input:
+    | {
+        adapter: AdapterRef;
+        prefix?: string;
+        middleware?: MiddlewareDefinition[];
+        cors?: CorsConfig | ((ctx: EnvContext) => CorsConfig);
+      }
+    | ((ctx: EnvContext) => {
+        adapter: AdapterRef;
+        prefix?: string;
+        middleware?: MiddlewareDefinition[];
+        cors?: CorsConfig | ((ctx: EnvContext) => CorsConfig);
+      }),
+): unknown {
+  if (typeof input === "function") {
+    return (ctx: EnvContext): RouterDefinition => {
+      const result = input(ctx);
+      const cors = typeof result.cors === "function" ? result.cors(ctx) : result.cors;
+      return {
+        kind: "RouterDefinition",
+        adapter: result.adapter,
+        prefix: result.prefix ?? "",
+        middleware: result.middleware ?? [],
+        cors,
+      };
+    };
+  }
   return {
     kind: "RouterDefinition",
     adapter: input.adapter,
     prefix: input.prefix ?? "",
     middleware: input.middleware ?? [],
-    cors: input.cors,
+    cors: input.cors as CorsConfig | undefined,
   };
 }
 
@@ -221,6 +260,15 @@ export function defineEnv<const T extends Record<string, z.ZodTypeAny>>(input: T
   return input;
 }
 
+function resolveEnvDefaults(env?: Record<string, z.ZodTypeAny>): Record<string, EnvRef> {
+  if (!env) return {};
+  const result: Record<string, EnvRef> = {};
+  for (const key of Object.keys(env)) {
+    result[key] = new EnvRef(key);
+  }
+  return result;
+}
+
 export function defineApp<
   const TEnv extends Record<string, z.ZodTypeAny> = Record<string, z.ZodTypeAny>,
   const TServices extends Record<string, ServiceInput> = Record<string, never>,
@@ -229,7 +277,7 @@ export function defineApp<
   architecture?: ArchitectureRef | ArchitectureRef[] | ArchitectureSelection;
   architectures?: ArchitectureRef[] | ArchitectureSelection;
   adapters?: AdapterRef[] | AdapterSelection;
-  router?: RouterDefinition;
+  router?: RouterDefinition | ((ctx: EnvContext) => RouterDefinition);
   modules?: ModuleDefinition[];
   extensions?: BackendExtension[];
   services?: TServices;
@@ -247,13 +295,26 @@ export function defineApp<
     name,
   })) as (ServiceDefinition | ServiceExtensionResult)[];
 
+  const ctx: EnvContext = { env: resolveEnvDefaults(input.env) };
+
+  let router: RouterDefinition | undefined;
+  if (input.router) {
+    router =
+      typeof input.router === "function"
+        ? (input.router as (ctx: EnvContext) => RouterDefinition)(ctx)
+        : { ...input.router };
+    if (router.cors && typeof router.cors === "function") {
+      router.cors = (router.cors as (ctx: EnvContext) => CorsConfig)(ctx);
+    }
+  }
+
   const state: AppDefinition = {
     kind: "AppDefinition",
     env: input.env,
     architecture: input.architecture,
     architectures: input.architectures,
     adapters: input.adapters,
-    router: input.router,
+    router,
     modules: input.modules ?? [],
     extensions: input.extensions,
     services: serviceEntries,

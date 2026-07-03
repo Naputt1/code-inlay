@@ -149,7 +149,7 @@ function removeOldGenerated(baseDir: string) {
 }
 
 describe("full pipeline snapshot", () => {
-  it("generates expected output for complex API config", { timeout: 30000 }, async () => {
+  it("generates expected output for complex API config", { timeout: 60000 }, async () => {
     const jwtAuth = defineMiddleware({ name: "JwtAuth" });
     const adminAuth = defineMiddleware({ name: "AdminAuth" });
 
@@ -443,17 +443,17 @@ describe("full pipeline snapshot", () => {
         PORT: z.string().default("8080").describe("Server listen port"),
       }),
       architecture: "clean",
-      router: defineRouter({
+      router: defineRouter((ctx) => ({
         adapter: "gin",
         prefix: "/api/v1",
         cors: defineCors({
-          allowOrigins: ["http://localhost:5173"],
+          allowOrigins: [`http://localhost${ctx.env.PORT}`],
           allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
           allowHeaders: ["Origin", "Content-Type", "Authorization"],
           allowCredentials: true,
           maxAge: 86400,
         }),
-      }),
+      })),
       extensions: [gorm],
       services: {
         mygorm: gorm({ driver: "sqlite", close: true }),

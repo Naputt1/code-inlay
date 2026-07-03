@@ -243,6 +243,17 @@ export type ModuleDefinition = {
 
 export type ServiceInput = Omit<ServiceDefinition, "name"> | Omit<ServiceExtensionResult, "name">;
 
+export class EnvRef {
+  constructor(public readonly name: string) {}
+  toString(): string {
+    return `\${${this.name}}`;
+  }
+}
+
+export type EnvContext = {
+  env: Record<string, EnvRef>;
+};
+
 export type CorsConfig = {
   allowOrigins: string[];
   allowMethods: string[];

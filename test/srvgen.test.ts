@@ -207,4 +207,136 @@ describe("generateServer", () => {
     const mainContent = patch.regions[1].content;
     expect(mainContent).toContain(`ExposeHeaders:    []string{"X-Custom-Header"}`);
   });
+
+  it("renders cfg.PORT when allowOrigins contains ${PORT} and env has PORT", async () => {
+    const result = await buildBase();
+    const astWithCorsAndEnv = {
+      ...result.ast!,
+      env: { PORT: { type: "string" as const, required: false } },
+      router: {
+        ...result.ast!.router,
+        cors: defineCors({
+          allowOrigins: ["http://localhost${PORT}"],
+          allowMethods: ["GET"],
+          allowHeaders: ["Content-Type"],
+        }),
+      },
+    };
+    const patch = generateServer(astWithCorsAndEnv, result.architecture!, moduleInfo, {
+      name: "gin",
+      transport: "http",
+      generateRoute: () => "",
+      generateMiddleware: () => "",
+      generateServer: () => "",
+    } as unknown as AdapterPlugin);
+    const mainContent = patch.regions[1].content;
+    expect(mainContent).toContain(`AllowOrigins:     []string{"http://localhost" + cfg.PORT}`);
+    expect(mainContent).toContain(`AllowMethods:     []string{"GET"}`);
+  });
+
+  it("passes ${PORT} through as literal when no env defined", async () => {
+    const result = await buildBase();
+    const astWithCors = {
+      ...result.ast!,
+      router: {
+        ...result.ast!.router,
+        cors: defineCors({
+          allowOrigins: ["http://localhost${PORT}"],
+          allowMethods: ["GET"],
+          allowHeaders: ["Content-Type"],
+        }),
+      },
+    };
+    const patch = generateServer(astWithCors, result.architecture!, moduleInfo, {
+      name: "gin",
+      transport: "http",
+      generateRoute: () => "",
+      generateMiddleware: () => "",
+      generateServer: () => "",
+    } as unknown as AdapterPlugin);
+    const mainContent = patch.regions[1].content;
+    expect(mainContent).toContain(`AllowOrigins:     []string{"http://localhost\${PORT}"}`);
+  });
+
+  it("passes unknown env ref through as literal string", async () => {
+    const result = await buildBase();
+    const astWithCorsAndEnv = {
+      ...result.ast!,
+      env: { PORT: { type: "string" as const, required: false } },
+      router: {
+        ...result.ast!.router,
+        cors: defineCors({
+          allowOrigins: ["${UNKNOWN}"],
+          allowMethods: ["GET"],
+          allowHeaders: ["Content-Type"],
+        }),
+      },
+    };
+    const patch = generateServer(astWithCorsAndEnv, result.architecture!, moduleInfo, {
+      name: "gin",
+      transport: "http",
+      generateRoute: () => "",
+      generateMiddleware: () => "",
+      generateServer: () => "",
+    } as unknown as AdapterPlugin);
+    const mainContent = patch.regions[1].content;
+    expect(mainContent).toContain(`AllowOrigins:     []string{"\${UNKNOWN}"}`);
+  });
+
+  it("renders multiple env refs with concatenation", async () => {
+    const result = await buildBase();
+    const astWithCorsAndEnv = {
+      ...result.ast!,
+      env: {
+        HOST: { type: "string" as const, required: false },
+        PORT: { type: "string" as const, required: false },
+      },
+      router: {
+        ...result.ast!.router,
+        cors: defineCors({
+          allowOrigins: ["${HOST}:${PORT}"],
+          allowMethods: ["GET"],
+          allowHeaders: ["Content-Type"],
+        }),
+      },
+    };
+    const patch = generateServer(astWithCorsAndEnv, result.architecture!, moduleInfo, {
+      name: "gin",
+      transport: "http",
+      generateRoute: () => "",
+      generateMiddleware: () => "",
+      generateServer: () => "",
+    } as unknown as AdapterPlugin);
+    const mainContent = patch.regions[1].content;
+    expect(mainContent).toContain(`AllowOrigins:     []string{cfg.HOST + ":" + cfg.PORT}`);
+  });
+
+  it("renders env refs in AllowHeaders and AllowMethods fields", async () => {
+    const result = await buildBase();
+    const astWithCorsAndEnv = {
+      ...result.ast!,
+      env: {
+        CUSTOM_HEADER: { type: "string" as const, required: false },
+        ALLOWED_METHOD: { type: "string" as const, required: false },
+      },
+      router: {
+        ...result.ast!.router,
+        cors: defineCors({
+          allowOrigins: ["*"],
+          allowMethods: ["${ALLOWED_METHOD}"],
+          allowHeaders: ["X-${CUSTOM_HEADER}"],
+        }),
+      },
+    };
+    const patch = generateServer(astWithCorsAndEnv, result.architecture!, moduleInfo, {
+      name: "gin",
+      transport: "http",
+      generateRoute: () => "",
+      generateMiddleware: () => "",
+      generateServer: () => "",
+    } as unknown as AdapterPlugin);
+    const mainContent = patch.regions[1].content;
+    expect(mainContent).toContain(`AllowMethods:     []string{cfg.ALLOWED_METHOD}`);
+    expect(mainContent).toContain(`AllowHeaders:     []string{"X-" + cfg.CUSTOM_HEADER}`);
+  });
 });
