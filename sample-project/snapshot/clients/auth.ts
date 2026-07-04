@@ -3,6 +3,7 @@ import type {
   LoginAuthResponse,
   RegisterAuthRequest,
   RegisterAuthResponse,
+  StreamAuthEventsEvent,
 } from "./types.js";
 
 import { BaseApiClient } from "./base.js";
@@ -30,5 +31,21 @@ export class AuthClient extends BaseApiClient {
       body: JSON.stringify(params),
       ...options,
     });
+  }
+
+  StreamAuthEvents(
+    onEvent: (event: StreamAuthEventsEvent) => void,
+    options?: { reconnect?: boolean },
+  ): EventSource {
+    const es = new EventSource(`${this.baseUrl}/api/v1/auth/events`);
+    es.onmessage = (msg) => {
+      try {
+        const data = JSON.parse(msg.data) as StreamAuthEventsEvent;
+        onEvent(data);
+      } catch {
+        /* ignore parse errors */
+      }
+    };
+    return es;
   }
 }

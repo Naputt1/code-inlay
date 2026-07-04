@@ -275,12 +275,22 @@ export function isZodObject(
   return typeName(schema) === "ZodObject";
 }
 
+export function isZodDiscriminatedUnion(schema: SchemaLike): schema is SchemaLike & {
+  _def: { discriminator: string; options: SchemaLike[]; optionsMap: Record<string, SchemaLike> };
+} {
+  return typeName(schema) === "ZodDiscriminatedUnion";
+}
+
 export function isZodString(schema: SchemaLike): boolean {
   return typeName(schema) === "ZodString";
 }
 
 export function isZodEnum(schema: SchemaLike): boolean {
   return typeName(schema) === "ZodEnum";
+}
+
+export function isZodLiteral(schema: SchemaLike): boolean {
+  return typeName(schema) === "ZodLiteral";
 }
 
 export function isZodNumber(schema: SchemaLike): boolean {

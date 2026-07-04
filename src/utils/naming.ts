@@ -1,4 +1,4 @@
-import type { RouteAst, UsecaseOrganization } from "../types/index.js";
+import type { RouteAst, RouteLikeAst, UsecaseOrganization } from "../types/index.js";
 
 export function pascalCase(value: string): string {
   return value
@@ -28,11 +28,15 @@ export function featuresPath(path: string, featuresDir?: string): string {
   return path.replace(/^internal\//, `internal/${featuresDir}/`);
 }
 
-export function routeTypeName(route: RouteAst, suffix: string): string {
+export function routeTypeName(route: RouteLikeAst, suffix: string): string {
   return `${pascalCase(route.id)}${pascalCase(route.moduleName)}${suffix}`;
 }
 
-export function defaultFileForLayer(route: RouteAst, layer: string, featuresDir?: string): string {
+export function defaultFileForLayer(
+  route: RouteLikeAst,
+  layer: string,
+  featuresDir?: string,
+): string {
   const base = (() => {
     switch (layer) {
       case "entity":
@@ -55,7 +59,7 @@ export function defaultFileForLayer(route: RouteAst, layer: string, featuresDir?
   return featuresPath(base, featuresDir);
 }
 
-export function defaultRegionId(route: RouteAst, layer: string): string {
+export function defaultRegionId(route: RouteLikeAst, layer: string): string {
   return `${route.moduleName}.${route.id}.${layer}`;
 }
 

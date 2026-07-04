@@ -32,6 +32,7 @@ func registerOrdersRoutes(api *gin.RouterGroup, mygormSvc service.MygormService,
 		orders.GET("", ordersHandler.List)
 		orders.GET("/:id", ordersHandler.Get)
 		orders.POST("/:id/cancel", ordersHandler.Cancel)
+		orders.GET("/track-ws", ordersHandler.TrackOrder)
 		orders.GET("/admin/all", ordersHandler.AdminListAllOrders)
 	}
 }

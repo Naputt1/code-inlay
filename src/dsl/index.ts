@@ -24,6 +24,7 @@ import type {
   PluginPackage,
   ResponseFormat,
   RouteDefinition,
+  RouteLike,
   RouterAdapter,
   RouterDefinition,
   RuntimeConfig,
@@ -32,10 +33,13 @@ import type {
   ServiceExtensionResult,
   ServiceFileCtx,
   ServiceInput,
+  SSEDefinition,
   TestingConfig,
   AdapterSelection,
   UsecaseOrganization,
   ValidationErrorConfig,
+  WSDefinition,
+  WSLibrary,
 } from "../types/index.js";
 
 export type DefineRouteInput<
@@ -84,6 +88,56 @@ export function defineRoute<
   };
 }
 
+export function defineSSE(input: {
+  path: string;
+  events: SchemaLike;
+  handler: string;
+  architecture?: ArchitectureRef | ArchitectureRef[] | ArchitectureSelection;
+  adapter?: AdapterRef | AdapterRef[] | AdapterSelection;
+  adapters?: AdapterRef[] | AdapterSelection;
+  middleware?: MiddlewareDefinition[];
+  metadata?: Record<string, unknown>;
+}): SSEDefinition {
+  return {
+    kind: "SSEDefinition",
+    path: input.path,
+    events: input.events,
+    handler: input.handler,
+    architecture: input.architecture,
+    adapter: input.adapter,
+    adapters: input.adapters,
+    middleware: input.middleware ?? [],
+    metadata: input.metadata ?? {},
+  };
+}
+
+export function defineWS(input: {
+  path: string;
+  message: SchemaLike;
+  events?: SchemaLike;
+  handler: string;
+  architecture?: ArchitectureRef | ArchitectureRef[] | ArchitectureSelection;
+  adapter?: AdapterRef | AdapterRef[] | AdapterSelection;
+  adapters?: AdapterRef[] | AdapterSelection;
+  middleware?: MiddlewareDefinition[];
+  metadata?: Record<string, unknown>;
+  wsLibrary?: WSLibrary;
+}): WSDefinition {
+  return {
+    kind: "WSDefinition",
+    path: input.path,
+    message: input.message,
+    events: input.events,
+    handler: input.handler,
+    architecture: input.architecture,
+    adapter: input.adapter,
+    adapters: input.adapters,
+    middleware: input.middleware ?? [],
+    metadata: input.metadata ?? {},
+    wsLibrary: input.wsLibrary,
+  };
+}
+
 export function defineMiddleware(input: { name: string; handler?: string }): MiddlewareDefinition {
   return {
     kind: "MiddlewareDefinition",
@@ -100,11 +154,7 @@ export function defineModule(input: {
   usecaseOrganization?: UsecaseOrganization;
   responseFormat?: ResponseFormat;
   errors?: ErrorDefinition[];
-  routes?: RouteDefinition<
-    SchemaLike | undefined,
-    SchemaLike | undefined,
-    SchemaLike | undefined
-  >[];
+  routes?: RouteLike[];
   middleware?: MiddlewareDefinition[];
 }): ModuleDefinition {
   return {
@@ -172,11 +222,7 @@ export interface AppBuilder<
     usecaseOrganization?: UsecaseOrganization;
     responseFormat?: ResponseFormat;
     errors?: ErrorDefinition[];
-    routes?: RouteDefinition<
-      SchemaLike | undefined,
-      SchemaLike | undefined,
-      SchemaLike | undefined
-    >[];
+    routes?: RouteLike[];
     middleware?: MiddlewareDefinition[];
   }): AppBuilder<TEnv, TServiceNames, TModuleNames | TName>;
 }
@@ -352,11 +398,7 @@ export function defineApp<
       usecaseOrganization?: UsecaseOrganization;
       responseFormat?: ResponseFormat;
       errors?: ErrorDefinition[];
-      routes?: RouteDefinition<
-        SchemaLike | undefined,
-        SchemaLike | undefined,
-        SchemaLike | undefined
-      >[];
+      routes?: RouteLike[];
       middleware?: MiddlewareDefinition[];
     }) => {
       state.modules.push({
@@ -378,13 +420,7 @@ export function defineApp<
   return builder as unknown as AppBuilder<TEnv, keyof TServices & string, never>;
 }
 
-export function defineRouteGroup<
-  TRoute extends RouteDefinition<
-    SchemaLike | undefined,
-    SchemaLike | undefined,
-    SchemaLike | undefined
-  >,
->(input: {
+export function defineRouteGroup<TRoute extends RouteLike>(input: {
   prefix: string;
   middleware?: MiddlewareDefinition[];
   architecture?: ArchitectureRef | ArchitectureRef[] | ArchitectureSelection;
@@ -394,7 +430,7 @@ export function defineRouteGroup<
     ...route,
     path: joinPath(input.prefix, route.path),
     architecture: route.architecture ?? input.architecture,
-    middleware: [...(input.middleware ?? []), ...route.middleware],
+    middleware: [...(input.middleware ?? []), ...(route.middleware ?? [])],
     metadata: {
       ...route.metadata,
       _group: input.prefix,

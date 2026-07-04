@@ -97,13 +97,16 @@ async function inspectRoute(
     for (const route of module.routes) {
       if (route.id !== routeName) continue;
 
-      console.log(`Route: ${module.name}.${route.id}`);
-      console.log(`  Method: ${route.method}`);
+      const kindLabel = route.kind === "Route" ? "HTTP" : route.kind === "SSE" ? "SSE" : "WS";
+      console.log(`${kindLabel}: ${module.name}.${route.id}`);
+      if (route.kind === "Route") {
+        console.log(`  Method: ${route.method}`);
+        console.log(`  Query: ${route.query ? "yes" : "no"}`);
+        console.log(`  Body: ${route.body ? "yes" : "no"}`);
+        console.log(`  Response: ${route.response ? "yes" : "no"}`);
+      }
       console.log(`  Path: ${route.fullPath}`);
       console.log(`  Handler: ${route.handlerName}`);
-      console.log(`  Query: ${route.query ? "yes" : "no"}`);
-      console.log(`  Body: ${route.body ? "yes" : "no"}`);
-      console.log(`  Response: ${route.response ? "yes" : "no"}`);
 
       const expansion = result.architecture.routes.find(
         (e) => e.route.id === route.id && e.route.moduleName === module.name,

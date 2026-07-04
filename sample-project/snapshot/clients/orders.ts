@@ -7,6 +7,7 @@ import type {
   GetOrdersResponse,
   ListOrdersRequest,
   ListOrdersResponse,
+  TrackOrderMessage,
 } from "./types.js";
 
 import { BaseApiClient } from "./base.js";
@@ -40,6 +41,31 @@ export class OrdersClient extends BaseApiClient {
       body: JSON.stringify(params),
       ...options,
     });
+  }
+
+  TrackOrder(onEvent: (event: TrackOrderEvent) => void): {
+    send(msg: TrackOrderMessage): void;
+    close(): void;
+  } {
+    const protocol = this.baseUrl.startsWith("https") ? "wss" : "ws";
+    const url = `${protocol}://${this.baseUrl.replace(/^https?:\x2f\x2f/, "")}/api/v1/orders/track-ws`;
+    const ws = new WebSocket(url);
+    ws.onmessage = (msg) => {
+      try {
+        const data = JSON.parse(msg.data) as TrackOrderEvent;
+        onEvent(data);
+      } catch {
+        /* ignore parse errors */
+      }
+    };
+    return {
+      send(msg: TrackOrderMessage) {
+        ws.send(JSON.stringify(msg));
+      },
+      close() {
+        ws.close();
+      },
+    };
   }
 
   async AdminListAllOrders(

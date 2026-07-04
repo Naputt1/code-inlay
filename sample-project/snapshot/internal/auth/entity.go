@@ -1,5 +1,11 @@
 package auth
 
+type StreamAuthEventsAuthEvent struct {
+	Timestamp string `json:"timestamp" form:"timestamp" validate:"required"`
+	Type      string `json:"type" form:"type" validate:"required"`
+	UserId    string `json:"userId" form:"userId" validate:"required"`
+}
+
 type LoginAuthRequest struct {
 	Email    string `json:"email" form:"email" validate:"required,email"`
 	Password string `json:"password" form:"password" validate:"required,min=8"`

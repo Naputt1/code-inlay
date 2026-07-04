@@ -5,12 +5,14 @@ import {
   isZodOptional,
   isZodNullable,
   isZodObject,
+  isZodDiscriminatedUnion,
   isZodString,
   isZodEnum,
   isZodNumber,
   isZodBoolean,
   isZodArray,
   isZodEntity,
+  isZodLiteral,
   unwrap,
 } from "./extras.js";
 
@@ -521,7 +523,7 @@ function schemaToGoType(schema: SchemaLike, diagnostics: Diagnostic[]): string {
   const unwrapped = unwrap(schema);
   let type: string;
 
-  if (isZodString(unwrapped) || isZodEnum(unwrapped)) {
+  if (isZodString(unwrapped) || isZodEnum(unwrapped) || isZodLiteral(unwrapped)) {
     type = "string";
   } else if (isZodInt32(unwrapped)) {
     type = "int32";
@@ -592,6 +594,250 @@ function renderStruct(goStruct: GoStruct, responseContext: boolean = false): str
     .join("\n");
 
   return `type ${goStruct.name} struct {\n${fields}\n}`;
+}
+
+export function generateNamedStructs(
+  name: string,
+  schema: SchemaLike,
+  diagnostics: Diagnostic[],
+): string {
+  const du = isZodDiscriminatedUnion(schema) ? schema._def : null;
+  if (du) {
+    const allFields = new Map<string, { schema: SchemaLike; appearsInAll: boolean }>();
+    const variantCount = du.options.length;
+    for (const option of du.options) {
+      const unwrapped = unwrap(option);
+      if (isZodObject(unwrapped)) {
+        for (const [fieldName, fieldSchema] of Object.entries(unwrapped.shape)) {
+          const existing = allFields.get(fieldName);
+          if (existing) {
+            // field already registered from another variant
+          } else {
+            allFields.set(fieldName, {
+              schema: fieldSchema as SchemaLike,
+              appearsInAll: variantCount === 1,
+            });
+          }
+        }
+      }
+    }
+    // Mark fields not in all variants as optional
+    for (const [fieldName, entry] of allFields) {
+      entry.appearsInAll = [...du.options].every((opt) => {
+        const u = unwrap(opt);
+        return isZodObject(u) && fieldName in u.shape;
+      });
+    }
+    const structName = name;
+    const fields: GoField[] = [];
+    const subStructs = new Map<string, GoStruct>();
+    const registerSub = (subName: string, subSchema: SchemaLike) => {
+      if (subStructs.has(subName)) return;
+      const sw = unwrap(subSchema);
+      if (!isZodObject(sw)) return;
+      const shape = sw.shape;
+      const flds = Object.keys(shape)
+        .sort()
+        .map((fn) => {
+          const fs = shape[fn] as SchemaLike;
+          const opt = isZodOptional(fs);
+          const inner = unwrap(fs);
+          if (isZodObject(inner)) {
+            const childName = `${subName}${pascalCase(fn)}`;
+            registerSub(childName, inner);
+            return {
+              name: pascalCase(fn),
+              type: childName,
+              jsonName: fn,
+              optional: opt,
+              validations: extractValidations(fs),
+            } as GoField;
+          }
+          if (isZodArray(inner)) {
+            const elem = unwrap(inner.element);
+            if (isZodObject(elem)) {
+              const childName = `${subName}${pascalCase(fn)}Item`;
+              registerSub(childName, elem);
+              return {
+                name: pascalCase(fn),
+                type: `[]${childName}`,
+                jsonName: fn,
+                optional: opt,
+                validations: extractValidations(fs),
+              } as GoField;
+            }
+          }
+          return {
+            name: pascalCase(fn),
+            type: schemaToGoType(fs, diagnostics),
+            jsonName: fn,
+            optional: opt,
+            validations: extractValidations(fs),
+          } as GoField;
+        });
+      subStructs.set(subName, { name: subName, fields: flds });
+    };
+    for (const [fieldName, entry] of allFields) {
+      const inner = unwrap(entry.schema);
+      if (isZodObject(inner)) {
+        const childName = `${structName}${pascalCase(fieldName)}`;
+        registerSub(childName, inner);
+        fields.push({
+          name: pascalCase(fieldName),
+          type: childName,
+          jsonName: fieldName,
+          optional: !entry.appearsInAll,
+          validations: extractValidations(entry.schema),
+        });
+      } else if (isZodArray(inner)) {
+        const elem = unwrap(inner.element);
+        if (isZodObject(elem)) {
+          const childName = `${structName}${pascalCase(fieldName)}Item`;
+          registerSub(childName, elem);
+          fields.push({
+            name: pascalCase(fieldName),
+            type: `[]${childName}`,
+            jsonName: fieldName,
+            optional: !entry.appearsInAll,
+            validations: extractValidations(entry.schema),
+          });
+        } else {
+          fields.push({
+            name: pascalCase(fieldName),
+            type: schemaToGoType(entry.schema, diagnostics),
+            jsonName: fieldName,
+            optional: !entry.appearsInAll,
+            validations: extractValidations(entry.schema),
+          });
+        }
+      } else {
+        fields.push({
+          name: pascalCase(fieldName),
+          type: schemaToGoType(entry.schema, diagnostics),
+          jsonName: fieldName,
+          optional: !entry.appearsInAll,
+          validations: extractValidations(entry.schema),
+        });
+      }
+    }
+    fields.sort((a, b) => a.name.localeCompare(b.name));
+    const main: GoStruct = { name: structName, fields };
+    const structs: GoStruct[] = [main];
+    for (const sub of subStructs.values()) {
+      if (!structs.find((s) => s.name === sub.name)) structs.push(sub);
+    }
+    return structs.map((s) => renderStruct(s)).join("\n\n");
+  }
+  const subStructs = new Map<string, GoStruct>();
+
+  const registerSub = (subName: string, subSchema: SchemaLike) => {
+    if (subStructs.has(subName)) return;
+    const unwrapped = unwrap(subSchema);
+    if (!isZodObject(unwrapped)) return;
+    const shape = unwrapped.shape;
+    const fields = Object.keys(shape)
+      .sort()
+      .map((fieldName) => {
+        const fieldSchema = shape[fieldName] as SchemaLike;
+        const optional = isZodOptional(fieldSchema);
+        const inner = unwrap(fieldSchema);
+        if (isZodObject(inner)) {
+          const childName = `${subName}${pascalCase(fieldName)}`;
+          registerSub(childName, inner);
+          return {
+            name: pascalCase(fieldName),
+            type: childName,
+            jsonName: fieldName,
+            optional,
+            validations: extractValidations(fieldSchema),
+          } as GoField;
+        }
+        if (isZodArray(inner)) {
+          const elem = unwrap(inner.element);
+          if (isZodObject(elem)) {
+            const childName = `${subName}${pascalCase(fieldName)}Item`;
+            registerSub(childName, elem);
+            return {
+              name: pascalCase(fieldName),
+              type: `[]${childName}`,
+              jsonName: fieldName,
+              optional,
+              validations: extractValidations(fieldSchema),
+            } as GoField;
+          }
+        }
+        return {
+          name: pascalCase(fieldName),
+          type: schemaToGoType(fieldSchema, diagnostics),
+          jsonName: fieldName,
+          optional,
+          validations: extractValidations(fieldSchema),
+        } as GoField;
+      });
+    subStructs.set(subName, { name: subName, fields });
+  };
+
+  const main = processSchema(name, schema, subStructs, registerSub, diagnostics);
+  const structs: GoStruct[] = [];
+  if (main) structs.push(main);
+  for (const sub of subStructs.values()) {
+    if (!structs.find((s) => s.name === sub.name)) {
+      structs.push(sub);
+    }
+  }
+  return structs.map((s) => renderStruct(s)).join("\n\n");
+}
+
+function processSchema(
+  prefix: string,
+  schema: SchemaLike,
+  subStructs: Map<string, GoStruct>,
+  registerSub: (name: string, schema: SchemaLike) => void,
+  diagnostics?: Diagnostic[],
+): GoStruct | undefined {
+  const unwrapped = unwrap(schema);
+  if (!isZodObject(unwrapped)) return undefined;
+  const shape = unwrapped.shape;
+  const fields = Object.keys(shape)
+    .sort()
+    .map((fieldName) => {
+      const fieldSchema = shape[fieldName] as SchemaLike;
+      const optional = isZodOptional(fieldSchema);
+      const inner = unwrap(fieldSchema);
+      if (isZodObject(inner)) {
+        const childName = `${prefix}${pascalCase(fieldName)}`;
+        registerSub(childName, inner);
+        return {
+          name: pascalCase(fieldName),
+          type: childName,
+          jsonName: fieldName,
+          optional,
+          validations: extractValidations(fieldSchema),
+        } as GoField;
+      }
+      if (isZodArray(inner)) {
+        const elem = unwrap(inner.element);
+        if (isZodObject(elem)) {
+          const childName = `${prefix}${pascalCase(fieldName)}Item`;
+          registerSub(childName, elem);
+          return {
+            name: pascalCase(fieldName),
+            type: `[]${childName}`,
+            jsonName: fieldName,
+            optional,
+            validations: extractValidations(fieldSchema),
+          } as GoField;
+        }
+      }
+      return {
+        name: pascalCase(fieldName),
+        type: schemaToGoType(fieldSchema, diagnostics ?? []),
+        jsonName: fieldName,
+        optional,
+        validations: extractValidations(fieldSchema),
+      } as GoField;
+    });
+  return { name: prefix, fields };
 }
 
 function numberType(checks: Array<{ kind: string }> | undefined): string {
