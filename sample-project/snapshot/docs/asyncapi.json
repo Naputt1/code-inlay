@@ -1,0 +1,89 @@
+{
+  "asyncapi": "2.6.0",
+  "info": {
+    "title": "Store Events",
+    "version": "1.0.0"
+  },
+  "servers": {
+    "default": {
+      "url": "localhost:8080",
+      "protocol": "ws",
+      "description": "Default server"
+    }
+  },
+  "channels": {
+    "/api/v1/orders/track-ws": {
+      "description": "WebSocket endpoint at /api/v1/orders/track-ws",
+      "publish": {
+        "summary": "Send TrackOrder message",
+        "message": {
+          "$ref": "#/components/messages/TrackOrderOrdersMessage"
+        }
+      },
+      "subscribe": {
+        "summary": "Receive TrackOrder events",
+        "message": {
+          "$ref": "#/components/messages/TrackOrderOrdersEvent"
+        }
+      }
+    },
+    "/api/v1/auth/events": {
+      "description": "SSE event stream at /api/v1/auth/events",
+      "subscribe": {
+        "summary": "Subscribe to StreamAuthEvents events",
+        "message": {
+          "$ref": "#/components/messages/StreamAuthEventsAuthEvent"
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "TrackOrderOrdersMessage": {
+        "type": "object",
+        "properties": {
+          "orderId": {
+            "type": "string"
+          }
+        },
+        "required": ["orderId"]
+      },
+      "TrackOrderOrdersEvent": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": ["status", "updatedAt"]
+      },
+      "StreamAuthEventsAuthEventPayload": {}
+    },
+    "messages": {
+      "TrackOrderOrdersMessage": {
+        "name": "TrackOrderOrdersMessage",
+        "title": "TrackOrder message",
+        "payload": {
+          "$ref": "#/components/schemas/TrackOrderOrdersMessage"
+        }
+      },
+      "TrackOrderOrdersEvent": {
+        "name": "TrackOrderOrdersEvent",
+        "title": "TrackOrder event",
+        "payload": {
+          "$ref": "#/components/schemas/TrackOrderOrdersEvent"
+        }
+      },
+      "StreamAuthEventsAuthEvent": {
+        "name": "StreamAuthEventsAuthEvent",
+        "title": "StreamAuthEvents event",
+        "payload": {
+          "$ref": "#/components/schemas/StreamAuthEventsAuthEventPayload"
+        }
+      }
+    }
+  }
+}

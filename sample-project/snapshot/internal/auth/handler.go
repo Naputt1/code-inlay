@@ -2,6 +2,8 @@ package auth
 
 import (
 	"errors"
+	"fmt"
+	"io"
 	"net/http"
 	"snapshot/internal/httperr"
 
@@ -9,9 +11,10 @@ import (
 )
 
 type AuthHandler struct {
-	LoginUsecase    LoginUsecase
-	LogoutUsecase   LogoutUsecase
-	RegisterUsecase RegisterUsecase
+	LoginUsecase            LoginUsecase
+	LogoutUsecase           LogoutUsecase
+	RegisterUsecase         RegisterUsecase
+	StreamAuthEventsUsecase StreamAuthEventsUsecase
 }
 
 func (h *AuthHandler) Login(c *gin.Context) {
@@ -67,4 +70,23 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, output)
+}
+
+func (h *AuthHandler) StreamAuthEvents(c *gin.Context) {
+	c.Writer.Header().Set("Content-Type", "text/event-stream")
+	c.Writer.Header().Set("Cache-Control", "no-cache")
+	c.Writer.Header().Set("Connection", "keep-alive")
+
+	ch := make(chan StreamAuthEventsAuthEvent)
+	go h.StreamAuthEventsUsecase.Execute(c.Request.Context(), ch)
+
+	c.Stream(func(w io.Writer) bool {
+		event, ok := <-ch
+		if !ok {
+			return false
+		}
+		// TODO: marshal event to SSE format
+		fmt.Fprintf(w, "data: %s\\n\\n", event)
+		return true
+	})
 }

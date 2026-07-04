@@ -6,6 +6,7 @@ import (
 	"snapshot/internal/httperr"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 )
 
 type OrdersHandler struct {
@@ -13,6 +14,7 @@ type OrdersHandler struct {
 	ListUsecase               ListUsecase
 	GetUsecase                GetUsecase
 	CancelUsecase             CancelUsecase
+	TrackOrderUsecase         TrackOrderUsecase
 	AdminListAllOrdersUsecase AdminListAllOrdersUsecase
 }
 
@@ -114,4 +116,35 @@ func (h *OrdersHandler) List(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, output)
+}
+
+func (h *OrdersHandler) TrackOrder(c *gin.Context) {
+	upgrader := websocket.Upgrader{}
+	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		return
+	}
+	defer conn.Close()
+
+	readCh := make(chan TrackOrderOrdersMessage)
+	writeCh := make(chan TrackOrderOrdersEvent, 8)
+
+	go h.TrackOrderUsecase.Execute(c.Request.Context(), readCh, writeCh)
+
+	go func() {
+		defer close(readCh)
+		for {
+			var msg TrackOrderOrdersMessage
+			if err := conn.ReadJSON(&msg); err != nil {
+				break
+			}
+			readCh <- msg
+		}
+	}()
+
+	for event := range writeCh {
+		if err := conn.WriteJSON(event); err != nil {
+			break
+		}
+	}
 }

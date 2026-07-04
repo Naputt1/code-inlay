@@ -1,4 +1,4 @@
-import type { AppAst, GeneratedFilePatch, RouteAst } from "../types/index.js";
+import type { AppAst, GeneratedFilePatch, RouteAst, RouteLikeAst } from "../types/index.js";
 import { pascalCase } from "../utils/naming.js";
 import { stableHash } from "../utils/hash.js";
 
@@ -39,7 +39,7 @@ export function generateMetadata(ast: AppAst): GeneratedFilePatch[] {
   if (ast.options.metadata?.schemaReflection) {
     for (const module of ast.modules) {
       for (const route of module.routes) {
-        if (route.query || route.body || route.response) {
+        if (route.kind === "Route" && (route.query || route.body || route.response)) {
           patches.push({
             path: `internal/metadata/schemas.go`,
             regions: [
@@ -60,8 +60,12 @@ export function generateMetadata(ast: AppAst): GeneratedFilePatch[] {
   return patches;
 }
 
-function generateRouteInfo(route: RouteAst): string {
-  return `{ID: "${route.id}", Method: "${route.method}", Path: "${route.fullPath}", Handler: "${route.handlerName}", Module: "${route.moduleName}"${route.query || route.body ? `, Input: "${pascalCase(route.id)}${pascalCase(route.moduleName)}Request"` : ""}${route.response ? `, Response: "${pascalCase(route.id)}${pascalCase(route.moduleName)}Response"` : ""}}`;
+function generateRouteInfo(route: RouteLikeAst): string {
+  if (route.kind === "Route") {
+    return `{ID: "${route.id}", Method: "${route.method}", Path: "${route.fullPath}", Handler: "${route.handlerName}", Module: "${route.moduleName}"${route.query || route.body ? `, Input: "${pascalCase(route.id)}${pascalCase(route.moduleName)}Request"` : ""}${route.response ? `, Response: "${pascalCase(route.id)}${pascalCase(route.moduleName)}Response"` : ""}}`;
+  }
+  const typeLabel = route.kind === "SSE" ? "SSE" : "WS";
+  return `{ID: "${route.id}", Method: "${typeLabel}", Path: "${route.fullPath}", Handler: "${route.handlerName}", Module: "${route.moduleName}"}`;
 }
 
 function generateRegistryGo(ast: AppAst, moduleInfos: Map<string, string[]>): string {
@@ -107,7 +111,8 @@ function generateRegistryGo(ast: AppAst, moduleInfos: Map<string, string[]>): st
   return lines.join("\n");
 }
 
-function generateSchemaReflection(route: RouteAst): string {
+function generateSchemaReflection(route: RouteAst | RouteLikeAst): string {
+  if (route.kind !== "Route") return "";
   const lines: string[] = [];
 
   if (route.query) {

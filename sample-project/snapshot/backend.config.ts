@@ -12,6 +12,8 @@ import {
   defineService,
   defineError,
   defineCors,
+  defineSSE,
+  defineWS,
   HttpStatus,
   defineValidationError,
 } from "@code-inlay/backend-gen";
@@ -204,6 +206,13 @@ const orderRoutes = defineRouteGroup({
       body: z.object({ reason: z.string().optional() }),
       handler: "Cancel",
     }),
+    defineWS({
+      path: "/track-ws",
+      message: z.object({ orderId: z.string() }),
+      events: z.object({ status: z.string(), updatedAt: z.string() }),
+      handler: "TrackOrder",
+      wsLibrary: "gorilla/websocket",
+    }),
   ],
 });
 
@@ -275,6 +284,14 @@ const authRoutes = defineRouteGroup({
       }),
       handler: "Register",
     }),
+    defineSSE({
+      path: "/events",
+      events: z.discriminatedUnion("type", [
+        z.object({ type: z.literal("login"), userId: z.string(), timestamp: z.string() }),
+        z.object({ type: z.literal("logout"), userId: z.string(), timestamp: z.string() }),
+      ]),
+      handler: "StreamAuthEvents",
+    }),
   ],
 });
 
@@ -320,10 +337,11 @@ const app = defineApp({
   options: {
     responseFormat: stdFormat,
     fileCreation: "skeleton",
-    targets: ["go-server", "ts-client", "openapi"],
+    targets: ["go-server", "ts-client", "openapi", "asyncapi"],
     targetOptions: {
       "ts-client": { outputDir: "clients" },
       openapi: { title: "Store API", version: "1.0.0" },
+      asyncapi: { title: "Store Events", version: "1.0.0", serverUrl: "localhost:8080" },
     },
     validationError: defineValidationError({
       httpStatus: HttpStatus.UnprocessableEntity,

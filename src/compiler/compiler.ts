@@ -98,6 +98,34 @@ export async function compile(options: CompileOptions): Promise<CompileResult> {
         }
       }
     }
+
+    const wsLibs = new Set<string>();
+    for (const mod of ast.modules) {
+      for (const route of mod.routes) {
+        if (route.kind === "WS" && route.wsLibrary) {
+          wsLibs.add(route.wsLibrary);
+        }
+      }
+    }
+    if (wsLibs.size > 0) {
+      const wsGoDeps: Record<string, string> = {
+        "gorilla/websocket": "github.com/gorilla/websocket",
+        "nhooyr.io/websocket": "nhooyr.io/websocket",
+      };
+      for (const wsLib of wsLibs) {
+        const wsPkg = wsGoDeps[wsLib];
+        if (wsPkg) {
+          const result = spawnSync("go", ["get", wsPkg], { cwd, stdio: "pipe", encoding: "utf8" });
+          if (result.status !== 0) {
+            diagnostics.push({
+              level: "error",
+              code: "go-get-failed",
+              message: `Failed to run "go get ${wsPkg}": ${(result.stderr || result.stdout || "unknown error").trim()}`,
+            });
+          }
+        }
+      }
+    }
   }
 
   ast = await runTransformerStage("codegen", ast, registry, diagnostics);

@@ -20,5 +20,6 @@ func registerAuthRoutes(api *gin.RouterGroup) {
 		auth.POST("/login", authHandler.Login)
 		auth.POST("/logout", authHandler.Logout)
 		auth.POST("/register", authHandler.Register)
+		auth.GET("/events", authHandler.StreamAuthEvents)
 	}
 }

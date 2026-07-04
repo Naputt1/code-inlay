@@ -7,6 +7,9 @@ import type {
   GeneratedRegion,
   GenerationAst,
   RouteAst,
+  RouteLikeAst,
+  SSEAst,
+  WSAst,
 } from "../types/index.js";
 import type { GoModuleInfo } from "../utils/env.js";
 import {
@@ -24,8 +27,17 @@ import {
   serviceRegionId,
   serviceTypeName,
 } from "../utils/naming.js";
-import { generateEntityStructs, generateRouteTypes } from "../schema/index.js";
-import { generateGinHandler, resolveAdapters } from "../adapters/gin.js";
+import {
+  generateEntityStructs,
+  generateRouteTypes,
+  generateNamedStructs,
+} from "../schema/index.js";
+import {
+  generateGinHandler,
+  generateGinSSEHandler,
+  generateGinWSHandler,
+  resolveAdapters,
+} from "../adapters/gin.js";
 import { generateServer, serverFilePath } from "../srvgen/index.js";
 import { generateEnvConfigFile } from "../srvgen/config.js";
 import { batchEnrichGoRegions } from "../plugins/enrich.js";
@@ -66,43 +78,41 @@ export function generateCode(
 
   const domainModules = new Set<string>();
   const repositoryModules = new Set<string>();
-  const handlerImportsAdded = new Set<string>();
+  const handlerImports = new Map<string, Set<string>>();
+  const streamImportsAdded = new Set<string>();
   const usecaseFileInfo = new Map<string, { moduleName: string; groupKey: string }>();
 
-  const domainRoutesByModule = new Map<string, RouteAst[]>();
-  const repositoryRoutesByModule = new Map<string, RouteAst[]>();
+  const domainRoutesByModule = new Map<string, RouteLikeAst[]>();
+  const repositoryRoutesByModule = new Map<string, RouteLikeAst[]>();
 
   for (const expansion of architecture.routes) {
     const route = expansion.route;
     const hasDomainLayer = expansion.layers.some((l) => l.kind === "domain");
 
     for (const layer of expansion.layers) {
-      if (layer.kind === "domain") {
+      if (layer.kind === "domain" && route.kind === "Route") {
         domainModules.add(route.moduleName);
         const routes = domainRoutesByModule.get(route.moduleName) ?? [];
         routes.push(route);
         domainRoutesByModule.set(route.moduleName, routes);
       }
-      if (layer.kind === "repository") {
+      if (layer.kind === "repository" && route.kind === "Route") {
         repositoryModules.add(route.moduleName);
         const routes = repositoryRoutesByModule.get(route.moduleName) ?? [];
         routes.push(route);
         repositoryRoutesByModule.set(route.moduleName, routes);
       }
-      const layerGroupKey =
-        layer.kind === "usecase"
-          ? (() => {
-              const mod = ast.modules.find((m) => m.name === route.moduleName);
-              const org = resolveUsecaseOrg(
-                route,
-                mod?.usecaseOrganization,
-                ast.options.usecaseOrganization,
-              );
-              return resolveUsecaseGroupKey(route, org);
-            })()
-          : undefined;
 
-      if (layer.kind === "usecase" && layerGroupKey) {
+      let layerGroupKey: string | undefined;
+      if (layer.kind === "usecase" && route.kind === "Route") {
+        const mod = ast.modules.find((m) => m.name === route.moduleName);
+        const org = resolveUsecaseOrg(
+          route,
+          mod?.usecaseOrganization,
+          ast.options.usecaseOrganization,
+        );
+        layerGroupKey = resolveUsecaseGroupKey(route, org);
+
         if (!usecaseFileInfo.has(layer.file)) {
           usecaseFileInfo.set(layer.file, {
             moduleName: route.moduleName,
@@ -110,6 +120,18 @@ export function generateCode(
           });
         }
       }
+
+      if ((layer.kind === "sse" || layer.kind === "ws") && !streamImportsAdded.has(layer.file)) {
+        streamImportsAdded.add(layer.file);
+        add(layer.file, {
+          id: `${route.moduleName}.0${layer.kind}.imports`,
+          stableHash: `${layer.file}:${layer.kind}:imports`,
+          owner: "code-inlay",
+          language: "go",
+          content: [`import (`, `\t"context"`, `)`].join("\n"),
+        });
+      }
+
       const content = generateLayerContent(route, layer.kind, diagnostics, hasDomainLayer);
       if (content !== undefined) {
         add(layer.file, {
@@ -129,38 +151,53 @@ export function generateCode(
     for (const adapter of adapters) {
       if (adapter.name === "gin") {
         const handlerFile = defaultFileForLayer(route, "handler", featuresDir);
-        if (!handlerImportsAdded.has(handlerFile)) {
-          handlerImportsAdded.add(handlerFile);
-          const extraImports: string[] = [];
+
+        if (!handlerImports.has(handlerFile)) {
+          handlerImports.set(handlerFile, new Set<string>());
+        }
+        const hd = handlerImports.get(handlerFile)!;
+
+        if (route.kind === "Route") {
+          hd.add("errors");
+          hd.add("net/http");
+          hd.add("github.com/gin-gonic/gin");
           if (moduleInfo) {
             const httperrPkgPath = featuresPath("internal/httperr", featuresDir);
-            extraImports.push(`\t"${moduleInfo.modulePath}/${httperrPkgPath}"`);
+            hd.add(`${moduleInfo.modulePath}/${httperrPkgPath}`);
           }
           add(handlerFile, {
-            id: `${route.moduleName}.0handler.imports`,
-            stableHash: `${handlerFile}:imports`,
-            owner: "code-inlay",
-            language: "go",
-            content: [
-              `import (`,
-              `\t"errors"`,
-              `\t"net/http"`,
-              ...extraImports,
-              ``,
-              `\t"github.com/gin-gonic/gin"`,
-              `)`,
-            ].join("\n"),
+            ...generateGinHandler(route, diagnostics, adapter.name, hasDomainLayer),
+            stableHash: `${route.stableId}:${adapter.name}:handler:${handlerFile}`,
+            owner: adapter.name,
+          });
+        } else if (route.kind === "SSE") {
+          hd.add("fmt");
+          hd.add("io");
+          hd.add("github.com/gin-gonic/gin");
+          add(handlerFile, {
+            ...generateGinSSEHandler(route as SSEAst),
+            stableHash: `${route.stableId}:${adapter.name}:handler:${handlerFile}`,
+            owner: adapter.name,
+          });
+        } else if (route.kind === "WS") {
+          hd.add("github.com/gin-gonic/gin");
+          const wsLib = (route as WSAst).wsLibrary ?? "gorilla/websocket";
+          const wsPkg =
+            wsLib === "nhooyr.io/websocket"
+              ? "nhooyr.io/websocket"
+              : "github.com/gorilla/websocket";
+          hd.add(wsPkg);
+          add(handlerFile, {
+            ...generateGinWSHandler(route as WSAst),
+            stableHash: `${route.stableId}:${adapter.name}:handler:${handlerFile}`,
+            owner: adapter.name,
           });
         }
-        add(handlerFile, {
-          ...generateGinHandler(route, diagnostics, adapter.name, hasDomainLayer),
-          stableHash: `${route.stableId}:${adapter.name}:handler:${handlerFile}`,
-          owner: adapter.name,
-        });
       }
 
-      const routeCtx = { diagnostics, route, architecture };
-      const routeRegions = adapter.generateRoute?.(routeCtx) ?? [];
+      const routeRegions =
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        adapter.generateRoute?.({ diagnostics, route: route as any, architecture }) ?? [];
       for (const region of routeRegions) {
         const routeFile = fileForModuleRoutes(route.moduleName);
         const lines = routeLinesByFile.get(routeFile) ?? [];
@@ -193,7 +230,7 @@ export function generateCode(
   for (const [moduleName, routes] of domainRoutesByModule) {
     const domainFile = featuresPath(`internal/${moduleName}/domain.go`, featuresDir);
     const regionId = `${moduleName}.domain`;
-    const domainContent = generateDomain(moduleName, routes, diagnostics);
+    const domainContent = generateDomain(moduleName, routes as RouteAst[], diagnostics);
     add(domainFile, {
       id: regionId,
       stableHash: `${regionId}:${moduleName}:${routes.length}routes`,
@@ -203,8 +240,26 @@ export function generateCode(
     });
   }
 
+  for (const [handlerFile, imports] of handlerImports) {
+    const sorted = [...imports].sort((a, b) => {
+      const aStd = !a.startsWith("github.com") && !a.startsWith("nhooyr.io");
+      const bStd = !b.startsWith("github.com") && !b.startsWith("nhooyr.io");
+      if (aStd && !bStd) return -1;
+      if (!aStd && bStd) return 1;
+      return a.localeCompare(b);
+    });
+    const modName = handlerFile.match(/([^/]+)\/handler\.go$/)?.[1] ?? "handler";
+    add(handlerFile, {
+      id: `${modName}.0handler.imports`,
+      stableHash: `${handlerFile}:imports`,
+      owner: "code-inlay",
+      language: "go",
+      content: [`import (`, ...sorted.map((i) => `\t"${i}"`), `)`].join("\n"),
+    });
+  }
+
   for (const mod of ast.modules) {
-    const moduleErrors = collectModuleErrors(mod.routes);
+    const moduleErrors = collectModuleErrors(mod.routes as RouteAst[]);
     if (moduleErrors.length > 0) {
       const errorPatches = generateModuleErrors(mod.name, moduleErrors, featuresDir);
       for (const patch of errorPatches) {
@@ -238,7 +293,12 @@ export function generateCode(
     const regionId = `${moduleName}.repository`;
     const moduleSvcs = getModuleServices(moduleName);
     const dbProvider = moduleSvcs.find((s) => s.dbAccessor);
-    const repoParts = generateRepository(routes, moduleName, dbProvider, ast.serviceExtensions);
+    const repoParts = generateRepository(
+      routes as RouteAst[],
+      moduleName,
+      dbProvider,
+      ast.serviceExtensions,
+    );
     const suffixForPart = (part: ScaffoldPart): string => {
       if (part.kind === "imports") return ".0imports";
       if (part.kind === "interface") return "";
@@ -341,6 +401,7 @@ export function generateCode(
 
   for (const expansion of architecture.routes) {
     const route = expansion.route;
+    if (route.kind !== "Route") continue;
     const hasDomainLayer = expansion.layers.some((l) => l.kind === "domain");
     const usecaseLayers = expansion.layers.filter((l) => l.kind === "usecase");
     if (usecaseLayers.length === 0) continue;
@@ -442,6 +503,7 @@ export function generateCode(
         }
         for (const expansion of architecture.routes) {
           if (expansion.route.moduleName !== modPkg) continue;
+          if (expansion.route.kind !== "Route") continue;
           const layers = new Set(expansion.layers.map((l) => l.kind));
           if (!layers.has("handler") && !layers.has("usecase")) continue;
           const handlerName = expansion.route.handlerName;
@@ -690,20 +752,63 @@ export function generateCode(
 }
 
 function generateLayerContent(
-  route: RouteAst,
+  route: RouteLikeAst,
   layer: string,
   diagnostics: Diagnostic[],
   hasDomain?: boolean,
 ): string | undefined {
   switch (layer) {
     case "entity":
-      return generateRouteTypes(route, diagnostics, route.responseFormat);
+      if (route.kind === "Route") {
+        return generateRouteTypes(route, diagnostics, route.responseFormat);
+      }
+      if (route.kind === "SSE") {
+        return generateNamedStructs(
+          `${route.handlerName}${pascalCase(route.moduleName)}Event`,
+          route.events,
+          diagnostics,
+        );
+      }
+      if (route.kind === "WS") {
+        const parts: string[] = [];
+        parts.push(
+          generateNamedStructs(
+            `${route.handlerName}${pascalCase(route.moduleName)}Message`,
+            route.message,
+            diagnostics,
+          ),
+        );
+        if (route.events) {
+          parts.push(
+            generateNamedStructs(
+              `${route.handlerName}${pascalCase(route.moduleName)}Event`,
+              route.events,
+              diagnostics,
+            ),
+          );
+        }
+        return parts.join("\n\n");
+      }
+      return undefined;
     case "domain":
       return undefined;
     case "repository":
       return undefined;
     case "usecase":
-      return generateUsecaseInterface(route, hasDomain);
+      if (route.kind === "Route") {
+        return generateUsecaseInterface(route, hasDomain);
+      }
+      return undefined;
+    case "sse":
+      if (route.kind === "SSE") {
+        return `type ${route.handlerName}Usecase interface {\n\tExecute(ctx context.Context, events chan<- ${route.handlerName}${pascalCase(route.moduleName)}Event) error\n}`;
+      }
+      return undefined;
+    case "ws":
+      if (route.kind === "WS") {
+        return `type ${route.handlerName}Usecase interface {\n\tExecute(ctx context.Context, read <-chan ${route.handlerName}${pascalCase(route.moduleName)}Message, write chan<- ${route.handlerName}${pascalCase(route.moduleName)}Event) error\n}`;
+      }
+      return undefined;
     case "handler":
       return undefined;
     default:
@@ -729,7 +834,7 @@ function generateDomain(moduleName: string, routes: RouteAst[], diagnostics: Dia
   return parts.join("\n\n");
 }
 
-function collectMiddlewareNames(route: RouteAst, ast: AppAst): string[] {
+function collectMiddlewareNames(route: RouteLikeAst, ast: AppAst): string[] {
   const names = new Set<string>();
   for (const mw of route.middleware) {
     names.add(mw.name);

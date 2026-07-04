@@ -41,11 +41,17 @@ function generateMarkdownDocs(ast: AppAst): string {
     lines.push(`|--------|------|---------|-------|----------|`);
 
     for (const route of module.routes) {
-      const inputType = route.query || route.body ? `\`${routeTypeName(route, "Request")}\`` : "-";
-      const responseType = route.response ? `\`${routeTypeName(route, "Response")}\`` : "-";
-      lines.push(
-        `| ${route.method} | \`${route.fullPath}\` | \`${route.handlerName}\` | ${inputType} | ${responseType} |`,
-      );
+      if (route.kind === "Route") {
+        const inputType =
+          route.query || route.body ? `\`${routeTypeName(route, "Request")}\`` : "-";
+        const responseType = route.response ? `\`${routeTypeName(route, "Response")}\`` : "-";
+        lines.push(
+          `| ${route.method} | \`${route.fullPath}\` | \`${route.handlerName}\` | ${inputType} | ${responseType} |`,
+        );
+      } else {
+        const type = route.kind === "SSE" ? "SSE" : "WS";
+        lines.push(`| ${type} | \`${route.fullPath}\` | \`${route.handlerName}\` | - | - |`);
+      }
     }
 
     lines.push(``);
@@ -56,35 +62,37 @@ function generateMarkdownDocs(ast: AppAst): string {
 
   for (const module of ast.modules) {
     for (const route of module.routes) {
-      lines.push(`### ${route.method} \`${route.fullPath}\``);
-      lines.push(``);
-      lines.push(`- **ID:** \`${module.name}.${route.id}\``);
-      lines.push(`- **Handler:** \`${route.handlerName}\``);
+      if (route.kind === "Route") {
+        lines.push(`### ${route.method} \`${route.fullPath}\``);
+        lines.push(``);
+        lines.push(`- **ID:** \`${module.name}.${route.id}\``);
+        lines.push(`- **Handler:** \`${route.handlerName}\``);
 
-      if (route.body) {
-        lines.push(``);
-        lines.push(`#### Request Body`);
-        lines.push(``);
-        lines.push("```json");
-        lines.push(JSON.stringify(zodToJsonSchemaSample(route.body), null, 2));
-        lines.push("```");
-      }
-      if (route.query) {
-        lines.push(``);
-        lines.push(`#### Query Parameters`);
-        lines.push(``);
-        lines.push("```json");
-        lines.push(JSON.stringify(zodToJsonSchemaSample(route.query), null, 2));
-        lines.push("```");
-      }
+        if (route.body) {
+          lines.push(``);
+          lines.push(`#### Request Body`);
+          lines.push(``);
+          lines.push("```json");
+          lines.push(JSON.stringify(zodToJsonSchemaSample(route.body), null, 2));
+          lines.push("```");
+        }
+        if (route.query) {
+          lines.push(``);
+          lines.push(`#### Query Parameters`);
+          lines.push(``);
+          lines.push("```json");
+          lines.push(JSON.stringify(zodToJsonSchemaSample(route.query), null, 2));
+          lines.push("```");
+        }
 
-      if (route.response) {
-        lines.push(``);
-        lines.push(`#### Response Body`);
-        lines.push(``);
-        lines.push("```json");
-        lines.push(JSON.stringify(zodToJsonSchemaSample(route.response), null, 2));
-        lines.push("```");
+        if (route.response) {
+          lines.push(``);
+          lines.push(`#### Response Body`);
+          lines.push(``);
+          lines.push("```json");
+          lines.push(JSON.stringify(zodToJsonSchemaSample(route.response), null, 2));
+          lines.push("```");
+        }
       }
 
       lines.push(``);
@@ -110,7 +118,8 @@ function generateMermaidDoc(ast: AppAst, architecture: ArchitectureAst): string 
 
     for (const route of module.routes) {
       const routeId = `Route${pascalCase(module.name)}${pascalCase(route.id)}`;
-      const label = `${route.method}\\n${route.fullPath}`;
+      const method = route.kind === "Route" ? route.method : route.kind === "SSE" ? "SSE" : "WS";
+      const label = `${method}\\n${route.fullPath}`;
       lines.push(`  ${routeId}("${label}")`);
       lines.push(`  ${moduleId} --> ${routeId}`);
 

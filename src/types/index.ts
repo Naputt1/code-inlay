@@ -4,6 +4,8 @@ export const AST_VERSION = "2.0";
 export const COMPILER_VERSION = "0.2.0";
 
 export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+export type WSLibrary = "gorilla/websocket" | "nhooyr.io/websocket";
+export type TransportProtocol = "http" | "grpc" | "cli" | "sse" | "ws" | string;
 export type DiagnosticLevel = "error" | "warning";
 
 export type Diagnostic = {
@@ -64,7 +66,7 @@ export type AdapterSelection = {
 
 export type AdapterTarget = {
   name: string;
-  transport: "http" | "grpc" | "cli" | string;
+  transport: TransportProtocol;
   options?: Record<string, unknown>;
 };
 
@@ -220,6 +222,37 @@ export type RouteDefinition<
   metadata: Record<string, unknown>;
 };
 
+export type SSEDefinition = {
+  kind: "SSEDefinition";
+  path: string;
+  events: SchemaLike;
+  handler: string;
+  architecture?: ArchitectureRef | ArchitectureRef[] | ArchitectureSelection;
+  adapter?: AdapterRef | AdapterRef[] | AdapterSelection;
+  adapters?: AdapterRef[] | AdapterSelection;
+  middleware?: MiddlewareDefinition[];
+  metadata?: Record<string, unknown>;
+};
+
+export type WSDefinition = {
+  kind: "WSDefinition";
+  path: string;
+  message: SchemaLike;
+  events?: SchemaLike;
+  handler: string;
+  architecture?: ArchitectureRef | ArchitectureRef[] | ArchitectureSelection;
+  adapter?: AdapterRef | AdapterRef[] | AdapterSelection;
+  adapters?: AdapterRef[] | AdapterSelection;
+  middleware?: MiddlewareDefinition[];
+  metadata?: Record<string, unknown>;
+  wsLibrary?: WSLibrary;
+};
+
+export type RouteLike =
+  | RouteDefinition<SchemaLike | undefined, SchemaLike | undefined, SchemaLike | undefined>
+  | SSEDefinition
+  | WSDefinition;
+
 export type MiddlewareDefinition = {
   kind: "MiddlewareDefinition";
   name: string;
@@ -235,7 +268,7 @@ export type ModuleDefinition = {
   usecaseOrganization?: UsecaseOrganization;
   responseFormat?: ResponseFormat;
   errors?: ErrorDefinition[];
-  routes: RouteDefinition<SchemaLike | undefined, SchemaLike | undefined, SchemaLike | undefined>[];
+  routes: RouteLike[];
   middleware: MiddlewareDefinition[];
 };
 
@@ -271,7 +304,7 @@ export type RouterDefinition = {
 
 export type ArchitectureRef = BuiltInArchitectureName | ArchitecturePlugin;
 export type AdapterRef = BuiltInAdapterName | AdapterPlugin;
-export type BuiltInArchitectureName = "clean" | "minimal" | "atomic" | "layered";
+export type BuiltInArchitectureName = "clean" | "minimal" | "atomic" | "layered" | "sse" | "ws";
 export type BuiltInAdapterName = "gin";
 
 export type EnvVarType = "string" | "number" | "boolean";
@@ -352,7 +385,7 @@ export type ModuleAst = AstNodeBase<"Module"> & {
   services: string[];
   usecaseOrganization?: UsecaseOrganization;
   responseFormat?: ResponseFormat;
-  routes: RouteAst[];
+  routes: RouteLikeAst[];
   middleware: MiddlewareAst[];
 };
 
@@ -375,6 +408,38 @@ export type RouteAst = AstNodeBase<"Route"> & {
   usecaseGroup?: string;
   metadata: Record<string, unknown>;
 };
+
+export type SSEAst = AstNodeBase<"SSE"> & {
+  moduleName: string;
+  path: string;
+  fullPath: string;
+  handlerName: string;
+  architecture?: ArchitectureSelection;
+  adapters?: AdapterSelection;
+  resolvedArchitectures: ArchitectureRef[];
+  resolvedAdapters: AdapterTarget[];
+  events: SchemaLike;
+  middleware: MiddlewareAst[];
+  metadata: Record<string, unknown>;
+};
+
+export type WSAst = AstNodeBase<"WS"> & {
+  moduleName: string;
+  path: string;
+  fullPath: string;
+  handlerName: string;
+  architecture?: ArchitectureSelection;
+  adapters?: AdapterSelection;
+  resolvedArchitectures: ArchitectureRef[];
+  resolvedAdapters: AdapterTarget[];
+  message: SchemaLike;
+  events?: SchemaLike;
+  wsLibrary?: string;
+  middleware: MiddlewareAst[];
+  metadata: Record<string, unknown>;
+};
+
+export type RouteLikeAst = RouteAst | SSEAst | WSAst;
 
 export type MiddlewareAst = AstNodeBase<"Middleware"> & {
   name: string;
@@ -415,7 +480,7 @@ export type ArchitectureAst = {
 };
 
 export type RouteExpansionAst = {
-  route: RouteAst;
+  route: RouteLikeAst;
   layers: GeneratedLayer[];
 };
 
@@ -551,8 +616,8 @@ export type PluginPackage = {
 
 export type ArchitectureContext = {
   diagnostics: Diagnostic[];
-  fileForLayer(route: RouteAst, layer: string): string;
-  regionId(route: RouteAst, layer: string): string;
+  fileForLayer(route: RouteLikeAst, layer: string): string;
+  regionId(route: RouteLikeAst, layer: string): string;
   owner: string;
 };
 
@@ -586,7 +651,7 @@ export type AdapterPlugin = {
   name: string;
   version?: string;
   apiVersion?: "2";
-  transport?: "http" | "grpc" | "cli" | string;
+  transport?: TransportProtocol;
   generateRoute(ctx: AdapterRouteContext): GeneratedRegion[];
   generateMiddleware(ctx: AdapterMiddlewareContext): GeneratedRegion[];
   generateServer(ctx: AdapterServerContext): GeneratedRegion[];
@@ -677,6 +742,8 @@ export type DependencyNodeKind =
   | "app"
   | "module"
   | "route"
+  | "sse"
+  | "ws"
   | "schema"
   | "architecture-layer"
   | "adapter-target"

@@ -143,6 +143,7 @@ export function generateModuleErrors(
 export function collectModuleErrors(routes: RouteAst[]): ErrorDefinition[] {
   const seen = new Map<string, ErrorDefinition>();
   for (const route of routes) {
+    if (!("errors" in route)) continue;
     for (const err of route.errors) {
       if (!seen.has(err.name)) {
         seen.set(err.name, err);

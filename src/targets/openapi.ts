@@ -38,6 +38,8 @@ export const openapiTarget: CodeTarget = {
 
     for (const module of ast.modules) {
       for (const route of module.routes) {
+        if (route.kind !== "Route") continue;
+
         const pathItem = getOrCreate(
           spec.paths as Record<string, unknown>,
           route.fullPath,

@@ -5,6 +5,8 @@ import type {
   Diagnostic,
   GeneratedRegion,
   RouteAst,
+  SSEAst,
+  WSAst,
   SchemaLike,
 } from "../types/index.js";
 import {
@@ -26,11 +28,12 @@ export const ginAdapter: AdapterPlugin = {
   transport: "http",
   generateRoute(ctx) {
     const receiver = `${lowerIdent(ctx.route.moduleName)}Handler`;
+    const method = ctx.route.kind === "Route" ? ctx.route.method : "GET";
     return [
       {
         id: defaultRegionId(ctx.route, "route"),
         language: "go",
-        content: `api.${methodName(ctx.route.method)}("${ctx.route.path}", ${receiver}.${ctx.route.handlerName})`,
+        content: `api.${methodName(method)}("${ctx.route.path}", ${receiver}.${ctx.route.handlerName})`,
       },
     ];
   },
@@ -397,4 +400,74 @@ function methodName(method: string): string {
     default:
       return method;
   }
+}
+
+export function generateGinSSEHandler(route: SSEAst): GeneratedRegion {
+  const receiver = `*${pascalCase(route.moduleName)}Handler`;
+  const body = [
+    `c.Writer.Header().Set("Content-Type", "text/event-stream")`,
+    `c.Writer.Header().Set("Cache-Control", "no-cache")`,
+    `c.Writer.Header().Set("Connection", "keep-alive")`,
+    ``,
+    `ch := make(chan ${route.handlerName}${pascalCase(route.moduleName)}Event)`,
+    `go h.${route.handlerName}Usecase.Execute(c.Request.Context(), ch)`,
+    ``,
+    `c.Stream(func(w io.Writer) bool {`,
+    `\tevent, ok := <-ch`,
+    `\tif !ok { return false }`,
+    `\t// TODO: marshal event to SSE format`,
+    `\tfmt.Fprintf(w, "data: %s\\\\n\\\\n", event)`,
+    `\treturn true`,
+    `})`,
+  ];
+  return {
+    id: defaultRegionId(route, "handler"),
+    stableHash: `${route.stableId}:sse:handler:${defaultFileForLayer(route, "handler")}`,
+    owner: "gin",
+    language: "go",
+    content: [
+      `func (h ${receiver}) ${route.handlerName}(c *gin.Context) {`,
+      ...body.map((line) => (line.length > 0 ? `\t${line}` : "")),
+      `}`,
+    ].join("\n"),
+  };
+}
+
+export function generateGinWSHandler(route: WSAst): GeneratedRegion {
+  const receiver = `*${pascalCase(route.moduleName)}Handler`;
+  const body = [
+    `upgrader := websocket.Upgrader{}`,
+    `conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)`,
+    `if err != nil { return }`,
+    `defer conn.Close()`,
+    ``,
+    `readCh := make(chan ${route.handlerName}${pascalCase(route.moduleName)}Message)`,
+    `writeCh := make(chan ${route.handlerName}${pascalCase(route.moduleName)}Event, 8)`,
+    ``,
+    `go h.${route.handlerName}Usecase.Execute(c.Request.Context(), readCh, writeCh)`,
+    ``,
+    `go func() {`,
+    `\tdefer close(readCh)`,
+    `\tfor {`,
+    `\t\tvar msg ${route.handlerName}${pascalCase(route.moduleName)}Message`,
+    `\t\tif err := conn.ReadJSON(&msg); err != nil { break }`,
+    `\t\treadCh <- msg`,
+    `\t}`,
+    `}()`,
+    ``,
+    `for event := range writeCh {`,
+    `\tif err := conn.WriteJSON(event); err != nil { break }`,
+    `}`,
+  ];
+  return {
+    id: defaultRegionId(route, "handler"),
+    stableHash: `${route.stableId}:ws:handler:${defaultFileForLayer(route, "handler")}`,
+    owner: "gin",
+    language: "go",
+    content: [
+      `func (h ${receiver}) ${route.handlerName}(c *gin.Context) {`,
+      ...body.map((line) => (line.length > 0 ? `\t${line}` : "")),
+      `}`,
+    ].join("\n"),
+  };
 }

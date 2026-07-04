@@ -5,6 +5,8 @@ import type {
   ModuleAst,
   RouteAst,
   SchemaLike,
+  SSEAst,
+  WSAst,
 } from "../types/index.js";
 import { extractPathParams, pascalCase, routeTypeName } from "../utils/naming.js";
 import { contentHash } from "../utils/hash.js";
@@ -35,8 +37,10 @@ export const tsClientTarget: CodeTarget = {
 
     for (const module of ast.modules) {
       for (const route of module.routes) {
-        const typeRegions = generateTypesForRoute(route, module.name);
-        typesRegions.push(...typeRegions);
+        if (route.kind === "Route") {
+          const typeRegions = generateTypesForRoute(route, module.name);
+          typesRegions.push(...typeRegions);
+        }
       }
     }
 
@@ -315,11 +319,22 @@ function generateModuleClient(module: ModuleAst): string {
   const methods: string[] = [];
 
   for (const route of module.routes) {
-    if (route.query || route.body) imports.add(routeTypeName(route, "Request"));
-    if (route.response) imports.add(routeTypeName(route, "Response"));
-
-    const method = generateClientMethod(route);
-    methods.push(method);
+    if (route.kind === "Route") {
+      if (route.query || route.body) imports.add(routeTypeName(route, "Request"));
+      if (route.response) imports.add(routeTypeName(route, "Response"));
+      const method = generateClientMethod(route);
+      methods.push(method);
+    } else if (route.kind === "SSE") {
+      const eventType = `${pascalCase(route.handlerName)}Event`;
+      imports.add(eventType);
+      const method = generateSSEClientMethod(route, module.name);
+      methods.push(method);
+    } else if (route.kind === "WS") {
+      const messageType = `${pascalCase(route.handlerName)}Message`;
+      imports.add(messageType);
+      const method = generateWSClientMethod(route, module.name);
+      methods.push(method);
+    }
   }
 
   if (methods.length === 0) return "";
@@ -351,6 +366,53 @@ function generateModuleClient(module: ModuleAst): string {
   lines.push(`}`);
 
   return lines.join("\n");
+}
+
+function generateSSEClientMethod(route: SSEAst, _moduleName: string): string {
+  const fnName = pascalCase(route.id);
+  const body: string[] = [];
+  body.push(`${fnName}(`);
+  body.push(`  onEvent: (event: ${pascalCase(route.handlerName)}Event) => void,`);
+  body.push(`  options?: { reconnect?: boolean },`);
+  body.push(`): EventSource {`);
+  body.push(`  const es = new EventSource(\`\${this.baseUrl}${route.fullPath}\`);`);
+  body.push(`  es.onmessage = (msg) => {`);
+  body.push(`    try {`);
+  body.push(`      const data = JSON.parse(msg.data) as ${pascalCase(route.handlerName)}Event;`);
+  body.push(`      onEvent(data);`);
+  body.push(`    } catch { /* ignore parse errors */ }`);
+  body.push(`  };`);
+  body.push(`  return es;`);
+  body.push(`}`);
+  return body.join("\n");
+}
+
+function generateWSClientMethod(route: WSAst, _moduleName: string): string {
+  const fnName = pascalCase(route.id);
+  const wsUrl = route.fullPath.replace(/^\/+/, "");
+  const body: string[] = [];
+  body.push(`${fnName}(`);
+  body.push(`  onEvent: (event: ${pascalCase(route.handlerName)}Event) => void,`);
+  body.push(`): { send(msg: ${pascalCase(route.handlerName)}Message): void; close(): void } {`);
+  body.push(`  const protocol = this.baseUrl.startsWith("https") ? "wss" : "ws";`);
+  body.push(
+    `  const url = \`\${protocol}://\${this.baseUrl.replace(/^https?:\\x2f\\x2f/, "")}/${wsUrl}\`;`,
+  );
+  body.push(`  const ws = new WebSocket(url);`);
+  body.push(`  ws.onmessage = (msg) => {`);
+  body.push(`    try {`);
+  body.push(`      const data = JSON.parse(msg.data) as ${pascalCase(route.handlerName)}Event;`);
+  body.push(`      onEvent(data);`);
+  body.push(`    } catch { /* ignore parse errors */ }`);
+  body.push(`  };`);
+  body.push(`  return {`);
+  body.push(`    send(msg: ${pascalCase(route.handlerName)}Message) {`);
+  body.push(`      ws.send(JSON.stringify(msg));`);
+  body.push(`    },`);
+  body.push(`    close() { ws.close(); },`);
+  body.push(`  };`);
+  body.push(`}`);
+  return body.join("\n");
 }
 
 function generateIndexContent(modules: { name: string; className: string }[]): string {

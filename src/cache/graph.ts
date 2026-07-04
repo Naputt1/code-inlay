@@ -31,23 +31,26 @@ export function buildDependencyGraph(
     addEdge(ast.stableId, module.stableId, "contains");
 
     for (const route of module.routes) {
-      addNode(route.stableId, "route", stableHash(route, 16));
+      const routeKind = route.kind === "Route" ? "route" : route.kind === "SSE" ? "sse" : "ws";
+      addNode(route.stableId, routeKind, stableHash(route, 16));
       addEdge(module.stableId, route.stableId, "contains");
 
-      if (route.query) {
-        const schemaId = `${route.stableId}:query`;
-        addNode(schemaId, "schema", stableHash(route.query, 16));
-        addEdge(route.stableId, schemaId, "has-query-schema");
-      }
-      if (route.body) {
-        const schemaId = `${route.stableId}:body`;
-        addNode(schemaId, "schema", stableHash(route.body, 16));
-        addEdge(route.stableId, schemaId, "has-body-schema");
-      }
-      if (route.response) {
-        const schemaId = `${route.stableId}:response`;
-        addNode(schemaId, "schema", stableHash(route.response, 16));
-        addEdge(route.stableId, schemaId, "has-response-schema");
+      if (route.kind === "Route") {
+        if (route.query) {
+          const schemaId = `${route.stableId}:query`;
+          addNode(schemaId, "schema", stableHash(route.query, 16));
+          addEdge(route.stableId, schemaId, "has-query-schema");
+        }
+        if (route.body) {
+          const schemaId = `${route.stableId}:body`;
+          addNode(schemaId, "schema", stableHash(route.body, 16));
+          addEdge(route.stableId, schemaId, "has-body-schema");
+        }
+        if (route.response) {
+          const schemaId = `${route.stableId}:response`;
+          addNode(schemaId, "schema", stableHash(route.response, 16));
+          addEdge(route.stableId, schemaId, "has-response-schema");
+        }
       }
     }
   }
@@ -139,7 +142,8 @@ function renderMermaidGraph(ast: AppAst, architecture: ArchitectureAst): string 
 
     for (const route of module.routes) {
       const routeId = sanitizeMermaidId(`route_${module.name}_${route.id}`);
-      lines.push(`  ${routeId}["${route.method} ${route.fullPath}"]`);
+      const method = route.kind === "Route" ? route.method : route.kind === "SSE" ? "SSE" : "WS";
+      lines.push(`  ${routeId}["${method} ${route.fullPath}"]`);
       lines.push(`  ${moduleId} --> ${routeId}`);
     }
   }
@@ -171,11 +175,16 @@ function renderTreeGraph(ast: AppAst, architecture: ArchitectureAst): string {
     lines.push(`│   └── Prefix: ${ast.router.prefix || "/"}`);
 
     for (const route of module.routes) {
-      lines.push(`│   │`);
-      lines.push(`│   ├── Route: ${route.method} ${route.fullPath}`);
-      if (route.query) lines.push(`│   │   ├── Query: ${route.stableId}`);
-      if (route.body) lines.push(`│   │   ├── Body: ${route.stableId}`);
-      if (route.response) lines.push(`│   │   ├── Response: ${route.stableId}`);
+      if (route.kind === "Route") {
+        lines.push(`│   │`);
+        lines.push(`│   ├── Route: ${route.method} ${route.fullPath}`);
+        if (route.query) lines.push(`│   │   ├── Query: ${route.stableId}`);
+        if (route.body) lines.push(`│   │   ├── Body: ${route.stableId}`);
+        if (route.response) lines.push(`│   │   ├── Response: ${route.stableId}`);
+      } else {
+        lines.push(`│   │`);
+        lines.push(`│   ├── ${route.kind === "SSE" ? "SSE" : "WS"}: ${route.fullPath}`);
+      }
 
       const expansion = architecture.routes.find(
         (e) => e.route.id === route.id && e.route.moduleName === module.name,

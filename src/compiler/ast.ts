@@ -15,6 +15,8 @@ import type {
   ModuleAst,
   ResponseFormat,
   RouteAst,
+  SSEAst,
+  WSAst,
   ServiceDefinition,
   ServiceExtensionResult,
 } from "../types/index.js";
@@ -155,7 +157,7 @@ export function buildAst(app: AppDefinition, diagnostics: Diagnostic[]): AppAst 
         middleware: module.middleware.map((middleware) =>
           toMiddlewareAst(middleware, `module:${module.name}`),
         ),
-        routes: module.routes.map((route): RouteAst => {
+        routes: module.routes.map((route) => {
           const routeArchitecture = route.architecture
             ? resolveArchitectureSelection(
                 moduleArchitecture ?? appArchitecture,
@@ -166,17 +168,72 @@ export function buildAst(app: AppDefinition, diagnostics: Diagnostic[]): AppAst 
           const resolvedAdapterSelection = routeAdapters
             ? resolveAdapterSelection(moduleAdapters ?? appAdapters, routeAdapters)
             : (moduleAdapters ?? appAdapters);
-          const resolvedArchitectureSelection =
-            routeArchitecture ?? moduleArchitecture ?? appArchitecture;
+          const effectiveArchitecture =
+            routeArchitecture ??
+            moduleArchitecture ??
+            (route.kind === "SSEDefinition"
+              ? normalizeArchitectureSelection("sse")
+              : route.kind === "WSDefinition"
+                ? normalizeArchitectureSelection("ws")
+                : appArchitecture);
+
+          const routeId = route.handler.charAt(0).toLowerCase() + route.handler.slice(1);
+
+          if (route.kind === "SSEDefinition") {
+            return {
+              kind: "SSE" as const,
+              id: routeId,
+              stableId: nodeStableId(`module:${module.name}:sse:${routeId}`),
+              annotations: {},
+              pluginData: {},
+              moduleName: module.name,
+              path: route.path,
+              fullPath: joinPath(router.prefix, route.path),
+              handlerName: route.handler,
+              architecture: effectiveArchitecture,
+              adapters: routeAdapters,
+              resolvedArchitectures: effectiveArchitecture.refs,
+              resolvedAdapters: selectionToTargets(resolvedAdapterSelection),
+              events: route.events,
+              middleware: (route.middleware ?? []).map((mw) =>
+                toMiddlewareAst(mw, `module:${module.name}:sse:${routeId}`),
+              ),
+              metadata: route.metadata ?? {},
+            } satisfies SSEAst;
+          }
+
+          if (route.kind === "WSDefinition") {
+            return {
+              kind: "WS" as const,
+              id: routeId,
+              stableId: nodeStableId(`module:${module.name}:ws:${routeId}`),
+              annotations: {},
+              pluginData: {},
+              moduleName: module.name,
+              path: route.path,
+              fullPath: joinPath(router.prefix, route.path),
+              handlerName: route.handler,
+              architecture: effectiveArchitecture,
+              adapters: routeAdapters,
+              resolvedArchitectures: effectiveArchitecture.refs,
+              resolvedAdapters: selectionToTargets(resolvedAdapterSelection),
+              message: route.message,
+              events: route.events,
+              wsLibrary: route.wsLibrary,
+              middleware: (route.middleware ?? []).map((mw) =>
+                toMiddlewareAst(mw, `module:${module.name}:ws:${routeId}`),
+              ),
+              metadata: route.metadata ?? {},
+            } satisfies WSAst;
+          }
+
           const routeResponseFormat = resolveResponseFormat(
             route.responseFormat,
             moduleResponseFormat,
           );
           const routeErrors = mergeErrors(moduleErrors, route.errors ?? []);
-
-          const routeId = route.handler.charAt(0).toLowerCase() + route.handler.slice(1);
           return {
-            kind: "Route",
+            kind: "Route" as const,
             id: routeId,
             stableId: nodeStableId(`module:${module.name}:route:${routeId}`),
             annotations: {},
@@ -186,21 +243,21 @@ export function buildAst(app: AppDefinition, diagnostics: Diagnostic[]): AppAst 
             path: route.path,
             fullPath: joinPath(router.prefix, route.path),
             handlerName: route.handler,
-            architecture: routeArchitecture,
+            architecture: effectiveArchitecture,
             adapters: routeAdapters,
-            resolvedArchitectures: resolvedArchitectureSelection.refs,
+            resolvedArchitectures: effectiveArchitecture.refs,
             resolvedAdapters: selectionToTargets(resolvedAdapterSelection),
             responseFormat: routeResponseFormat,
             errors: routeErrors,
             query: route.query,
             body: route.body,
             response: route.response,
-            middleware: route.middleware.map((middleware) =>
-              toMiddlewareAst(middleware, `module:${module.name}:route:${routeId}`),
+            middleware: route.middleware.map((mw) =>
+              toMiddlewareAst(mw, `module:${module.name}:route:${routeId}`),
             ),
             usecaseGroup: route.usecaseGroup,
             metadata: route.metadata,
-          };
+          } satisfies RouteAst;
         }),
       };
     }),
@@ -363,30 +420,32 @@ function validateAst(ast: AppAst, diagnostics: Diagnostic[]): void {
         });
       }
 
-      if (route.body && (route.method === "GET" || route.method === "DELETE")) {
-        diagnostics.push({
-          level: "error",
-          code: "body-not-allowed",
-          message: `Route "${route.id}" in module "${route.moduleName}" has a body schema but uses method ${route.method}. Body is not allowed on GET or DELETE routes.`,
-        });
-      }
-
-      if (route.responseFormat) {
-        if (!hasEntityPlaceholder(route.responseFormat.wrapper)) {
+      if (route.kind === "Route") {
+        if (route.body && (route.method === "GET" || route.method === "DELETE")) {
           diagnostics.push({
-            level: "warning",
-            code: "response-format-no-entity",
-            message: `Route "${route.id}" in module "${route.moduleName}" has a responseFormat wrapper that does not contain a z.entity() placeholder. The wrapper schema will be used as-is without entity substitution.`,
-            nodeId: route.stableId,
+            level: "error",
+            code: "body-not-allowed",
+            message: `Route "${route.id}" in module "${route.moduleName}" has a body schema but uses method ${route.method}. Body is not allowed on GET or DELETE routes.`,
           });
         }
-        if (!route.response) {
-          diagnostics.push({
-            level: "warning",
-            code: "response-format-no-response",
-            message: `Route "${route.id}" in module "${route.moduleName}" has a responseFormat but no response schema. Domain entity structs will not be generated for this route. Add a response schema to enable entity extraction.`,
-            nodeId: route.stableId,
-          });
+
+        if (route.responseFormat) {
+          if (!hasEntityPlaceholder(route.responseFormat.wrapper)) {
+            diagnostics.push({
+              level: "warning",
+              code: "response-format-no-entity",
+              message: `Route "${route.id}" in module "${route.moduleName}" has a responseFormat wrapper that does not contain a z.entity() placeholder. The wrapper schema will be used as-is without entity substitution.`,
+              nodeId: route.stableId,
+            });
+          }
+          if (!route.response) {
+            diagnostics.push({
+              level: "warning",
+              code: "response-format-no-response",
+              message: `Route "${route.id}" in module "${route.moduleName}" has a responseFormat but no response schema. Domain entity structs will not be generated for this route. Add a response schema to enable entity extraction.`,
+              nodeId: route.stableId,
+            });
+          }
         }
       }
     }

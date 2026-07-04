@@ -106,3 +106,12 @@ type ListOrdersResponseResultItem struct {
 	Status     string  `json:"status"`
 	TotalPrice float64 `json:"totalPrice"`
 }
+
+type TrackOrderOrdersMessage struct {
+	OrderId string `json:"orderId" form:"orderId" validate:"required"`
+}
+
+type TrackOrderOrdersEvent struct {
+	Status    string `json:"status" form:"status" validate:"required"`
+	UpdatedAt string `json:"updatedAt" form:"updatedAt" validate:"required"`
+}

@@ -8,6 +8,7 @@ import type {
   Diagnostic,
   GeneratedLayer,
   RouteAst,
+  RouteLikeAst,
 } from "../types/index.js";
 import {
   defaultFileForLayer,
@@ -47,17 +48,23 @@ const cleanLayers = ["entity", "domain", "repository", "usecase", "handler"] as 
 const minimalLayers = ["entity", "usecase", "handler"] as const;
 const atomicLayers = ["entity", "handler", "service", "store"] as const;
 const layeredLayers = ["entity", "controller", "service", "repository", "model"] as const;
+const sseLayers = ["entity", "sse", "handler"] as const;
+const wsLayers = ["entity", "ws", "handler"] as const;
 
 export const cleanArchitecture = buildArchitecture("clean", cleanLayers);
 export const minimalArchitecture = buildArchitecture("minimal", minimalLayers);
 export const atomicArchitecture = buildArchitecture("atomic", atomicLayers);
 export const layeredArchitecture = buildArchitecture("layered", layeredLayers);
+export const sseArchitecture = buildArchitecture("sse", sseLayers);
+export const wsArchitecture = buildArchitecture("ws", wsLayers);
 
 export const architectureRegistry: Record<BuiltInArchitectureName, ArchitecturePlugin> = {
   clean: cleanArchitecture,
   minimal: minimalArchitecture,
   atomic: atomicArchitecture,
   layered: layeredArchitecture,
+  sse: sseArchitecture,
+  ws: wsArchitecture,
 };
 
 export function resolveArchitecture(
@@ -86,7 +93,7 @@ export function resolveArchitecture(
 
 export function applyArchitecture(ast: AppAst, diagnostics: Diagnostic[]): ArchitectureAst {
   const allNodes: ArchitectureAst["nodes"] = [];
-  const routeMap = new Map<string, { route: RouteAst; layers: GeneratedLayer[] }>();
+  const routeMap = new Map<string, { route: RouteLikeAst; layers: GeneratedLayer[] }>();
   const featuresDir = ast.options.featuresDir;
 
   const baseCtx: ArchitectureContext = {
@@ -105,28 +112,28 @@ export function applyArchitecture(ast: AppAst, diagnostics: Diagnostic[]): Archi
       const routePlugins = resolveArchitecture(routeSelection, diagnostics);
       const effectivePlugins = routePlugins.length > 0 ? routePlugins : modulePlugins;
 
-      const ctxUsecaseFileForLayer = (r: RouteAst, layer: string): string => {
-        if (layer === "usecase") {
+      const ctxUsecaseFileForLayer = (r: RouteLikeAst, layer: string): string => {
+        if (layer === "usecase" && r.kind === "Route") {
           const org = resolveUsecaseOrg(
-            r,
+            r as RouteAst,
             module.usecaseOrganization,
             ast.options.usecaseOrganization,
           );
-          const gk = resolveUsecaseGroupKey(r, org);
+          const gk = resolveUsecaseGroupKey(r as RouteAst, org);
           return fileForUsecaseGroup(r.moduleName, gk, featuresDir);
         }
         return defaultFileForLayer(r, layer, featuresDir);
       };
 
-      const ctxUsecaseRegionId = (r: RouteAst, layer: string): string => {
-        if (layer === "usecase") {
+      const ctxUsecaseRegionId = (r: RouteLikeAst, layer: string): string => {
+        if (layer === "usecase" && r.kind === "Route") {
           const org = resolveUsecaseOrg(
-            r,
+            r as RouteAst,
             module.usecaseOrganization,
             ast.options.usecaseOrganization,
           );
-          const gk = resolveUsecaseGroupKey(r, org);
-          return regionIdForUsecase(r, gk);
+          const gk = resolveUsecaseGroupKey(r as RouteAst, org);
+          return regionIdForUsecase(r as RouteAst, gk);
         }
         return defaultRegionId(r, layer);
       };
@@ -184,7 +191,7 @@ function pascalCase(value: string): string {
 }
 
 function checkDuplicateSymbols(
-  expansions: Array<{ route: RouteAst; layers: GeneratedLayer[] }>,
+  expansions: Array<{ route: RouteLikeAst; layers: GeneratedLayer[] }>,
   diagnostics: Diagnostic[],
 ): void {
   const symbolMap = new Map<string, GeneratedLayer[]>();
@@ -216,7 +223,7 @@ function checkDuplicateSymbols(
 }
 
 function checkDuplicateRegionIds(
-  expansions: Array<{ route: RouteAst; layers: GeneratedLayer[] }>,
+  expansions: Array<{ route: RouteLikeAst; layers: GeneratedLayer[] }>,
   diagnostics: Diagnostic[],
 ): void {
   const regionMap = new Map<string, GeneratedLayer[]>();

@@ -8,7 +8,7 @@ import {
   extractEntityContext,
   generateEntityStructs,
 } from "../src/index.js";
-import type { Diagnostic } from "../src/index.js";
+import type { Diagnostic, RouteAst } from "../src/index.js";
 import type { ResponseFormat } from "../src/types/index.js";
 
 describe("extractEntityContext", () => {
@@ -48,7 +48,7 @@ describe("generateEntityStructs", () => {
     const result = await compile({ app, dryRun: true });
     const routeAst = result.ast!.modules[0].routes[0];
     const diagnostics: Diagnostic[] = [];
-    const output = generateEntityStructs("pet", [routeAst], diagnostics);
+    const output = generateEntityStructs("pet", [routeAst] as RouteAst[], diagnostics);
     expect(output).toBe("");
   });
 
@@ -76,7 +76,7 @@ describe("generateEntityStructs", () => {
     const result = await compile({ app, dryRun: true });
     const routeAst = result.ast!.modules[0].routes[0];
     const diagnostics: Diagnostic[] = [];
-    const output = generateEntityStructs("pet", [routeAst], diagnostics);
+    const output = generateEntityStructs("pet", [routeAst] as RouteAst[], diagnostics);
     expect(output).not.toBe("");
     expect(output).toContain("Pet");
   });
