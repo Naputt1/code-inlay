@@ -23,7 +23,7 @@ export async function migrateCommand(parsed: ParsedArgs): Promise<void> {
   });
 
   if (!cache) {
-    console.log("No previous cache found. Run \`schemago generate\` first.");
+    console.log("No previous cache found. Run `schemago generate` first.");
     return;
   }
 
