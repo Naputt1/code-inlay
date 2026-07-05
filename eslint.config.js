@@ -10,7 +10,6 @@ export default tseslint.config(
       ".pnpm-store/",
       "sample-project/maemoo/",
       "sample-project/neo-backend/",
-      "sample-project/snapshot/clients/",
       "docs/.vitepress/cache/",
       "docs/.vitepress/dist/",
     ],

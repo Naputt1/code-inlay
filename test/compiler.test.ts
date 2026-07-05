@@ -1488,33 +1488,6 @@ describe("responseFormat", () => {
     expect(resolvedSchema.properties.result.properties.id).toEqual({ type: "string" });
   });
 
-  it("generates correct TS client types with responseFormat", async () => {
-    const rf = defineResponseFormat({
-      wrapper: z.object({ result: z.entity() }),
-    });
-    const route = defineRoute({
-      method: "GET",
-      path: "/users/:id",
-      response: z.object({ id: z.string(), name: z.string() }),
-      responseFormat: rf,
-      handler: "Get",
-    });
-    const app = defineApp({
-      architecture: "clean",
-      options: { targets: ["ts-client"] },
-      modules: [defineModule({ name: "user", routes: [route] })],
-    });
-
-    const result = await compile({ app, dryRun: true });
-    const typesFile = result.generation.files.find((f) => f.path.endsWith("clients/types.ts"));
-    expect(typesFile).toBeDefined();
-    const responseRegion = typesFile!.regions.find((r) => r.id.endsWith("user.get.response"));
-    expect(responseRegion).toBeDefined();
-    expect(responseRegion!.content).toContain("result: {");
-    expect(responseRegion!.content).toContain("id: string;");
-    expect(responseRegion!.content).toContain("name: string");
-  });
-
   it("app-level responseFormat propagates through module to routes", async () => {
     const rf = defineResponseFormat({
       wrapper: z.object({ appData: z.entity() }),

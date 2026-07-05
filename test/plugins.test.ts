@@ -28,7 +28,6 @@ describe("createPluginRegistry", () => {
     const app = defineApp({ modules: [] });
     const diagnostics: Diagnostic[] = [];
     const registry = createPluginRegistry(app, diagnostics);
-    expect(registry.targets.has("ts-client")).toBe(true);
     expect(registry.targets.has("openapi")).toBe(true);
   });
 
@@ -60,7 +59,7 @@ describe("createPluginRegistry", () => {
       modules: [],
       targets: [
         {
-          name: "ts-client",
+          name: "openapi",
           version: "0.1.0",
           stage: "postTransform" as const,
           generate: () => [],

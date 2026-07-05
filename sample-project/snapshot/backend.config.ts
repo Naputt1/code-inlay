@@ -348,9 +348,8 @@ const app = defineApp({
   options: {
     responseFormat: stdFormat,
     fileCreation: "skeleton",
-    targets: ["go-server", "ts-client", "openapi", "asyncapi", "proto"],
+    targets: ["go-server", "openapi", "asyncapi", "proto"],
     targetOptions: {
-      "ts-client": { outputDir: "clients" },
       openapi: { title: "Store API", version: "1.0.0" },
       asyncapi: { title: "Store Events", version: "1.0.0", serverUrl: "localhost:8080" },
     },

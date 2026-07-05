@@ -7,7 +7,6 @@ Targets generate additional output formats alongside the Go server.
 | Target      | Description                              |
 | ----------- | ---------------------------------------- |
 | `go-server` | Go server code (default, always enabled) |
-| `ts-client` | TypeScript API client                    |
 | `openapi`   | OpenAPI 3.0 specification                |
 
 ## Configuration
@@ -15,9 +14,8 @@ Targets generate additional output formats alongside the Go server.
 ```ts
 export default defineApp({
   options: {
-    targets: ["go-server", "ts-client", "openapi"],
+    targets: ["go-server", "openapi"],
     targetOptions: {
-      "ts-client": { outputDir: "clients" },
       openapi: { title: "My API", version: "1.0.0" },
     },
   },
@@ -39,18 +37,6 @@ Generates `openapi.json`:
         "responses": { "200": { ... } }
       }
     }
-  }
-}
-```
-
-## TypeScript client target
-
-Generates a typed API client:
-
-```ts
-class ApiClient {
-  async listUsers(params?: { page?: number; q?: string }): Promise<ListUsersResponse> {
-    return this.request("GET", "/users", params);
   }
 }
 ```

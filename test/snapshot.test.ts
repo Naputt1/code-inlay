@@ -144,7 +144,7 @@ function collectFiles(dir: string): Record<string, string> {
 }
 
 function removeOldGenerated(baseDir: string) {
-  for (const dir of ["internal", "clients", "docs", "cmd", "pkg"]) {
+  for (const dir of ["internal", "docs", "cmd", "pkg"]) {
     const full = join(baseDir, dir);
     if (existsSync(full)) rmSync(full, { recursive: true, force: true });
   }
@@ -499,9 +499,8 @@ describe("full pipeline snapshot", () => {
       options: {
         responseFormat: stdFormat,
         fileCreation: "skeleton",
-        targets: ["go-server", "ts-client", "openapi", "asyncapi", "proto"],
+        targets: ["go-server", "openapi", "asyncapi", "proto"],
         targetOptions: {
-          "ts-client": { outputDir: "clients" },
           openapi: { title: "Store API", version: "1.0.0" },
           asyncapi: { title: "Store Events", version: "1.0.0", serverUrl: "localhost:8080" },
         },

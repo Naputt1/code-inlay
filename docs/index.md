@@ -2,7 +2,7 @@
 
 **TypeScript-defined Go backend code generator.**
 
-Write your API routes with Zod schemas in a single `backend.config.ts` file, and generate a complete Go server — handlers, use cases, repositories, route registration, DI wiring, OpenAPI spec, and TypeScript client.
+Write your API routes with Zod schemas in a single `backend.config.ts` file, and generate a complete Go server — handlers, use cases, repositories, route registration, DI wiring, and OpenAPI spec.
 
 ## How it works
 
@@ -17,9 +17,7 @@ backend.config.ts  ──►  backend-gen generate
                           │     internal/http/routes.go
                           │     runtime/
                           │
-                          ├── OpenAPI spec
-                          │
-                          └── TypeScript client
+                           └── OpenAPI spec
 ```
 
 ## Features
@@ -33,7 +31,6 @@ backend.config.ts  ──►  backend-gen generate
 - **Domain type separation** — domain entities separated from HTTP types
 - **Input validation** — Zod rules mapped to `validate` struct tags
 - **OpenAPI 3.0** spec generation
-- **TypeScript client** generation
 - **Plugin system** — custom architectures, transformers, targets
 - **Watch mode** with live code regeneration
 - **Region-based editing** — safe incremental code generation
