@@ -1,6 +1,7 @@
 package orders
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 	"snapshot/internal/httperr"
@@ -119,23 +120,54 @@ func (h *OrdersHandler) List(c *gin.Context) {
 }
 
 func (h *OrdersHandler) TrackOrder(c *gin.Context) {
-	upgrader := websocket.Upgrader{}
+	upgrader := websocket.Upgrader{
+		Subprotocols: []string{"json", "protobuf"},
+	}
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		return
 	}
 	defer conn.Close()
 
+	subproto := conn.Subprotocol()
+	readMessage := func() (TrackOrderOrdersMessage, error) {
+		var msg TrackOrderOrdersMessage
+		err := conn.ReadJSON(&msg)
+		return msg, err
+	}
+	writeEvent := func(v TrackOrderOrdersEvent) error { return conn.WriteJSON(v) }
+	marshalEvent := func(v TrackOrderOrdersEvent) ([]byte, error) { return json.Marshal(v) }
+	unmarshalMessage := func(data []byte, msg *TrackOrderOrdersMessage) error { return json.Unmarshal(data, msg) }
+	switch subproto {
+	case "protobuf":
+		readMessage = func() (TrackOrderOrdersMessage, error) {
+			_, data, err := conn.ReadMessage()
+			if err != nil {
+				var z TrackOrderOrdersMessage
+				return z, err
+			}
+			return TrackOrderOrdersMessageFromProtoBytes(data), nil
+		}
+		writeEvent = func(v TrackOrderOrdersEvent) error {
+			return conn.WriteMessage(websocket.BinaryMessage, TrackOrderOrdersEventToProtoBytes(v))
+		}
+		marshalEvent = func(v TrackOrderOrdersEvent) ([]byte, error) { return TrackOrderOrdersEventToProtoBytes(v), nil }
+		unmarshalMessage = func(data []byte, msg *TrackOrderOrdersMessage) error {
+			*msg = TrackOrderOrdersMessageFromProtoBytes(data)
+			return nil
+		}
+	}
+
 	readCh := make(chan TrackOrderOrdersMessage)
 	writeCh := make(chan TrackOrderOrdersEvent, 8)
 
-	go h.TrackOrderUsecase.Execute(c.Request.Context(), readCh, writeCh)
+	go h.TrackOrderUsecase.Execute(c.Request.Context(), readCh, writeCh, marshalEvent, unmarshalMessage)
 
 	go func() {
 		defer close(readCh)
 		for {
-			var msg TrackOrderOrdersMessage
-			if err := conn.ReadJSON(&msg); err != nil {
+			msg, err := readMessage()
+			if err != nil {
 				break
 			}
 			readCh <- msg
@@ -143,7 +175,7 @@ func (h *OrdersHandler) TrackOrder(c *gin.Context) {
 	}()
 
 	for event := range writeCh {
-		if err := conn.WriteJSON(event); err != nil {
+		if err := writeEvent(event); err != nil {
 			break
 		}
 	}

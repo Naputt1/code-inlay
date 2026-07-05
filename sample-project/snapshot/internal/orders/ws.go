@@ -5,5 +5,5 @@ import (
 )
 
 type TrackOrderUsecase interface {
-	Execute(ctx context.Context, read <-chan TrackOrderOrdersMessage, write chan<- TrackOrderOrdersEvent) error
+	Execute(ctx context.Context, read <-chan TrackOrderOrdersMessage, write chan<- TrackOrderOrdersEvent, marshal func(TrackOrderOrdersEvent) ([]byte, error), unmarshal func([]byte, *TrackOrderOrdersMessage) error) error
 }

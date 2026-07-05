@@ -5,5 +5,5 @@ import (
 )
 
 type StreamAuthEventsUsecase interface {
-	Execute(ctx context.Context, events chan<- StreamAuthEventsAuthEvent) error
+	Execute(ctx context.Context, events chan<- StreamAuthEventsAuthEvent, marshal func(StreamAuthEventsAuthEvent) ([]byte, error)) error
 }

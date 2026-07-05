@@ -1,0 +1,60 @@
+package orders
+
+import (
+	"encoding/json"
+	pb "snapshot/gen/proto/go/orders"
+)
+
+func TrackOrderOrdersMessageFromProto(src *pb.TrackOrderOrdersMessage) TrackOrderOrdersMessage {
+	return TrackOrderOrdersMessage{
+		OrderId: src.GetOrderId(),
+	}
+}
+
+func TrackOrderOrdersMessageToProto(src TrackOrderOrdersMessage) *pb.TrackOrderOrdersMessage {
+	return &pb.TrackOrderOrdersMessage{
+		OrderId: src.OrderId,
+	}
+}
+
+func TrackOrderOrdersMessageFromProtoBytes(data []byte) TrackOrderOrdersMessage {
+	var src pb.TrackOrderOrdersMessage
+	if err := json.Unmarshal(data, &src); err != nil {
+		return TrackOrderOrdersMessage{}
+	}
+	return TrackOrderOrdersMessageFromProto(&src)
+}
+
+func TrackOrderOrdersMessageToProtoBytes(src TrackOrderOrdersMessage) []byte {
+	dst := TrackOrderOrdersMessageToProto(src)
+	data, _ := json.Marshal(dst)
+	return data
+}
+
+func TrackOrderOrdersEventFromProto(src *pb.TrackOrderOrdersEvent) TrackOrderOrdersEvent {
+	return TrackOrderOrdersEvent{
+		Status:    src.GetStatus(),
+		UpdatedAt: src.GetUpdatedAt(),
+	}
+}
+
+func TrackOrderOrdersEventToProto(src TrackOrderOrdersEvent) *pb.TrackOrderOrdersEvent {
+	return &pb.TrackOrderOrdersEvent{
+		Status:    src.Status,
+		UpdatedAt: src.UpdatedAt,
+	}
+}
+
+func TrackOrderOrdersEventFromProtoBytes(data []byte) TrackOrderOrdersEvent {
+	var src pb.TrackOrderOrdersEvent
+	if err := json.Unmarshal(data, &src); err != nil {
+		return TrackOrderOrdersEvent{}
+	}
+	return TrackOrderOrdersEventFromProto(&src)
+}
+
+func TrackOrderOrdersEventToProtoBytes(src TrackOrderOrdersEvent) []byte {
+	dst := TrackOrderOrdersEventToProto(src)
+	data, _ := json.Marshal(dst)
+	return data
+}
