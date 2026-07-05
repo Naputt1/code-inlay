@@ -3,7 +3,7 @@
 Generate API documentation from your route definitions.
 
 ```sh
-backend-gen docs <format>
+schemago docs <format>
 ```
 
 ## Formats
@@ -17,8 +17,8 @@ backend-gen docs <format>
 
 ```sh
 # Generate Markdown docs
-backend-gen docs markdown
+schemago docs markdown
 
 # Generate Mermaid diagram
-backend-gen docs mermaid
+schemago docs mermaid
 ```

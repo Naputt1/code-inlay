@@ -3,7 +3,7 @@
 Compile the backend config and generate all output files.
 
 ```sh
-backend-gen generate [options]
+schemago generate [options]
 ```
 
 This is the primary command. It:
@@ -28,14 +28,14 @@ This is the primary command. It:
 
 ```sh
 # Full generation
-backend-gen generate
+schemago generate
 
 # Single module
-backend-gen generate --module user
+schemago generate --module user
 
 # Single route
-backend-gen generate --route getUser
+schemago generate --route getUser
 
 # Custom config
-backend-gen generate --config ./configs/my-api.ts --cwd ./my-api
+schemago generate --config ./configs/my-api.ts --cwd ./my-api
 ```

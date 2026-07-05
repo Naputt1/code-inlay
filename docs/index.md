@@ -1,4 +1,4 @@
-# Code Inlay
+# SchemaGo
 
 **TypeScript-defined Go backend code generator.**
 
@@ -7,7 +7,7 @@ Write your API routes with Zod schemas in a single `backend.config.ts` file, and
 ## How it works
 
 ```
-backend.config.ts  ──►  backend-gen generate
+backend.config.ts  ──►  schemago generate
                           │
                           ├── Go server
                           │     cmd/server/main.go
@@ -38,10 +38,10 @@ backend.config.ts  ──►  backend-gen generate
 ## Quick start
 
 ```sh
-npx @code-inlay/backend-gen init my-api
+npx @schemago/schemago init my-api
 cd my-api
 npm install
-npx backend-gen generate
+npx schemago generate
 ```
 
 See the [Getting Started](/guide/getting-started) guide.

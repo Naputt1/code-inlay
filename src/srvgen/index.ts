@@ -221,7 +221,7 @@ export function generateServer(
       {
         id: `${serverMainRegionId}.0imports`,
         stableHash: `${serverFilePath}:${serverMainRegionId}:imports`,
-        owner: adapter?.name ?? "code-inlay",
+        owner: adapter?.name ?? "schemago",
         language: "go",
         content: `import (\n${[...new Set(imports)]
           .sort()
@@ -230,8 +230,8 @@ export function generateServer(
       },
       {
         id: `${serverMainRegionId}.1main`,
-        stableHash: `${serverFilePath}:${serverMainRegionId}:main:${adapter?.name ?? "code-inlay"}`,
-        owner: adapter?.name ?? "code-inlay",
+        stableHash: `${serverFilePath}:${serverMainRegionId}:main:${adapter?.name ?? "schemago"}`,
+        owner: adapter?.name ?? "schemago",
         language: "go",
         content: mainBody.join("\n"),
         symbolName: "main",

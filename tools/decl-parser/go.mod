@@ -1,3 +1,3 @@
-module github.com/code-inlay/decl-parser
+module github.com/schemago/decl-parser
 
 go 1.25

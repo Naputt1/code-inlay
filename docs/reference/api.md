@@ -143,7 +143,7 @@ compile(options: CompileOptions): Promise<CompileResult>
 Programmatic access to the compiler. Useful for custom tooling or tests.
 
 ```ts
-import { compile } from "@code-inlay/backend-gen";
+import { compile } from "@schemago/schemago";
 
 const result = await compile({ app, dryRun: true });
 console.log(result.generation.files);

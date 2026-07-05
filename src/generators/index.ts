@@ -127,7 +127,7 @@ export function generateCode(
         add(layer.file, {
           id: `${route.moduleName}.0${layer.kind}.imports`,
           stableHash: `${layer.file}:${layer.kind}:imports`,
-          owner: "code-inlay",
+          owner: "schemago",
           language: "go",
           content: [`import (`, `\t"context"`, `)`].join("\n"),
         });
@@ -140,7 +140,7 @@ export function generateCode(
           stableHash: layer.stableId
             ? `${layer.stableId}:${layer.file}:codegen`
             : `${route.stableId}:${layer.kind}:${layer.file}`,
-          owner: layer.owner ?? "code-inlay",
+          owner: layer.owner ?? "schemago",
           language: "go",
           content,
           groupKey: layerGroupKey,
@@ -239,7 +239,7 @@ export function generateCode(
     add(domainFile, {
       id: regionId,
       stableHash: `${regionId}:${moduleName}:${routes.length}routes`,
-      owner: "code-inlay",
+      owner: "schemago",
       language: "go",
       content: domainContent,
     });
@@ -257,7 +257,7 @@ export function generateCode(
     add(handlerFile, {
       id: `${modName}.0handler.imports`,
       stableHash: `${handlerFile}:imports`,
-      owner: "code-inlay",
+      owner: "schemago",
       language: "go",
       content: [`import (`, ...sorted.map((i) => `\t"${i}"`), `)`].join("\n"),
     });
@@ -317,7 +317,7 @@ export function generateCode(
       add(repoFile, {
         id: regionId + suffix,
         stableHash: `${regionId}:${moduleName}:${routes.length}routes${suffix}`,
-        owner: "code-inlay",
+        owner: "schemago",
         language: "go",
         content: part.content,
         symbolName: part.symbolName,
@@ -346,7 +346,7 @@ export function generateCode(
       add(svcFile, {
         id: serviceRegionId(svc.name) + svcSuffix(part),
         stableHash: `service:${svc.name}${svcSuffix(part)}`,
-        owner: "code-inlay",
+        owner: "schemago",
         language: "go",
         content: part.content,
         symbolName: part.symbolName,
@@ -398,7 +398,7 @@ export function generateCode(
     add(file, {
       id: regionId,
       stableHash: `${file}:imports:${info.groupKey}`,
-      owner: "code-inlay",
+      owner: "schemago",
       language: "go",
       content: importLines.join("\n"),
     });
@@ -436,7 +436,7 @@ export function generateCode(
       add(implFile, {
         id: regionIdForUsecaseImpl(route, groupKey) + suffix,
         stableHash: `${route.stableId}:usecase-impl:${implFile}${suffix}`,
-        owner: "code-inlay",
+        owner: "schemago",
         language: "go",
         content: part.content,
         symbolName: part.symbolName,
@@ -621,7 +621,7 @@ export function generateCode(
     add(routeFile, {
       id: `routes.register.${moduleName}`,
       stableHash: `${routeFile}:register`,
-      owner: "code-inlay",
+      owner: "schemago",
       language: "go",
       content: body.join("\n"),
     });
@@ -661,7 +661,7 @@ export function generateCode(
     add("internal/http/routes.go", {
       id: "routes.register",
       stableHash: `internal/http/routes.go:register`,
-      owner: "code-inlay",
+      owner: "schemago",
       language: "go",
       content: combinedBody.join("\n"),
     });
@@ -718,7 +718,7 @@ export function generateCode(
     add(httperrResolvePath, {
       id: "httperr.resolveBindingError.imports",
       stableHash: `httperr:resolveBindingError:imports`,
-      owner: "code-inlay",
+      owner: "schemago",
       language: "go",
       content: [
         `import (`,
@@ -734,7 +734,7 @@ export function generateCode(
     add(httperrResolvePath, {
       id: "httperr.resolveBindingError",
       stableHash: `httperr:resolveBindingError:global`,
-      owner: "code-inlay",
+      owner: "schemago",
       language: "go",
       content: bindingFunc,
       symbolName: "ResolveBindingError",

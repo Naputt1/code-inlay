@@ -100,7 +100,7 @@ export function applyArchitecture(ast: AppAst, diagnostics: Diagnostic[]): Archi
     diagnostics,
     fileForLayer: (route, layer) => defaultFileForLayer(route, layer, featuresDir),
     regionId: defaultRegionId,
-    owner: "code-inlay",
+    owner: "schemago",
   };
 
   for (const module of ast.modules) {

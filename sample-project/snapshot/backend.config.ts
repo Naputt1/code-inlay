@@ -16,7 +16,7 @@ import {
   defineWS,
   HttpStatus,
   defineValidationError,
-} from "@code-inlay/backend-gen";
+} from "@schemago/schemago";
 
 const jwtAuth = defineMiddleware({ name: "JwtAuth" });
 const adminAuth = defineMiddleware({ name: "AdminAuth" });

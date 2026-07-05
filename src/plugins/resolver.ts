@@ -44,13 +44,13 @@ export function resolvePluginPackage(
 
     const packageRaw = readFileSync(packageJsonPath, "utf8");
     const packageJson = JSON.parse(packageRaw);
-    const pluginMeta = packageJson["code-inlay"] as Record<string, unknown> | undefined;
+    const pluginMeta = packageJson["schemago"] as Record<string, unknown> | undefined;
 
     if (!pluginMeta) {
       diagnostics.push({
         level: "error",
         code: "plugin-no-meta",
-        message: `Package "${packageName}" has no "code-inlay" metadata in package.json.`,
+        message: `Package "${packageName}" has no "schemago" metadata in package.json.`,
       });
       return undefined;
     }
@@ -110,7 +110,7 @@ export function checkPluginCompatibility(
 }
 
 export function savePluginLock(plugins: PluginPackage[], cwd: string): void {
-  const dir = resolve(cwd, ".backend-gen");
+  const dir = resolve(cwd, ".schemago");
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true });
   }
@@ -131,7 +131,7 @@ export function savePluginLock(plugins: PluginPackage[], cwd: string): void {
 export function readPluginLock(
   cwd: string,
 ): Array<{ name: string; version: string; type: string; manifestHash: string }> | undefined {
-  const lockPath = resolve(cwd, ".backend-gen", "plugins.lock.json");
+  const lockPath = resolve(cwd, ".schemago", "plugins.lock.json");
   if (!existsSync(lockPath)) return undefined;
   try {
     const raw = readFileSync(lockPath, "utf8");

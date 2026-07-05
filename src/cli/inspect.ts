@@ -39,7 +39,7 @@ export async function inspectCommand(parsed: ParsedArgs): Promise<void> {
     default:
       console.error(`Unknown inspect subcommand "${subcommand}".`);
       console.log(
-        `Usage: backend-gen inspect <ast|route|graph|plugins|regions> [id] [--format tree|json|mermaid]`,
+        `Usage: schemago inspect <ast|route|graph|plugins|regions> [id] [--format tree|json|mermaid]`,
       );
       process.exitCode = 1;
   }
@@ -75,7 +75,7 @@ async function inspectRoute(
   routeId: string | undefined,
 ): Promise<void> {
   if (!routeId) {
-    console.error("Usage: backend-gen inspect route <route-id>");
+    console.error("Usage: schemago inspect route <route-id>");
     process.exitCode = 1;
     return;
   }

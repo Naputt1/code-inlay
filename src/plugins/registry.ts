@@ -34,7 +34,7 @@ export type PluginRegistry = {
 
 export function computePluginManifestHash(app: AppDefinition): string {
   const builtInPlugin: BackendCompilerPlugin = {
-    name: "@backend-gen/builtin",
+    name: "@schemago/builtin",
     version: "0.3.0",
     apiVersion: "2",
     architectures: Object.values(architectureRegistry),
@@ -63,7 +63,7 @@ export function createPluginRegistry(
   diagnostics: Diagnostic[],
 ): PluginRegistry {
   const builtInPlugin: BackendCompilerPlugin = {
-    name: "@backend-gen/builtin",
+    name: "@schemago/builtin",
     version: "0.3.0",
     apiVersion: "2",
     architectures: Object.values(architectureRegistry),

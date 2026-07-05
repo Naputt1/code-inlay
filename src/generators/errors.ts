@@ -87,7 +87,7 @@ export function generateStandardErrors(featuresDir?: string): GeneratedFilePatch
         {
           id: "standard.errors",
           stableHash: `errors:standard`,
-          owner: "code-inlay",
+          owner: "schemago",
           language: "go",
           content,
         },
@@ -131,7 +131,7 @@ export function generateModuleErrors(
         {
           id: `${moduleName}.errors`,
           stableHash: `errors:${moduleName}:${errors.length}`,
-          owner: "code-inlay",
+          owner: "schemago",
           language: "go",
           content,
         },

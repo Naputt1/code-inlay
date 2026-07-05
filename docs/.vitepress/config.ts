@@ -1,12 +1,12 @@
 import { defineConfig } from "vitepress";
 
 export default defineConfig({
-  base: "/code-inlay/",
-  title: "Code Inlay",
+  base: "/schemago/",
+  title: "SchemaGo",
   description: "TypeScript-powered Go backend code generator",
   cleanUrls: true,
   themeConfig: {
-    socialLinks: [{ icon: "github", link: "https://github.com/Naputt1/code-inlay" }],
+    socialLinks: [{ icon: "github", link: "https://github.com/Naputt1/schemago" }],
     nav: [
       { text: "Guide", link: "/guide/getting-started" },
       { text: "CLI", link: "/cli/" },

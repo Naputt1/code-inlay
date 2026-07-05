@@ -211,7 +211,7 @@ describe("applyInnerMarkers", () => {
 
 describe("atomic write + rollback", () => {
   it("writes files atomically via temp file", async () => {
-    const cwd = join(tmpdir(), `backend-gen-phase2-${Date.now()}`);
+    const cwd = join(tmpdir(), `schemago-phase2-${Date.now()}`);
     mkdirSync(join(cwd, "internal/user"), { recursive: true });
     writeFileSync(
       join(cwd, "internal/user/types.go"),
@@ -239,7 +239,7 @@ describe("atomic write + rollback", () => {
   });
 
   it("creates skeleton files with markers-only option", () => {
-    const cwd = join(tmpdir(), `backend-gen-phase2-mk-${Date.now()}`);
+    const cwd = join(tmpdir(), `schemago-phase2-mk-${Date.now()}`);
 
     const patches: GeneratedFilePatch[] = [
       {
@@ -263,7 +263,7 @@ describe("atomic write + rollback", () => {
   });
 
   it("skips missing files when fileCreation is disabled", () => {
-    const cwd = join(tmpdir(), `backend-gen-phase2-sk-${Date.now()}`);
+    const cwd = join(tmpdir(), `schemago-phase2-sk-${Date.now()}`);
 
     const patches: GeneratedFilePatch[] = [
       {
@@ -286,7 +286,7 @@ describe("atomic write + rollback", () => {
   });
 
   it("restores files from snapshot on failure", () => {
-    const cwd = join(tmpdir(), `backend-gen-phase2-rollback-${Date.now()}`);
+    const cwd = join(tmpdir(), `schemago-phase2-rollback-${Date.now()}`);
     mkdirSync(join(cwd, "internal/user"), { recursive: true });
     const originalContent = [
       "package user",
@@ -320,7 +320,7 @@ describe("atomic write + rollback", () => {
   });
 
   it("rolls back previously written files on write-failed", () => {
-    const cwd = join(tmpdir(), `backend-gen-phase2-wf-${Date.now()}`);
+    const cwd = join(tmpdir(), `schemago-phase2-wf-${Date.now()}`);
     mkdirSync(join(cwd, "internal/user"), { recursive: true });
 
     const originalA = "package user\n\n// @gen:start r1\noriginal\n// @gen:end r1\n";
@@ -352,7 +352,7 @@ describe("atomic write + rollback", () => {
   });
 
   it("rolls back previously written files on concurrent edit", () => {
-    const cwd = join(tmpdir(), `backend-gen-phase2-ce-${Date.now()}`);
+    const cwd = join(tmpdir(), `schemago-phase2-ce-${Date.now()}`);
     mkdirSync(join(cwd, "internal/user"), { recursive: true });
 
     const originalA = "package user\n\n// @gen:start r1\noriginal\n// @gen:end r1\n";
@@ -397,7 +397,7 @@ describe("atomic write + rollback", () => {
     expect(diagnostics.some((d) => d.code === "concurrent-edit")).toBe(true);
   });
   it("rolls back deletes newly created files on write-failed", () => {
-    const cwd = join(tmpdir(), `backend-gen-phase2-rm-${Date.now()}`);
+    const cwd = join(tmpdir(), `schemago-phase2-rm-${Date.now()}`);
     mkdirSync(join(cwd, "internal/user"), { recursive: true });
 
     const originalA = "package user\n\n// @gen:start r1\noriginal\n// @gen:end r1\n";

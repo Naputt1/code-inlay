@@ -3,7 +3,7 @@
 Show pending changes without writing to disk.
 
 ```sh
-backend-gen diff [options]
+schemago diff [options]
 ```
 
 Each change is shown as a unified diff of the affected regions.

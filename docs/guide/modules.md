@@ -5,7 +5,7 @@ Modules group related routes and their generated code into Go packages.
 ## Defining a module
 
 ```ts
-import { defineModule } from "@code-inlay/backend-gen";
+import { defineModule } from "@schemago/schemago";
 
 const userModule = defineModule({
   name: "user",
