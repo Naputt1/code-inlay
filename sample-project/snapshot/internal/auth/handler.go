@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -77,16 +78,21 @@ func (h *AuthHandler) StreamAuthEvents(c *gin.Context) {
 	c.Writer.Header().Set("Cache-Control", "no-cache")
 	c.Writer.Header().Set("Connection", "keep-alive")
 
+	marshalEvent := func(v StreamAuthEventsAuthEvent) ([]byte, error) { return json.Marshal(v) }
+
 	ch := make(chan StreamAuthEventsAuthEvent)
-	go h.StreamAuthEventsUsecase.Execute(c.Request.Context(), ch)
+	go h.StreamAuthEventsUsecase.Execute(c.Request.Context(), ch, marshalEvent)
 
 	c.Stream(func(w io.Writer) bool {
 		event, ok := <-ch
 		if !ok {
 			return false
 		}
-		// TODO: marshal event to SSE format
-		fmt.Fprintf(w, "data: %s\\n\\n", event)
+		data, err := marshalEvent(event)
+		if err != nil {
+			return false
+		}
+		fmt.Fprintf(w, "data: %s\\n\\n", data)
 		return true
 	})
 }

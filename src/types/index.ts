@@ -5,6 +5,28 @@ export const COMPILER_VERSION = "0.2.0";
 
 export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 export type WSLibrary = "gorilla/websocket" | "nhooyr.io/websocket";
+export type CodecPreset = "json" | "sse" | "protobuf";
+export type CustomCodecDef = { marshal: string; unmarshal?: string };
+export type CodecDef = CodecPreset | CustomCodecDef;
+export type NegotiationStrategy = "accept-header" | "subprotocol" | "query-param";
+export type CodecNegotiation = {
+  from: NegotiationStrategy | NegotiationStrategy[];
+  default: string;
+  options: Record<string, CodecDef>;
+};
+export type CodecConfig = CodecDef | CodecNegotiation;
+export type ResolvedCodecSingle =
+  | { kind: "preset"; preset: CodecPreset }
+  | { kind: "custom"; marshal: string; unmarshal?: string };
+export type ResolvedCodec =
+  | ResolvedCodecSingle
+  | {
+      kind: "negotiated";
+      strategy: NegotiationStrategy[];
+      defaultKey: string;
+      codecs: Record<string, ResolvedCodecSingle>;
+    };
+export type SSEFieldMapping = { eventField?: string; idField?: string; retry?: number };
 export type TransportProtocol = "http" | "grpc" | "cli" | "sse" | "ws" | string;
 export type DiagnosticLevel = "error" | "warning";
 
@@ -232,6 +254,9 @@ export type SSEDefinition = {
   adapters?: AdapterRef[] | AdapterSelection;
   middleware?: MiddlewareDefinition[];
   metadata?: Record<string, unknown>;
+  codec?: CodecConfig;
+  sseFields?: SSEFieldMapping;
+  usecaseCodec?: boolean;
 };
 
 export type WSDefinition = {
@@ -246,6 +271,8 @@ export type WSDefinition = {
   middleware?: MiddlewareDefinition[];
   metadata?: Record<string, unknown>;
   wsLibrary?: WSLibrary;
+  codec?: CodecConfig;
+  usecaseCodec?: boolean;
 };
 
 export type RouteLike =
@@ -421,6 +448,9 @@ export type SSEAst = AstNodeBase<"SSE"> & {
   events: SchemaLike;
   middleware: MiddlewareAst[];
   metadata: Record<string, unknown>;
+  codec?: ResolvedCodec;
+  sseFields?: SSEFieldMapping;
+  usecaseCodec?: boolean;
 };
 
 export type WSAst = AstNodeBase<"WS"> & {
@@ -437,6 +467,8 @@ export type WSAst = AstNodeBase<"WS"> & {
   wsLibrary?: string;
   middleware: MiddlewareAst[];
   metadata: Record<string, unknown>;
+  codec?: ResolvedCodec;
+  usecaseCodec?: boolean;
 };
 
 export type RouteLikeAst = RouteAst | SSEAst | WSAst;

@@ -11,6 +11,7 @@ import type {
   BackendCompilerPlugin,
   BackendExtension,
   CodeTarget,
+  CodecConfig,
   CompileSettings,
   CorsConfig,
   DialectMethodCtx,
@@ -34,6 +35,7 @@ import type {
   ServiceFileCtx,
   ServiceInput,
   SSEDefinition,
+  SSEFieldMapping,
   TestingConfig,
   AdapterSelection,
   UsecaseOrganization,
@@ -97,6 +99,9 @@ export function defineSSE(input: {
   adapters?: AdapterRef[] | AdapterSelection;
   middleware?: MiddlewareDefinition[];
   metadata?: Record<string, unknown>;
+  codec?: CodecConfig;
+  sseFields?: SSEFieldMapping;
+  usecaseCodec?: boolean;
 }): SSEDefinition {
   return {
     kind: "SSEDefinition",
@@ -108,6 +113,9 @@ export function defineSSE(input: {
     adapters: input.adapters,
     middleware: input.middleware ?? [],
     metadata: input.metadata ?? {},
+    codec: input.codec,
+    sseFields: input.sseFields,
+    usecaseCodec: input.usecaseCodec,
   };
 }
 
@@ -122,6 +130,8 @@ export function defineWS(input: {
   middleware?: MiddlewareDefinition[];
   metadata?: Record<string, unknown>;
   wsLibrary?: WSLibrary;
+  codec?: CodecConfig;
+  usecaseCodec?: boolean;
 }): WSDefinition {
   return {
     kind: "WSDefinition",
@@ -135,6 +145,8 @@ export function defineWS(input: {
     middleware: input.middleware ?? [],
     metadata: input.metadata ?? {},
     wsLibrary: input.wsLibrary,
+    codec: input.codec,
+    usecaseCodec: input.usecaseCodec,
   };
 }
 

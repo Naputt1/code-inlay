@@ -36,6 +36,7 @@ import {
   generateGinHandler,
   generateGinSSEHandler,
   generateGinWSHandler,
+  handlerImportsForCodec,
   resolveAdapters,
 } from "../adapters/gin.js";
 import { generateServer, serverFilePath } from "../srvgen/index.js";
@@ -174,6 +175,8 @@ export function generateCode(
           hd.add("fmt");
           hd.add("io");
           hd.add("github.com/gin-gonic/gin");
+          const sseCodecImports = handlerImportsForCodec((route as SSEAst).codec);
+          for (const ci of sseCodecImports) hd.add(ci);
           add(handlerFile, {
             ...generateGinSSEHandler(route as SSEAst),
             stableHash: `${route.stableId}:${adapter.name}:handler:${handlerFile}`,
@@ -187,6 +190,8 @@ export function generateCode(
               ? "nhooyr.io/websocket"
               : "github.com/gorilla/websocket";
           hd.add(wsPkg);
+          const wsCodecImports = handlerImportsForCodec((route as WSAst).codec);
+          for (const ci of wsCodecImports) hd.add(ci);
           add(handlerFile, {
             ...generateGinWSHandler(route as WSAst),
             stableHash: `${route.stableId}:${adapter.name}:handler:${handlerFile}`,
@@ -801,12 +806,25 @@ function generateLayerContent(
       return undefined;
     case "sse":
       if (route.kind === "SSE") {
-        return `type ${route.handlerName}Usecase interface {\n\tExecute(ctx context.Context, events chan<- ${route.handlerName}${pascalCase(route.moduleName)}Event) error\n}`;
+        const sse = route as SSEAst;
+        const eventType = `${sse.handlerName}${pascalCase(sse.moduleName)}Event`;
+        if (sse.usecaseCodec) {
+          return `type ${sse.handlerName}Usecase interface {\n\tExecute(ctx context.Context, events chan<- ${eventType}, marshal func(${eventType}) ([]byte, error)) error\n}`;
+        }
+        return `type ${sse.handlerName}Usecase interface {\n\tExecute(ctx context.Context, events chan<- ${eventType}) error\n}`;
       }
       return undefined;
     case "ws":
       if (route.kind === "WS") {
-        return `type ${route.handlerName}Usecase interface {\n\tExecute(ctx context.Context, read <-chan ${route.handlerName}${pascalCase(route.moduleName)}Message, write chan<- ${route.handlerName}${pascalCase(route.moduleName)}Event) error\n}`;
+        const ws = route as WSAst;
+        const msgType = `${ws.handlerName}${pascalCase(ws.moduleName)}Message`;
+        const evtType = ws.events
+          ? `${ws.handlerName}${pascalCase(ws.moduleName)}Event`
+          : "struct{}";
+        if (ws.usecaseCodec) {
+          return `type ${ws.handlerName}Usecase interface {\n\tExecute(ctx context.Context, read <-chan ${msgType}, write chan<- ${evtType}, marshal func(${evtType}) ([]byte, error), unmarshal func([]byte, *${msgType}) error) error\n}`;
+        }
+        return `type ${ws.handlerName}Usecase interface {\n\tExecute(ctx context.Context, read <-chan ${msgType}, write chan<- ${evtType}) error\n}`;
       }
       return undefined;
     case "handler":

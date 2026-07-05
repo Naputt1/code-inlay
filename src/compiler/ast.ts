@@ -7,12 +7,16 @@ import type {
   AdapterSelection,
   AdapterTarget,
   BackendExtension,
+  CodecConfig,
+  CodecPreset,
   Diagnostic,
   EnvVarInfo,
   EnvVarType,
   ErrorDefinition,
   MiddlewareAst,
   ModuleAst,
+  ResolvedCodec,
+  ResolvedCodecSingle,
   ResponseFormat,
   RouteAst,
   SSEAst,
@@ -61,6 +65,28 @@ export function parseEnvDefs(
   }
 
   return result;
+}
+
+function resolveCodecConfig(config: CodecConfig | undefined): ResolvedCodec | undefined {
+  if (!config) return undefined;
+  if (typeof config === "string") {
+    return { kind: "preset", preset: config as CodecPreset };
+  }
+  if ("from" in config) {
+    const strategies = Array.isArray(config.from) ? config.from : [config.from];
+    const codecs: Record<string, ResolvedCodecSingle> = {};
+    for (const [key, def] of Object.entries(config.options)) {
+      codecs[key] =
+        typeof def === "string"
+          ? { kind: "preset", preset: def as CodecPreset }
+          : { kind: "custom", marshal: def.marshal, unmarshal: def.unmarshal };
+    }
+    return { kind: "negotiated", strategy: strategies, defaultKey: config.default, codecs };
+  }
+  if ("marshal" in config) {
+    return { kind: "custom", marshal: config.marshal, unmarshal: config.unmarshal };
+  }
+  return { kind: "preset", preset: config as unknown as CodecPreset };
 }
 
 export function buildAst(app: AppDefinition, diagnostics: Diagnostic[]): AppAst {
@@ -199,6 +225,9 @@ export function buildAst(app: AppDefinition, diagnostics: Diagnostic[]): AppAst 
                 toMiddlewareAst(mw, `module:${module.name}:sse:${routeId}`),
               ),
               metadata: route.metadata ?? {},
+              codec: resolveCodecConfig(route.codec),
+              sseFields: route.sseFields,
+              usecaseCodec: route.usecaseCodec,
             } satisfies SSEAst;
           }
 
@@ -224,6 +253,8 @@ export function buildAst(app: AppDefinition, diagnostics: Diagnostic[]): AppAst 
                 toMiddlewareAst(mw, `module:${module.name}:ws:${routeId}`),
               ),
               metadata: route.metadata ?? {},
+              codec: resolveCodecConfig(route.codec),
+              usecaseCodec: route.usecaseCodec,
             } satisfies WSAst;
           }
 

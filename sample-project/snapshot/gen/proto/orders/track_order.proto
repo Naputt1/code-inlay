@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package orders;
+
+option go_package = "gen/proto/go/orders";
+
+message TrackOrderOrdersMessage {
+  string order_id = 1;
+}
+
+message TrackOrderOrdersEvent {
+  string status = 1;
+  string updated_at = 2;
+}

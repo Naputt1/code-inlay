@@ -1,0 +1,627 @@
+import { execSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import type {
+  CodeTarget,
+  Diagnostic,
+  GeneratedRegion,
+  ResolvedCodec,
+  RouteLikeAst,
+  SchemaLike,
+  SSEAst,
+  WSAst,
+} from "../types/index.js";
+import { pascalCase, snakeCase } from "../utils/naming.js";
+import {
+  isZodArray,
+  isZodObject,
+  isZodDiscriminatedUnion,
+  typeName,
+  unwrap,
+} from "../schema/extras.js";
+
+type ProtoField = {
+  name: string;
+  protoType: string;
+  number: number;
+  repeated: boolean;
+};
+
+type ProtoMessage = {
+  name: string;
+  fields: ProtoField[];
+};
+
+type ProtoEnum = {
+  name: string;
+  values: string[];
+};
+
+type FieldMapping = {
+  goName: string;
+  protoName: string;
+  goType: string;
+  protoFieldType: string;
+  repeated: boolean;
+  nested: boolean;
+};
+
+function codecUsesProtobuf(codec: ResolvedCodec | undefined): boolean {
+  if (!codec) return false;
+  if (codec.kind === "preset") return codec.preset === "protobuf";
+  if (codec.kind === "negotiated") {
+    return Object.values(codec.codecs).some((c) => c.kind === "preset" && c.preset === "protobuf");
+  }
+  return false;
+}
+
+function shouldGenerateProto(route: RouteLikeAst): boolean {
+  if (route.kind === "SSE" && codecUsesProtobuf((route as SSEAst).codec)) return true;
+  if (route.kind === "WS" && codecUsesProtobuf((route as WSAst).codec)) return true;
+  return false;
+}
+
+const protoScalarToGo: Record<string, string> = {
+  string: "string",
+  bool: "bool",
+  int32: "int32",
+  int64: "int64",
+  float: "float32",
+  double: "float64",
+};
+
+function isProtoScalar(t: string): boolean {
+  return t in protoScalarToGo;
+}
+
+function protoTypeToGoType(
+  protoType: string,
+  messages: ProtoMessage[],
+): { goType: string; nested: boolean } {
+  if (isProtoScalar(protoType)) return { goType: protoScalarToGo[protoType], nested: false };
+  if (protoType.endsWith("Enum")) return { goType: "string", nested: false };
+  if (messages.find((m) => m.name === protoType)) {
+    const goName = protoType.endsWith("Msg") ? protoType.slice(0, -3) : protoType;
+    return { goType: goName, nested: true };
+  }
+  return { goType: protoType, nested: false };
+}
+
+function buildMappings(msg: ProtoMessage, allMessages: ProtoMessage[]): FieldMapping[] {
+  return msg.fields.map((f) => {
+    const { goType, nested } = protoTypeToGoType(f.protoType, allMessages);
+    return {
+      goName: pascalCase(f.name),
+      protoName: f.name,
+      goType,
+      protoFieldType: f.protoType,
+      repeated: f.repeated,
+      nested,
+    };
+  });
+}
+
+function generateFromProtoFunc(msg: ProtoMessage, allMessages: ProtoMessage[]): string {
+  const mappings = buildMappings(msg, allMessages);
+  const lines: string[] = [];
+  lines.push(`func ${msg.name}FromProto(src *pb.${msg.name}) ${msg.name} {`);
+  if (mappings.length === 0) {
+    lines.push(`\treturn ${msg.name}{}`);
+    lines.push(`}`);
+    return lines.join("\n");
+  }
+  lines.push(`\treturn ${msg.name}{`);
+  for (const m of mappings) {
+    if (m.repeated && m.nested) {
+      const innerName = m.goType;
+      lines.push(`\t\t${m.goName}: func() []${innerName} {`);
+      lines.push(`\t\t\tif len(src.Get${m.goName}()) == 0 { return nil }`);
+      lines.push(`\t\t\tresult := make([]${innerName}, len(src.Get${m.goName}()))`);
+      lines.push(`\t\t\tfor i, v := range src.Get${m.goName}() {`);
+      lines.push(`\t\t\t\tresult[i] = ${protoTypeToGoStruct(m.protoFieldType)}FromProto(v)`);
+      lines.push(`\t\t\t}`);
+      lines.push(`\t\t\treturn result`);
+      lines.push(`\t\t}(),`);
+    } else if (m.repeated) {
+      lines.push(`\t\t${m.goName}: src.Get${m.goName}(),`);
+    } else if (m.nested) {
+      lines.push(
+        `\t\t${m.goName}: ${protoTypeToGoStruct(m.protoFieldType)}FromProto(src.Get${m.goName}()),`,
+      );
+    } else {
+      lines.push(`\t\t${m.goName}: src.Get${m.goName}(),`);
+    }
+  }
+  lines.push(`\t}`);
+  lines.push(`}`);
+  return lines.join("\n");
+}
+
+function protoTypeToGoStruct(protoType: string): string {
+  if (protoType.endsWith("Msg")) return protoType.slice(0, -3);
+  return protoType;
+}
+
+function generateToProtoFunc(msg: ProtoMessage, allMessages: ProtoMessage[]): string {
+  const mappings = buildMappings(msg, allMessages);
+  const lines: string[] = [];
+  lines.push(`func ${msg.name}ToProto(src ${msg.name}) *pb.${msg.name} {`);
+  if (mappings.length === 0) {
+    lines.push(`\treturn &pb.${msg.name}{}`);
+    lines.push(`}`);
+    return lines.join("\n");
+  }
+  lines.push(`\treturn &pb.${msg.name}{`);
+  for (const m of mappings) {
+    if (m.repeated && m.nested) {
+      lines.push(`\t\t${m.goName}: func() []*pb.${m.protoFieldType} {`);
+      lines.push(`\t\t\tif len(src.${m.goName}) == 0 { return nil }`);
+      lines.push(`\t\t\tresult := make([]*pb.${m.protoFieldType}, len(src.${m.goName}))`);
+      lines.push(`\t\t\tfor i, v := range src.${m.goName} {`);
+      lines.push(`\t\t\t\tresult[i] = ${protoTypeToGoStruct(m.protoFieldType)}ToProto(v)`);
+      lines.push(`\t\t\t}`);
+      lines.push(`\t\t\treturn result`);
+      lines.push(`\t\t}(),`);
+    } else if (m.repeated) {
+      lines.push(`\t\t${m.goName}: src.${m.goName},`);
+    } else if (m.nested) {
+      lines.push(
+        `\t\t${m.goName}: ${protoTypeToGoStruct(m.protoFieldType)}ToProto(src.${m.goName}),`,
+      );
+    } else {
+      lines.push(`\t\t${m.goName}: src.${m.goName},`);
+    }
+  }
+  lines.push(`\t}`);
+  lines.push(`}`);
+  return lines.join("\n");
+}
+
+function schemaToProtoType(
+  schema: SchemaLike,
+  messages: ProtoMessage[],
+  enums: ProtoEnum[],
+  contextName: string,
+): string {
+  const inner = unwrap(schema);
+  const t = typeName(inner);
+  if (t === "ZodString") return "string";
+  if (t === "ZodBoolean") return "bool";
+  if (t === "ZodInt32") return "int32";
+  if (t === "ZodInt64") return "int64";
+  if (t === "ZodFloat32") return "float";
+  if (t === "ZodNumber") return "double";
+  if (t === "ZodLiteral") return "string";
+  if (t === "ZodEnum") {
+    const values = (inner._def as { values?: string[] }).values ?? [];
+    const enumName = `${contextName}Enum`;
+    if (!enums.find((e) => e.name === enumName)) enums.push({ name: enumName, values });
+    return enumName;
+  }
+  if (t === "ZodObject") {
+    const shape = (inner as unknown as Record<string, unknown>).shape as Record<string, SchemaLike>;
+    const msgName = `${contextName}Msg`;
+    if (!messages.find((m) => m.name === msgName)) {
+      messages.push(objectToProtoMessage(shape, msgName, messages, enums));
+    }
+    return msgName;
+  }
+  if (t === "ZodDiscriminatedUnion") {
+    const du = inner as unknown as { _def: { discriminator: string; options: SchemaLike[] } };
+    const msgName = `${contextName}Msg`;
+    if (!messages.find((m) => m.name === msgName)) {
+      const fields: ProtoField[] = [
+        { name: snakeCase(du._def.discriminator), protoType: "string", number: 1, repeated: false },
+      ];
+      for (let i = 0; i < du._def.options.length; i++) {
+        const u = unwrap(du._def.options[i]);
+        if (isZodObject(u)) {
+          const optMsgName = `${contextName}Option${i}`;
+          const optShape = (u as unknown as Record<string, unknown>).shape as Record<
+            string,
+            SchemaLike
+          >;
+          if (!messages.find((m) => m.name === optMsgName)) {
+            messages.push(objectToProtoMessage(optShape, optMsgName, messages, enums));
+          }
+          fields.push({
+            name: `option${i}`,
+            protoType: optMsgName,
+            number: i + 2,
+            repeated: false,
+          });
+        }
+      }
+      messages.push({ name: msgName, fields });
+    }
+    return msgName;
+  }
+  if (t === "ZodEntity") return "google.protobuf.Any";
+  return "string";
+}
+
+function objectToProtoMessage(
+  shape: Record<string, SchemaLike>,
+  name: string,
+  messages: ProtoMessage[],
+  enums: ProtoEnum[],
+): ProtoMessage {
+  const fields: ProtoField[] = [];
+  const keys = Object.keys(shape).sort();
+  let fieldNum = 0;
+  for (const key of keys) {
+    fieldNum++;
+    const fieldSchema = shape[key];
+    const inner = unwrap(fieldSchema);
+    if (isZodArray(inner)) {
+      const elemType = schemaToProtoType(
+        inner.element,
+        messages,
+        enums,
+        `${name}${pascalCase(key)}`,
+      );
+      fields.push({ name: snakeCase(key), protoType: elemType, number: fieldNum, repeated: true });
+    } else {
+      const fieldType = schemaToProtoType(
+        fieldSchema,
+        messages,
+        enums,
+        `${name}${pascalCase(key)}`,
+      );
+      fields.push({
+        name: snakeCase(key),
+        protoType: fieldType,
+        number: fieldNum,
+        repeated: false,
+      });
+    }
+  }
+  return { name, fields };
+}
+
+function messageToProto(def: ProtoMessage): string {
+  const lines: string[] = [`message ${def.name} {`];
+  for (const f of def.fields) {
+    lines.push(`  ${f.repeated ? "repeated " : ""}${f.protoType} ${f.name} = ${f.number};`);
+  }
+  lines.push(`}`);
+  return lines.join("\n");
+}
+
+function enumToProto(def: ProtoEnum): string {
+  const lines: string[] = [`enum ${def.name} {`];
+  lines.push(`  ${def.name}_UNSPECIFIED = 0;`);
+  for (let i = 0; i < def.values.length; i++) {
+    lines.push(`  ${def.name}_${def.values[i].toUpperCase()} = ${i + 1};`);
+  }
+  lines.push(`}`);
+  return lines.join("\n");
+}
+
+function getObjectShape(schema: SchemaLike): Record<string, SchemaLike> | undefined {
+  const inner = unwrap(schema);
+  if (isZodObject(inner))
+    return (inner as unknown as Record<string, unknown>).shape as Record<string, SchemaLike>;
+  if (isZodDiscriminatedUnion(inner)) {
+    const firstOpt = (inner as unknown as { _def: { options: SchemaLike[] } })._def.options[0];
+    if (firstOpt) {
+      const u = unwrap(firstOpt);
+      if (isZodObject(u))
+        return (u as unknown as Record<string, unknown>).shape as Record<string, SchemaLike>;
+    }
+  }
+  return undefined;
+}
+
+function generateProtoFileContent(
+  packageName: string,
+  messages: ProtoMessage[],
+  enums: ProtoEnum[],
+): string {
+  const parts: string[] = [
+    `syntax = "proto3";`,
+    ``,
+    `package ${packageName};`,
+    ``,
+    `option go_package = "gen/proto/go/${packageName}";`,
+    ``,
+  ];
+  for (const e of enums) {
+    parts.push(enumToProto(e));
+    parts.push(``);
+  }
+  for (const m of messages) {
+    parts.push(messageToProto(m));
+    parts.push(``);
+  }
+  return parts.join("\n");
+}
+
+function readGoModulePath(cwd: string): string | undefined {
+  try {
+    const goModPath = join(cwd, "go.mod");
+    if (!existsSync(goModPath)) return undefined;
+    const match = readFileSync(goModPath, "utf8").match(/^module\s+(\S+)/m);
+    return match?.[1];
+  } catch {
+    return undefined;
+  }
+}
+
+function snakeToCamel(s: string): string {
+  return s.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+}
+
+function generateStubPbGoContent(
+  packageName: string,
+  messages: ProtoMessage[],
+  _enums: ProtoEnum[],
+): string {
+  const parts: string[] = [`package ${packageName}`, ``];
+
+  for (const msg of messages) {
+    if (msg.fields.length === 0) {
+      parts.push(`type ${msg.name} struct{}`);
+      parts.push(``);
+      continue;
+    }
+    parts.push(`type ${msg.name} struct {`);
+    for (const f of msg.fields) {
+      const goType = isProtoScalar(f.protoType)
+        ? protoScalarToGo[f.protoType]
+        : f.protoType.endsWith("Enum")
+          ? "string"
+          : f.protoType;
+      const goName = pascalCase(f.name);
+      const jsonName = snakeToCamel(f.name);
+      if (f.repeated) {
+        parts.push(`\t${goName} []${goType} \`json:"${jsonName}"\``);
+      } else {
+        parts.push(`\t${goName} ${goType} \`json:"${jsonName}"\``);
+      }
+    }
+    parts.push(`}`);
+    parts.push(``);
+  }
+
+  // Get* accessor methods matching protoc conventions
+  for (const msg of messages) {
+    for (const f of msg.fields) {
+      const goType = isProtoScalar(f.protoType)
+        ? protoScalarToGo[f.protoType]
+        : f.protoType.endsWith("Enum")
+          ? "string"
+          : f.protoType;
+      const goName = pascalCase(f.name);
+      const recv = `m *${msg.name}`;
+      if (f.repeated) {
+        parts.push(`func (${recv}) Get${goName}() []${goType} {`);
+        parts.push(`\tif m != nil { return m.${goName} }`);
+        parts.push(`\treturn nil`);
+        parts.push(`}`);
+      } else if (goType === "string") {
+        parts.push(`func (${recv}) Get${goName}() ${goType} {`);
+        parts.push(`\tif m != nil { return m.${goName} }`);
+        parts.push(`\treturn ""`);
+        parts.push(`}`);
+      } else if (goType === "bool") {
+        parts.push(`func (${recv}) Get${goName}() ${goType} {`);
+        parts.push(`\tif m != nil { return m.${goName} }`);
+        parts.push(`\treturn false`);
+        parts.push(`}`);
+      } else {
+        parts.push(`func (${recv}) Get${goName}() ${goType} {`);
+        parts.push(`\tif m != nil { return m.${goName} }`);
+        parts.push(`\treturn 0`);
+        parts.push(`}`);
+      }
+      parts.push(``);
+    }
+  }
+
+  return parts.join("\n");
+}
+
+function generateFromProtoBytesFunc(msg: ProtoMessage): string {
+  const lines: string[] = [];
+  lines.push(`func ${msg.name}FromProtoBytes(data []byte) ${msg.name} {`);
+  lines.push(`\tvar src pb.${msg.name}`);
+  lines.push(`\tif err := json.Unmarshal(data, &src); err != nil {`);
+  lines.push(`\t\treturn ${msg.name}{}`);
+  lines.push(`\t}`);
+  lines.push(`\treturn ${msg.name}FromProto(&src)`);
+  lines.push(`}`);
+  return lines.join("\n");
+}
+
+function generateToProtoBytesFunc(msg: ProtoMessage): string {
+  const lines: string[] = [];
+  lines.push(`func ${msg.name}ToProtoBytes(src ${msg.name}) []byte {`);
+  lines.push(`\tdst := ${msg.name}ToProto(src)`);
+  lines.push(`\tdata, _ := json.Marshal(dst)`);
+  lines.push(`\treturn data`);
+  lines.push(`}`);
+  return lines.join("\n");
+}
+
+function runProtoc(
+  protoDir: string,
+  cwd: string,
+  modulePath: string,
+  diagnostics: Diagnostic[],
+): void {
+  let hasProtoc = true;
+  try {
+    execSync("which protoc", { stdio: "pipe", encoding: "utf8" });
+  } catch {
+    diagnostics.push({
+      level: "warning",
+      code: "protoc-missing",
+      message: `protoc not found. Skipping proto compilation. Install from https://github.com/protocolbuffers/protobuf/releases`,
+    });
+    hasProtoc = false;
+  }
+  if (hasProtoc) {
+    try {
+      execSync("protoc-gen-go --version", { stdio: "pipe", encoding: "utf8" });
+    } catch {
+      diagnostics.push({
+        level: "warning",
+        code: "protoc-gen-go-missing",
+        message: `protoc-gen-go not found. Skipping proto compilation. Install: go install google.golang.org/protobuf/cmd/protoc-gen-go@latest`,
+      });
+      hasProtoc = false;
+    }
+  }
+  if (!hasProtoc) return;
+  try {
+    execSync(`protoc --go_out=. --go_opt=module=${modulePath} ${protoDir}/*.proto`, {
+      cwd,
+      stdio: "pipe",
+      encoding: "utf8",
+    });
+  } catch (e) {
+    diagnostics.push({
+      level: "warning",
+      code: "protoc-failed",
+      message: `protoc failed: ${(e as Error).message}`,
+    });
+  }
+}
+
+export const protoTarget: CodeTarget = {
+  name: "proto",
+  version: "0.1.0",
+  apiVersion: "3",
+  stage: "postTransform",
+  generate(ctx) {
+    const { ast, options, diagnostics, cwd } = ctx;
+    const patches: Array<{ path: string; regions: GeneratedRegion[] }> = [];
+    const outputDir = (options.targetOptions?.["proto"]?.outputDir as string) ?? "gen/proto";
+    const goOutputDir = "gen/proto/go";
+    const modulePath = readGoModulePath(cwd);
+
+    let hasProto = false;
+    const moduleConversions = new Map<
+      string,
+      { moduleSnake: string; messages: ProtoMessage[]; enums: ProtoEnum[] }
+    >();
+
+    for (const module of ast.modules) {
+      let moduleHasProto = false;
+      const messages: ProtoMessage[] = [];
+      const enums: ProtoEnum[] = [];
+      const moduleSnake = snakeCase(module.name);
+
+      for (const route of module.routes) {
+        if (!shouldGenerateProto(route)) continue;
+        moduleHasProto = true;
+        hasProto = true;
+
+        if (route.kind === "SSE") {
+          const sse = route as SSEAst;
+          const msgName = `${pascalCase(sse.handlerName)}${pascalCase(sse.moduleName)}Event`;
+          const shape = getObjectShape(sse.events);
+          if (shape) messages.push(objectToProtoMessage(shape, msgName, messages, enums));
+          patches.push({
+            path: `${outputDir}/${moduleSnake}/${snakeCase(sse.handlerName)}.proto`,
+            regions: [
+              {
+                id: `proto.${module.name}.${sse.id}`,
+                stableHash: `proto:${module.name}:${sse.handlerName}`,
+                owner: "proto",
+                language: "go" as const,
+                content: generateProtoFileContent(moduleSnake, messages, enums),
+              },
+            ],
+          });
+        }
+
+        if (route.kind === "WS") {
+          const ws = route as WSAst;
+          const msgName = `${pascalCase(ws.handlerName)}${pascalCase(ws.moduleName)}Message`;
+          const msgShape = getObjectShape(ws.message);
+          if (msgShape) messages.push(objectToProtoMessage(msgShape, msgName, messages, enums));
+          if (ws.events) {
+            const evtName = `${pascalCase(ws.handlerName)}${pascalCase(ws.moduleName)}Event`;
+            const evtShape = getObjectShape(ws.events);
+            if (evtShape) messages.push(objectToProtoMessage(evtShape, evtName, messages, enums));
+          }
+          patches.push({
+            path: `${outputDir}/${moduleSnake}/${snakeCase(ws.handlerName)}.proto`,
+            regions: [
+              {
+                id: `proto.${module.name}.${ws.id}`,
+                stableHash: `proto:${module.name}:${ws.handlerName}`,
+                owner: "proto",
+                language: "go" as const,
+                content: generateProtoFileContent(moduleSnake, messages, enums),
+              },
+            ],
+          });
+        }
+      }
+
+      if (moduleHasProto) {
+        moduleConversions.set(module.name, { moduleSnake, messages, enums });
+      }
+    }
+
+    // Generate stub .pb.go files + conversion functions once per module
+    if (modulePath) {
+      for (const [modName, info] of moduleConversions) {
+        // Stub .pb.go
+        const stubContent = generateStubPbGoContent(info.moduleSnake, info.messages, info.enums);
+        patches.push({
+          path: `${goOutputDir}/${info.moduleSnake}/stubs.pb.go`,
+          regions: [
+            {
+              id: `proto.stubs.${modName}`,
+              stableHash: `proto-stubs:${modName}`,
+              owner: "proto",
+              language: "go" as const,
+              content: stubContent + "\n",
+            },
+          ],
+        });
+
+        // Conversion functions (FromProto, ToProto, FromProtoBytes, ToProtoBytes)
+        const parts: string[] = [
+          `import (`,
+          `\t"encoding/json"`,
+          `\tpb "${modulePath}/${goOutputDir}/${info.moduleSnake}"`,
+          `)`,
+          ``,
+        ];
+        for (const msg of info.messages) {
+          parts.push(generateFromProtoFunc(msg, info.messages));
+          parts.push(``);
+          parts.push(generateToProtoFunc(msg, info.messages));
+          parts.push(``);
+          parts.push(generateFromProtoBytesFunc(msg));
+          parts.push(``);
+          parts.push(generateToProtoBytesFunc(msg));
+          parts.push(``);
+        }
+        patches.push({
+          path: `internal/${info.moduleSnake}/proto.go`,
+          regions: [
+            {
+              id: `proto.conversion.${modName}`,
+              stableHash: `proto-conversion:${modName}`,
+              owner: "proto",
+              language: "go" as const,
+              content: parts.join("\n") + "\n",
+            },
+          ],
+        });
+      }
+    }
+
+    if (hasProto && modulePath) {
+      runProtoc(join(cwd, outputDir), cwd, modulePath, diagnostics);
+    }
+
+    return patches;
+  },
+};

@@ -346,6 +346,15 @@ describe("full pipeline snapshot", () => {
           events: z.object({ status: z.string(), updatedAt: z.string() }),
           handler: "TrackOrder",
           wsLibrary: "gorilla/websocket",
+          codec: {
+            from: "subprotocol",
+            default: "json",
+            options: {
+              json: "json",
+              protobuf: "protobuf",
+            },
+          },
+          usecaseCodec: true,
         }),
       ],
     });
@@ -425,6 +434,8 @@ describe("full pipeline snapshot", () => {
             z.object({ type: z.literal("logout"), userId: z.string(), timestamp: z.string() }),
           ]),
           handler: "StreamAuthEvents",
+          codec: "sse",
+          usecaseCodec: true,
         }),
       ],
     });
@@ -488,7 +499,7 @@ describe("full pipeline snapshot", () => {
       options: {
         responseFormat: stdFormat,
         fileCreation: "skeleton",
-        targets: ["go-server", "ts-client", "openapi", "asyncapi"],
+        targets: ["go-server", "ts-client", "openapi", "asyncapi", "proto"],
         targetOptions: {
           "ts-client": { outputDir: "clients" },
           openapi: { title: "Store API", version: "1.0.0" },

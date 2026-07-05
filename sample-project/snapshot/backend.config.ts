@@ -212,6 +212,15 @@ const orderRoutes = defineRouteGroup({
       events: z.object({ status: z.string(), updatedAt: z.string() }),
       handler: "TrackOrder",
       wsLibrary: "gorilla/websocket",
+      codec: {
+        from: "subprotocol",
+        default: "json",
+        options: {
+          json: "json",
+          protobuf: "protobuf",
+        },
+      },
+      usecaseCodec: true,
     }),
   ],
 });
@@ -291,6 +300,8 @@ const authRoutes = defineRouteGroup({
         z.object({ type: z.literal("logout"), userId: z.string(), timestamp: z.string() }),
       ]),
       handler: "StreamAuthEvents",
+      codec: "sse",
+      usecaseCodec: true,
     }),
   ],
 });
@@ -337,7 +348,7 @@ const app = defineApp({
   options: {
     responseFormat: stdFormat,
     fileCreation: "skeleton",
-    targets: ["go-server", "ts-client", "openapi", "asyncapi"],
+    targets: ["go-server", "ts-client", "openapi", "asyncapi", "proto"],
     targetOptions: {
       "ts-client": { outputDir: "clients" },
       openapi: { title: "Store API", version: "1.0.0" },
