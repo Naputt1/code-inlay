@@ -114,7 +114,7 @@ export function generateEnvConfigFile(
       {
         id: `${configFilePath}.imports`,
         stableHash: `${configFilePath}:imports:${moduleInfo.modulePath}`,
-        owner: "code-inlay",
+        owner: "schemago",
         language: "go",
         content: `import (\n${imports
           .sort()
@@ -125,7 +125,7 @@ export function generateEnvConfigFile(
       {
         id: `${configFilePath}.struct`,
         stableHash: `${configFilePath}:struct:${moduleInfo.modulePath}`,
-        owner: "code-inlay",
+        owner: "schemago",
         language: "go",
         content: `type Config struct {\n${structFields.join("\n")}\n}`,
         symbolName: "Config",
@@ -134,7 +134,7 @@ export function generateEnvConfigFile(
       {
         id: `${configFilePath}.load`,
         stableHash: `${configFilePath}:load:${moduleInfo.modulePath}`,
-        owner: "code-inlay",
+        owner: "schemago",
         language: "go",
         content: `\tif err := godotenv.Load(); err != nil {\n\t\tlog.Println(".env file not loaded, using system env vars:", err)\n\t}\n\tvar cfg Config\n${loadLines.join("\n")}\n\treturn cfg`,
         symbolName: "Load",

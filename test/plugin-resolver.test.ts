@@ -133,7 +133,7 @@ describe("resolvePluginPackage", () => {
     expect(result!.version).toBe("0.2.0");
   });
 
-  it("reads manifest from package.json code-inlay metadata", () => {
+  it("reads manifest from package.json schemago metadata", () => {
     const cwd = join(tmpdir(), `plugin-resolve-${Date.now()}`);
     mkdirSync(join(cwd, "node_modules", "other-plugin"), { recursive: true });
     writeFileSync(
@@ -141,7 +141,7 @@ describe("resolvePluginPackage", () => {
       JSON.stringify({
         name: "other-plugin",
         version: "1.0.0",
-        "code-inlay": {
+        schemago: {
           type: "adapter",
           compatibility: { astVersion: "1.x", coreVersion: ">=0.1.0" },
         },
@@ -155,7 +155,7 @@ describe("resolvePluginPackage", () => {
     expect(result!.type).toBe("adapter");
   });
 
-  it("returns undefined when package has no code-inlay metadata", () => {
+  it("returns undefined when package has no schemago metadata", () => {
     const cwd = join(tmpdir(), `plugin-resolve-${Date.now()}`);
     mkdirSync(join(cwd, "node_modules", "no-meta"), { recursive: true });
     writeFileSync(
@@ -223,8 +223,8 @@ describe("savePluginLock / readPluginLock", () => {
 
   it("returns undefined for corrupt lock file", () => {
     const cwd = join(tmpdir(), `plugin-lock-corrupt-${Date.now()}`);
-    mkdirSync(join(cwd, ".backend-gen"), { recursive: true });
-    writeFileSync(join(cwd, ".backend-gen", "plugins.lock.json"), "not valid json", "utf8");
+    mkdirSync(join(cwd, ".schemago"), { recursive: true });
+    writeFileSync(join(cwd, ".schemago", "plugins.lock.json"), "not valid json", "utf8");
     const loaded = readPluginLock(cwd);
     expect(loaded).toBeUndefined();
   });

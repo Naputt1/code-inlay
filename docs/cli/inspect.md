@@ -3,7 +3,7 @@
 Introspect the compiled AST, routes, regions, plugins, or pipeline graph.
 
 ```sh
-backend-gen inspect <subcommand> [id] [options]
+schemago inspect <subcommand> [id] [options]
 ```
 
 ## Subcommands
@@ -26,17 +26,17 @@ backend-gen inspect <subcommand> [id] [options]
 
 ```sh
 # Show the full AST
-backend-gen inspect ast
+schemago inspect ast
 
 # Show a specific route
-backend-gen inspect route createUser
+schemago inspect route createUser
 
 # Show pipeline graph as JSON
-backend-gen inspect graph --format json
+schemago inspect graph --format json
 
 # Show all plugins
-backend-gen inspect plugins
+schemago inspect plugins
 
 # Show all generated regions
-backend-gen inspect regions
+schemago inspect regions
 ```

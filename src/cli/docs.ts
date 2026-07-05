@@ -43,7 +43,7 @@ export async function docsCommand(parsed: ParsedArgs): Promise<void> {
       break;
     default:
       console.error(`Unknown docs subcommand "${subcommand}".`);
-      console.log(`Usage: backend-gen docs <api|markdown|diagram>`);
+      console.log(`Usage: schemago docs <api|markdown|diagram>`);
       process.exitCode = 1;
   }
 }

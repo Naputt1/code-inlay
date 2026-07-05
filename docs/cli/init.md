@@ -3,7 +3,7 @@
 Create a sample `backend.config.ts` to get started.
 
 ```sh
-backend-gen init <project-name>
+schemago init <project-name>
 ```
 
 Creates a directory with a starter `backend.config.ts`:
@@ -16,7 +16,7 @@ Creates a directory with a starter `backend.config.ts`:
 ## Example
 
 ```sh
-backend-gen init my-api
+schemago init my-api
 cd my-api
-backend-gen generate
+schemago generate
 ```

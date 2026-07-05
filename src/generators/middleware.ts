@@ -36,14 +36,14 @@ export function generateMiddlewareFiles(ast: AppAst): GeneratedFilePatch[] {
         {
           id: `middleware.${mw.name}.0imports`,
           stableHash: `middleware:${mw.name}:imports`,
-          owner: "code-inlay",
+          owner: "schemago",
           language: "go",
           content: `import "github.com/gin-gonic/gin"`,
         },
         {
           id: `middleware.${mw.name}.1func`,
           stableHash: `middleware:${mw.name}:func`,
-          owner: "code-inlay",
+          owner: "schemago",
           language: "go",
           content: `\t// TODO: implement ${funcName}\n\tc.Next()`,
           symbolName: funcName,

@@ -552,7 +552,7 @@ describe("full pipeline snapshot", () => {
           key === "backend.config.ts" ||
           key === ".gitignore" ||
           key.startsWith("go.") ||
-          key.startsWith(".backend-gen/")
+          key.startsWith(".schemago/")
         ) {
           delete expectedFiles[key];
         }

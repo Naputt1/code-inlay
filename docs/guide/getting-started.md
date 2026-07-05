@@ -9,15 +9,15 @@
 ## Install
 
 ```sh
-npm install -g @code-inlay/backend-gen
+npm install -g @schemago/schemago
 # or
-pnpm add -g @code-inlay/backend-gen
+pnpm add -g @schemago/schemago
 ```
 
 ## Create a new project
 
 ```sh
-backend-gen init my-api
+schemago init my-api
 cd my-api
 ```
 
@@ -41,7 +41,7 @@ my-api/
 Edit `backend.config.ts`:
 
 ```ts
-import { z, defineRoute, defineModule, defineRouter, defineApp } from "@code-inlay/backend-gen";
+import { z, defineRoute, defineModule, defineRouter, defineApp } from "@schemago/schemago";
 
 const getUser = defineRoute({
   id: "getUser",
@@ -61,7 +61,7 @@ export default defineApp({
 ## Generate
 
 ```sh
-backend-gen generate
+schemago generate
 ```
 
 This produces:

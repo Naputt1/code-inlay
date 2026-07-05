@@ -3,7 +3,7 @@
 Manage plugins from npm or local packages.
 
 ```sh
-backend-gen plugin <subcommand> [name]
+schemago plugin <subcommand> [name]
 ```
 
 ## Subcommands
@@ -19,11 +19,11 @@ backend-gen plugin <subcommand> [name]
 
 ```sh
 # Install a plugin
-backend-gen plugin add @scope/my-architecture
+schemago plugin add @scope/my-architecture
 
 # List plugins
-backend-gen plugin list
+schemago plugin list
 
 # Remove a plugin
-backend-gen plugin remove @scope/my-architecture
+schemago plugin remove @scope/my-architecture
 ```

@@ -3,7 +3,7 @@
 Detect and apply usecase organization changes.
 
 ```sh
-backend-gen migrate [options]
+schemago migrate [options]
 ```
 
 When you change the `usecaseOrganization` strategy for a module, `migrate` detects the layout changes needed and applies them.

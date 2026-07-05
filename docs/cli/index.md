@@ -1,9 +1,9 @@
 # CLI Overview
 
-The `backend-gen` CLI generates and manages your Go backend code.
+The \`schemago\` CLI generates and manages your Go backend code.
 
 ```
-Usage: backend-gen <command> [options]
+Usage: schemago <command> [options]
 ```
 
 ## Commands

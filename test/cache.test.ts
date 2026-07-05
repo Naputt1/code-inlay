@@ -71,7 +71,7 @@ describe("cache + dependency graph", () => {
   });
 
   it("writes and reads cache correctly", () => {
-    const cwd = join(tmpdir(), `backend-gen-cache-${Date.now()}`);
+    const cwd = join(tmpdir(), `schemago-cache-${Date.now()}`);
 
     const cache: CompilerCache = {
       compilerVersion: "0.2.0",
@@ -92,9 +92,9 @@ describe("cache + dependency graph", () => {
   });
 
   it("returns undefined for corrupt cache file", () => {
-    const cwd = join(tmpdir(), `backend-gen-corrupt-${Date.now()}`);
-    mkdirSync(join(cwd, ".backend-gen"), { recursive: true });
-    writeFileSync(join(cwd, ".backend-gen", "cache.json"), "not valid json{", "utf8");
+    const cwd = join(tmpdir(), `schemago-corrupt-${Date.now()}`);
+    mkdirSync(join(cwd, ".schemago"), { recursive: true });
+    writeFileSync(join(cwd, ".schemago", "cache.json"), "not valid json{", "utf8");
     const loaded = readCache(cwd);
     expect(loaded).toBeUndefined();
   });

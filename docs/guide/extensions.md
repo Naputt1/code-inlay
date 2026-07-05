@@ -7,7 +7,7 @@ Extensions let you define reusable service backends with type-safe options, cust
 Use `defineServiceExtension()` to create an extension. It takes a `name` and a `service` configuration:
 
 ```ts
-import { defineServiceExtension, z } from "@code-inlay/backend-gen";
+import { defineServiceExtension, z } from "@schemago/schemago";
 
 const mygorm = defineServiceExtension({
   name: "gorm",

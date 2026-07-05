@@ -9,7 +9,7 @@ import type {
 import { stableHash } from "../utils/hash.js";
 export { buildDependencyGraph } from "./graph.js";
 
-const CACHE_DIR = ".backend-gen";
+const CACHE_DIR = ".schemago";
 const CACHE_FILE = "cache.json";
 
 export function cacheDir(cwd: string): string {

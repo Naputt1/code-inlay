@@ -24,7 +24,7 @@ Schemas are defined using Zod and are used to generate Go types, handle request 
 ## Custom Zod extensions
 
 ```ts
-import { z } from "@code-inlay/backend-gen";
+import { z } from "@schemago/schemago";
 
 z.int32(); // maps to Go int32
 z.int64(); // maps to Go int64

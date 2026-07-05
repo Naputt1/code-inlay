@@ -25,7 +25,7 @@ export async function pluginCommand(parsed: ParsedArgs): Promise<void> {
       return pluginUpdate(cwd);
     default:
       console.error(`Unknown plugin subcommand "${subcommand}".`);
-      console.log(`Usage: backend-gen plugin <add|remove|list|update> [name]`);
+      console.log(`Usage: schemago plugin <add|remove|list|update> [name]`);
       process.exitCode = 1;
   }
 }
@@ -33,7 +33,7 @@ export async function pluginCommand(parsed: ParsedArgs): Promise<void> {
 async function pluginAdd(args: string[], cwd: string): Promise<void> {
   const packageName = args[0];
   if (!packageName) {
-    console.error("Usage: backend-gen plugin add <package-name>");
+    console.error("Usage: schemago plugin add <package-name>");
     process.exitCode = 1;
     return;
   }
@@ -57,7 +57,7 @@ async function pluginAdd(args: string[], cwd: string): Promise<void> {
   const manifest = resolvePluginPackage(packageName, cwd, diagnostics as never);
 
   if (!manifest) {
-    console.error(`Plugin "${packageName}" has no valid plugin.json or code-inlay metadata.`);
+    console.error(`Plugin "${packageName}" has no valid plugin.json or schemago metadata.`);
     process.exitCode = 1;
     return;
   }
@@ -91,7 +91,7 @@ async function pluginAdd(args: string[], cwd: string): Promise<void> {
 async function pluginRemove(args: string[], cwd: string): Promise<void> {
   const packageName = args[0];
   if (!packageName) {
-    console.error("Usage: backend-gen plugin remove <package-name>");
+    console.error("Usage: schemago plugin remove <package-name>");
     process.exitCode = 1;
     return;
   }
@@ -116,7 +116,7 @@ async function pluginRemove(args: string[], cwd: string): Promise<void> {
 }
 
 async function pluginList(cwd: string): Promise<void> {
-  const lockPath = resolve(cwd, ".backend-gen", "plugins.lock.json");
+  const lockPath = resolve(cwd, ".schemago", "plugins.lock.json");
   if (!existsSync(lockPath)) {
     console.log("No plugins installed.");
     return;

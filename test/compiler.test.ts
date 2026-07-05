@@ -51,7 +51,7 @@ describe("compiler", () => {
   });
 
   it("injects generated regions into existing files only", async () => {
-    const cwd = join(tmpdir(), `backend-gen-${Date.now()}`);
+    const cwd = join(tmpdir(), `schemago-${Date.now()}`);
     mkdirSync(join(cwd, "internal/user"), { recursive: true });
     mkdirSync(join(cwd, "internal/http"), { recursive: true });
     writeFileSync(

@@ -62,7 +62,7 @@ function setFlag(
 }
 
 export function printHelp(): void {
-  console.log(`Usage: backend-gen <command> [options]
+  console.log(`Usage: schemago <command> [options]
 
 Commands:
   generate                     Full compile + write files

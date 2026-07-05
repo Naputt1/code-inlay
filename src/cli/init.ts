@@ -12,7 +12,7 @@ export async function initCommand(parsed: ParsedArgs): Promise<void> {
     mkdirSync(targetDir, { recursive: true });
   }
 
-  const configContent = `import { z, defineRoute, defineRouter, defineApp, defineEnv } from "@code-inlay/backend-gen";
+  const configContent = `import { z, defineRoute, defineRouter, defineApp, defineEnv } from "@schemago/schemago";
 
 const listItems = defineRoute({
   id: "listItems",
@@ -68,5 +68,5 @@ export default app;
     }
   }
 
-  console.log(`Config file created. Run \`backend-gen generate\` to generate code.`);
+  console.log(`Config file created. Run \`schemago generate\` to generate code.`);
 }

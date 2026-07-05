@@ -5,7 +5,7 @@ Services are external dependencies your application needs — databases, caches,
 ## Defining a service
 
 ```ts
-import { defineService } from "@code-inlay/backend-gen";
+import { defineService } from "@schemago/schemago";
 
 defineService({ name: "db", close: true });
 defineService({ name: "redis", close: true });

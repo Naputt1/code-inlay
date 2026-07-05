@@ -5,7 +5,7 @@ Middleware is defined with `defineMiddleware()` and applied to routes or groups.
 ## Defining middleware
 
 ```ts
-import { defineMiddleware } from "@code-inlay/backend-gen";
+import { defineMiddleware } from "@schemago/schemago";
 
 const jwtAuth = defineMiddleware({ name: "JwtAuth" });
 const jwtIsAdmin = defineMiddleware({ name: "JwtIsAdmin" });
