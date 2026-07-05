@@ -1,8 +1,14 @@
 {
   "name": "@schemago/schemago",
-  "version": "0.1.0",
-  "private": true,
+  "version": "0.0.0",
   "type": "module",
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "packageManager": "pnpm@11.6.0",
   "bin": {
     "schemago": "./dist/cli.js"
@@ -26,6 +32,8 @@
     "typecheck": "tsc --noEmit",
     "snapshot:update": "UPDATE_SNAPSHOT=true vitest run test/snapshot.test.ts",
     "docs:dev": "vitepress dev docs",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs"
   },
@@ -35,6 +43,7 @@
     "zod": "^3.25.67"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.31.0",
     "@eslint/js": "^10.0.1",
     "@types/node": "^24.0.3",
     "@types/semver": "^7.7.1",
