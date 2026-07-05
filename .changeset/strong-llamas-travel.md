@@ -1,0 +1,5 @@
+---
+"@schemago/schemago": patch
+---
+
+init
