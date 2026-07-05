@@ -31,7 +31,6 @@ options: {
   targets: ["go-server"],        // Built-in Go server target
   featuresDir: "features",       // Optional: nest modules under internal/features/
   targetOptions: {
-    "ts-client": { outputDir: "clients" },
     openapi: { title: "My API", version: "1.0.0" },
   },
   usecaseOrganization: {

@@ -37,14 +37,6 @@ internal/features/<module>/usecase.go
 # ... instead of internal/<module>/...
 ```
 
-## TypeScript client (ts-client target)
-
-```
-clients/
-  client.ts                           # Typed API client
-  types.ts                            # Request/response types
-```
-
 ## OpenAPI (openapi target)
 
 ```
