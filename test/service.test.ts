@@ -5,10 +5,12 @@ import { describe, expect, it } from "vitest";
 import {
   compile,
   defineApp,
+  defineMiddleware,
   defineModule,
   defineRoute,
   defineRouter,
   defineService,
+  defineServiceExtension,
 } from "../src/index.js";
 import { z } from "zod";
 
@@ -401,5 +403,119 @@ describe("service layer", () => {
     expect(importRegion!.content).toContain("import (");
     expect(importRegion!.content).toContain(`"context"`);
     expect(importRegion!.content).toContain(`service "github.com/example/test/internal/service"`);
+  });
+
+  it("embeds DB imports inside interface region content (not as separate region)", async () => {
+    const gorm = defineServiceExtension({
+      name: "gorm",
+      service: {
+        provides: "database",
+        optionsSchema: z.object({ driver: z.enum(["mysql", "postgres", "sqlite"]) }),
+        dbAccessor: "DB",
+        dbType: "*gorm.DB",
+        dbTypePkg: "gorm.io/gorm",
+        goModules: (opts: Record<string, unknown>) => [
+          "gorm.io/gorm",
+          `gorm.io/driver/${opts.driver}`,
+        ],
+      },
+    });
+
+    const app = defineApp({
+      architecture: "clean",
+      router: defineRouter({ adapter: "gin" }),
+      extensions: [gorm],
+      services: { mygorm: gorm({ driver: "postgres", close: true }) },
+      modules: [
+        defineModule({
+          name: "ticket",
+          services: ["mygorm"],
+          routes: [defineRoute({ method: "GET", path: "", handler: "List" })],
+        }),
+      ],
+    });
+
+    const result = await compile({ app, dryRun: true });
+    expect(result.diagnostics.filter((d) => d.level === "error")).toEqual([]);
+
+    const svcFile = result.generation.files.find((f) => f.path.endsWith("service/mygorm.go"));
+    expect(svcFile).toBeDefined();
+
+    // Should NOT have a separate import region
+    const separateImportRegion = svcFile!.regions.find((r) => r.id === "service.mygorm.0imports");
+    expect(separateImportRegion).toBeUndefined();
+
+    // Should have import block INSIDE the interface region
+    const ifaceRegion = svcFile!.regions.find((r) => r.id === "service.mygorm");
+    expect(ifaceRegion).toBeDefined();
+    expect(ifaceRegion!.content).toContain("import (");
+    expect(ifaceRegion!.content).toContain('"gorm.io/gorm"');
+    expect(ifaceRegion!.content).toContain("type MygormService interface");
+    expect(ifaceRegion!.content).toContain("DB() *gorm.DB");
+  });
+
+  it("handler import regions have kind=imports and imports array", async () => {
+    const app = defineApp({
+      architecture: "minimal",
+      router: defineRouter({ adapter: "gin" }),
+      services: { db: defineService({ close: true }) },
+      modules: [
+        defineModule({
+          name: "auth",
+          services: ["db"],
+          routes: [
+            defineRoute({
+              method: "POST",
+              path: "/login",
+              body: z.object({ email: z.string() }),
+              handler: "Login",
+            }),
+          ],
+        }),
+      ],
+    });
+
+    const result = await compile({ app, dryRun: true });
+    expect(result.diagnostics.filter((d) => d.level === "error")).toEqual([]);
+
+    const handlerFile = result.generation.files.find((f) => f.path.endsWith("auth/handler.go"));
+    expect(handlerFile).toBeDefined();
+
+    const importRegion = handlerFile!.regions.find((r) => r.kind === "imports");
+    expect(importRegion).toBeDefined();
+    expect(importRegion!.kind).toBe("imports");
+    expect(importRegion!.imports).toBeDefined();
+    expect(importRegion!.imports!.length).toBeGreaterThan(0);
+    expect(importRegion!.imports).toContain('"github.com/gin-gonic/gin"');
+  });
+
+  it("middleware import regions have kind=imports and imports array", async () => {
+    const jwtAuth = defineMiddleware({ name: "JwtAuth" });
+
+    const app = defineApp({
+      architecture: "minimal",
+      router: defineRouter({ adapter: "gin" }),
+      services: { db: defineService({ close: true }) },
+      modules: [
+        defineModule({
+          name: "user",
+          services: ["db"],
+          middleware: [jwtAuth],
+          routes: [defineRoute({ method: "GET", path: "/me", handler: "GetMe" })],
+        }),
+      ],
+    });
+
+    const result = await compile({ app, dryRun: true });
+    expect(result.diagnostics.filter((d) => d.level === "error")).toEqual([]);
+
+    const mwFile = result.generation.files.find((f) => f.path.endsWith("middleware/jwt_auth.go"));
+    expect(mwFile).toBeDefined();
+
+    const importRegion = mwFile!.regions.find((r) => r.kind === "imports");
+    expect(importRegion).toBeDefined();
+    expect(importRegion!.kind).toBe("imports");
+    expect(importRegion!.imports).toBeDefined();
+    expect(importRegion!.imports).toContain('"github.com/gin-gonic/gin"');
   });
 });

@@ -36,18 +36,24 @@ export function generateServiceFile(
 
   const parts: ScaffoldPart[] = [];
 
+  const importsList: string[] = [];
   if (svc.dbTypePkg) {
-    parts.push({
-      kind: "imports" as const,
-      symbolName: "",
-      content: `import "${svc.dbTypePkg}"`,
-      expectsUserCode: false,
-      isStub: false,
-      imports: [svc.dbTypePkg],
-    });
+    importsList.push(svc.dbTypePkg);
+  }
+  if (needsConfig && modulePath) {
+    importsList.push(`"${modulePath}/internal/config"`);
   }
 
-  const ifaceLines: string[] = [`type ${typeName} interface {`];
+  const ifaceLines: string[] = [];
+  if (importsList.length > 0) {
+    ifaceLines.push(`import (`);
+    for (const imp of importsList) {
+      ifaceLines.push(`\t"${imp}"`);
+    }
+    ifaceLines.push(`)`);
+    ifaceLines.push(``);
+  }
+  ifaceLines.push(`type ${typeName} interface {`);
   if (svc.dbAccessor && svc.dbType) {
     ifaceLines.push(`\t${svc.dbAccessor}() ${svc.dbType}`);
   }
@@ -86,18 +92,6 @@ export function generateServiceFile(
     expectsUserCode: false,
     isStub: false,
   });
-
-  if (needsConfig && modulePath) {
-    const cfgPath = `"${modulePath}/internal/config"`;
-    parts.push({
-      kind: "imports" as const,
-      symbolName: "",
-      content: `import ${cfgPath}`,
-      expectsUserCode: false,
-      isStub: false,
-      imports: [cfgPath],
-    });
-  }
 
   if (svc.dbAccessor && svc.dbType) {
     const accessorName = svc.dbAccessor;

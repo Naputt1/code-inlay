@@ -129,6 +129,8 @@ export function generateCode(
           stableHash: `${layer.file}:${layer.kind}:imports`,
           owner: "schemago",
           language: "go",
+          kind: "imports",
+          imports: ["context"],
           content: [`import (`, `\t"context"`, `)`].join("\n"),
         });
       }
@@ -259,6 +261,8 @@ export function generateCode(
       stableHash: `${handlerFile}:imports`,
       owner: "schemago",
       language: "go",
+      kind: "imports",
+      imports: sorted,
       content: [`import (`, ...sorted.map((i) => `\t"${i}"`), `)`].join("\n"),
     });
   }
@@ -377,10 +381,13 @@ export function generateCode(
     if (usecaseImportsAdded.has(regionId)) continue;
     usecaseImportsAdded.add(regionId);
     const moduleServices = getModuleServices(info.moduleName);
-    const nonDbServices = moduleServices.filter((s) => !s.dbAccessor);
+    const hasRepo = repositoryModules.has(info.moduleName);
+    const accessibleServices = hasRepo
+      ? moduleServices.filter((s) => !s.dbAccessor)
+      : moduleServices;
     const importLines: string[] = [];
 
-    if (nonDbServices.length === 0) {
+    if (accessibleServices.length === 0) {
       importLines.push(`import "context"`);
     } else if (moduleInfo) {
       importLines.push(`import (`);
@@ -416,8 +423,10 @@ export function generateCode(
     const groupKey = resolveUsecaseGroupKey(route, org);
     const hasRepository = repositoryModules.has(route.moduleName);
     const moduleServices = getModuleServices(route.moduleName);
-    const nonDbServices = moduleServices.filter((s) => !s.dbAccessor);
-    const serviceTypes = nonDbServices.map((s) => serviceTypeName(s.name));
+    const accessibleServices = hasRepository
+      ? moduleServices.filter((s) => !s.dbAccessor)
+      : moduleServices;
+    const serviceTypes = accessibleServices.map((s) => serviceTypeName(s.name));
     const info = [...usecaseFileInfo.entries()].find(
       ([, v]) => v.moduleName === route.moduleName && v.groupKey === groupKey,
     );
@@ -484,9 +493,9 @@ export function generateCode(
         }
         const usecaseFields: string[] = [];
         const dbProvider = moduleServices.find((s) => s.dbAccessor);
-        const nonDbSvcs = dbProvider
-          ? moduleServices.filter((s) => s !== dbProvider)
-          : moduleServices;
+        const hasRepo = repositoryModules.has(modPkg);
+        const svcsForUsecase =
+          hasRepo && dbProvider ? moduleServices.filter((s) => s !== dbProvider) : moduleServices;
         const repoVarName = `${lowerIdent(modPkg)}Repo`;
         for (const svc of moduleServices) {
           const svcVar = `${lowerIdent(svc.name)}Svc`;
@@ -495,12 +504,12 @@ export function generateCode(
           handlerInitLines.push(`\t}`);
         }
         if (moduleServices.length > 0) handlerInitLines.push(``);
-        if (repositoryModules.has(modPkg) && dbProvider) {
+        if (hasRepo && dbProvider) {
           handlerInitLines.push(
             `\t${repoVarName} := ${modPkg}.New${pascalCase(modPkg)}Repository(${lowerIdent(dbProvider.name)}Svc.${dbProvider.dbAccessor}())`,
           );
           handlerInitLines.push(``);
-        } else if (moduleServices.length === 0 && repositoryModules.has(modPkg)) {
+        } else if (moduleServices.length === 0 && hasRepo) {
           handlerInitLines.push(
             `\t${repoVarName} := ${modPkg}.New${pascalCase(modPkg)}Repository()`,
           );
@@ -513,17 +522,17 @@ export function generateCode(
           if (!layers.has("handler") && !layers.has("usecase")) continue;
           const handlerName = expansion.route.handlerName;
           if (moduleServices.length > 0) {
-            const repoArg = repositoryModules.has(modPkg)
+            const repoArg = hasRepo
               ? dbProvider
                 ? `${repoVarName}, `
                 : "nil /*repo TODO*/, "
               : "";
-            const svcArgs = nonDbSvcs.map((s) => `${lowerIdent(s.name)}Svc`).join(", ");
+            const svcArgs = svcsForUsecase.map((s) => `${lowerIdent(s.name)}Svc`).join(", ");
             usecaseFields.push(
               `\t\t${handlerName}Usecase: ${modPkg}.New${handlerName}Usecase(${repoArg}${svcArgs}),`,
             );
           } else {
-            const repoArg = repositoryModules.has(modPkg) ? `${repoVarName}, ` : "";
+            const repoArg = hasRepo ? `${repoVarName}, ` : "";
             usecaseFields.push(
               `\t\t${handlerName}Usecase: ${modPkg}.New${handlerName}Usecase(${repoArg}),`,
             );
@@ -720,9 +729,17 @@ export function generateCode(
       stableHash: `httperr:resolveBindingError:imports`,
       owner: "schemago",
       language: "go",
+      kind: "imports",
+      imports: [
+        ...(valConfig.bodySchema ? ["errors"] : []),
+        ...(needsFmt ? ["fmt"] : []),
+        "net/http",
+        "github.com/gin-gonic/gin",
+        ...(valConfig.bodySchema ? ["github.com/go-playground/validator/v10"] : []),
+      ],
       content: [
         `import (`,
-        `\t"errors"`,
+        ...(valConfig.bodySchema ? [`\t"errors"`] : []),
         ...(needsFmt ? [`\t"fmt"`] : []),
         `\t"net/http"`,
         `\t"github.com/gin-gonic/gin"`,

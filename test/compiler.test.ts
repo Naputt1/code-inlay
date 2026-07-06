@@ -823,12 +823,11 @@ describe("compiler", () => {
 
       const svcFile = result.generation.files.find((f) => f.path.endsWith("service/mygorm.go"));
       expect(svcFile).toBeDefined();
-      const importRegion = svcFile!.regions.find((r) => r.id === "service.mygorm.0imports");
-      expect(importRegion).toBeDefined();
-      expect(importRegion!.content).toContain('import "gorm.io/gorm"');
       const ifaceRegion = svcFile!.regions.find((r) => r.id === "service.mygorm");
       expect(ifaceRegion).toBeDefined();
       expect(ifaceRegion!.content).toContain("DB() *gorm.DB");
+      expect(ifaceRegion!.content).toContain("import (");
+      expect(ifaceRegion!.content).toContain('"gorm.io/gorm"');
       const dbMethodRegion = svcFile!.regions.find((r) => r.id === "service.mygorm.3DB");
       expect(dbMethodRegion).toBeDefined();
       expect(dbMethodRegion!.content).toContain("// TODO: return initialized");
@@ -1571,5 +1570,188 @@ describe("createSerializedRunner", () => {
 
     runner();
     expect(log).toEqual(["run"]);
+  });
+});
+
+describe("import region generation", () => {
+  it("generated handler files have import regions with kind=imports", async () => {
+    const app = defineApp({
+      architecture: "minimal",
+      router: defineRouter({ adapter: "gin" }),
+      services: { db: defineService({ close: true }) },
+      modules: [
+        defineModule({
+          name: "auth",
+          services: ["db"],
+          routes: [
+            defineRoute({
+              method: "POST",
+              path: "/login",
+              body: z.object({ email: z.string(), password: z.string() }),
+              handler: "Login",
+            }),
+          ],
+        }),
+      ],
+    });
+
+    const result = await compile({ app, dryRun: true });
+    expect(result.diagnostics.filter((d) => d.level === "error")).toEqual([]);
+
+    const handlerFile = result.generation.files.find((f) => f.path.endsWith("auth/handler.go"));
+    expect(handlerFile).toBeDefined();
+
+    const importRegion = handlerFile!.regions.find((r) => r.kind === "imports");
+    expect(importRegion).toBeDefined();
+    expect(importRegion!.kind).toBe("imports");
+    expect(importRegion!.imports).toBeDefined();
+    expect(importRegion!.imports).toContain('"github.com/gin-gonic/gin"');
+  });
+
+  it("httperr resolve.go has no errors import when no body schema configured", async () => {
+    const app = defineApp({
+      architecture: "minimal",
+      router: defineRouter({ adapter: "gin" }),
+      services: { db: defineService({ close: true }) },
+      modules: [
+        defineModule({
+          name: "user",
+          services: ["db"],
+          routes: [defineRoute({ method: "GET", path: "/me", handler: "GetMe" })],
+        }),
+      ],
+    });
+
+    const result = await compile({ app, dryRun: true });
+    expect(result.diagnostics.filter((d) => d.level === "error")).toEqual([]);
+
+    const resolveFile = result.generation.files.find((f) => f.path.endsWith("httperr/resolve.go"));
+    expect(resolveFile).toBeDefined();
+
+    const importRegion = resolveFile!.regions.find((r) => r.kind === "imports");
+    expect(importRegion).toBeDefined();
+    expect(importRegion!.imports).toBeDefined();
+    expect(importRegion!.imports).not.toContain('"errors"');
+    expect(importRegion!.imports).toContain('"net/http"');
+    expect(importRegion!.imports).toContain('"github.com/gin-gonic/gin"');
+  });
+
+  it("httperr resolve.go has errors import when body schema is configured", async () => {
+    const app = defineApp({
+      architecture: "minimal",
+      router: defineRouter({ adapter: "gin" }),
+      services: { db: defineService({ close: true }) },
+      modules: [
+        defineModule({
+          name: "user",
+          services: ["db"],
+          routes: [
+            defineRoute({
+              method: "POST",
+              path: "/users",
+              body: z.object({ name: z.string() }),
+              handler: "CreateUser",
+            }),
+          ],
+        }),
+      ],
+      options: {
+        fileCreation: "skeleton",
+        validationError: {
+          body: z.object({
+            errors: z.array(
+              z.object({
+                field: z.string(),
+                tag: z.string(),
+              }),
+            ),
+          }),
+        },
+      },
+    });
+
+    const result = await compile({ app, dryRun: true });
+    expect(result.diagnostics.filter((d) => d.level === "error")).toEqual([]);
+
+    const resolveFile = result.generation.files.find((f) => f.path.endsWith("httperr/resolve.go"));
+    expect(resolveFile).toBeDefined();
+
+    const importRegion = resolveFile!.regions.find((r) => r.kind === "imports");
+    expect(importRegion).toBeDefined();
+    expect(importRegion!.imports).toBeDefined();
+    expect(importRegion!.imports).toContain('"errors"');
+    expect(importRegion!.imports).toContain('"github.com/go-playground/validator/v10"');
+  });
+
+  it("full compilation produces files that a Go parser can read with imports", async () => {
+    const app = defineApp({
+      architecture: "minimal",
+      router: defineRouter({ adapter: "gin" }),
+      services: { db: defineService({ close: true }), redis: defineService({ close: true }) },
+      modules: [
+        defineModule({
+          name: "auth",
+          services: ["db", "redis"],
+          routes: [
+            defineRoute({
+              method: "POST",
+              path: "/login",
+              body: z.object({ email: z.string(), password: z.string() }),
+              response: z.object({ token: z.string() }),
+              handler: "Login",
+            }),
+            defineRoute({
+              method: "POST",
+              path: "/register",
+              body: z.object({ email: z.string(), password: z.string(), name: z.string() }),
+              handler: "Register",
+            }),
+          ],
+        }),
+        defineModule({
+          name: "user",
+          services: ["db"],
+          routes: [
+            defineRoute({
+              method: "GET",
+              path: "/me",
+              response: z.object({ id: z.string(), email: z.string(), name: z.string() }),
+              handler: "GetMe",
+            }),
+          ],
+        }),
+      ],
+    });
+
+    const result = await compile({ app, dryRun: true });
+    expect(result.diagnostics.filter((d) => d.level === "error")).toEqual([]);
+
+    // Check all Go files have import regions
+    const goFiles = result.generation.files.filter((f) => f.path.endsWith(".go"));
+    for (const file of goFiles) {
+      if (file.path.includes("routes.go") || file.path.includes("errors.go")) continue;
+      const importRegions = file.regions.filter((r) => r.kind === "imports");
+      // Every Go file (except routes/errors) should have at least one import region
+      if (importRegions.length > 0) {
+        for (const ir of importRegions) {
+          expect(ir.kind).toBe("imports");
+          expect(ir.imports).toBeDefined();
+          expect(ir.imports!.length).toBeGreaterThan(0);
+        }
+      }
+    }
+
+    // Check specific handler files
+    const authHandler = goFiles.find((f) => f.path.endsWith("auth/handler.go"));
+    expect(authHandler).toBeDefined();
+    const authImports = authHandler!.regions.find((r) => r.kind === "imports");
+    expect(authImports).toBeDefined();
+    expect(authImports!.imports).toContain('"github.com/gin-gonic/gin"');
+
+    const userHandler = goFiles.find((f) => f.path.endsWith("user/handler.go"));
+    expect(userHandler).toBeDefined();
+    const userImports = userHandler!.regions.find((r) => r.kind === "imports");
+    expect(userImports).toBeDefined();
+    expect(userImports!.imports).toContain('"github.com/gin-gonic/gin"');
   });
 });

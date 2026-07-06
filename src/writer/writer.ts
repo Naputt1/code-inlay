@@ -326,7 +326,13 @@ function buildSymbolSkeleton(regions: GeneratedFilePatch["regions"], pkg?: strin
     lines.push(`package ${pkg}`);
     lines.push("");
   }
-  for (const r of regions) {
+  // Sort: imports first, then symbol regions, then blob regions
+  const sorted = [...regions].sort((a, b) => {
+    if (a.kind === "imports" && b.kind !== "imports") return -1;
+    if (a.kind !== "imports" && b.kind === "imports") return 1;
+    return 0;
+  });
+  for (const r of sorted) {
     if (r.language === "json") continue;
     if (r.kind === "method" || r.kind === "function") {
       if (r.signature) {
