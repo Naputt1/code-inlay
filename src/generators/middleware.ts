@@ -38,6 +38,8 @@ export function generateMiddlewareFiles(ast: AppAst): GeneratedFilePatch[] {
           stableHash: `middleware:${mw.name}:imports`,
           owner: "schemago",
           language: "go",
+          kind: "imports",
+          imports: ["github.com/gin-gonic/gin"],
           content: `import "github.com/gin-gonic/gin"`,
         },
         {

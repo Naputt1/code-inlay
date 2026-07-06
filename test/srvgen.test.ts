@@ -57,6 +57,27 @@ describe("generateServer", () => {
     expect(importsContent).toContain('genroutes "github.com/example/myapp/internal/http"');
   });
 
+  it("import region has kind=imports and imports array", async () => {
+    const result = await buildBase();
+    const patch = generateServer(result.ast!, result.architecture!, moduleInfo, {
+      name: "gin",
+      transport: "http",
+      generateRoute: () => "",
+      generateMiddleware: () => "",
+      generateServer: () => "",
+    } as unknown as AdapterPlugin);
+
+    const importRegion = patch.regions[0];
+    expect(importRegion.kind).toBe("imports");
+    expect(importRegion.imports).toBeDefined();
+    expect(importRegion.imports!.length).toBeGreaterThan(0);
+    expect(importRegion.imports).toContain('"reflect"');
+    expect(importRegion.imports).toContain('"strings"');
+    expect(importRegion.imports).toContain('"github.com/gin-gonic/gin"');
+    expect(importRegion.imports).toContain('"context"');
+    expect(importRegion.imports).toContain('"net/http"');
+  });
+
   it("generates service initialization when services present", async () => {
     const result = await buildBase();
     const appWithServices = {

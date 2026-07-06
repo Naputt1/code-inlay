@@ -223,6 +223,8 @@ export function generateServer(
         stableHash: `${serverFilePath}:${serverMainRegionId}:imports`,
         owner: adapter?.name ?? "schemago",
         language: "go",
+        kind: "imports",
+        imports: [...new Set(imports)].sort(),
         content: `import (\n${[...new Set(imports)]
           .sort()
           .map((i) => `\t${i}`)

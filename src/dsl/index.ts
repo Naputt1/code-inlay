@@ -184,11 +184,13 @@ export function defineModule(input: {
 }
 
 export function defineService(input: {
+  name?: string;
   close?: boolean;
   env?: string[];
-}): Omit<ServiceDefinition, "name"> {
+}): ServiceDefinition {
   return {
     kind: "ServiceDefinition",
+    name: input.name ?? "",
     close: input.close,
     env: input.env,
   };
@@ -207,18 +209,22 @@ export function defineServiceExtension<TOptions extends Record<string, unknown>>
     generateDialectMethod?: (ctx: DialectMethodCtx<TOptions>) => string;
   };
 }): BackendExtension &
-  ((opts: { close?: boolean } & TOptions) => Omit<ServiceExtensionResult, "name">) {
-  const factory = (opts: { close?: boolean } & TOptions): Omit<ServiceExtensionResult, "name"> => ({
-    kind: "ServiceExtensionResult",
-    extension: input.name,
-    close: opts.close,
-    options: input.service.optionsSchema.parse(opts) as Record<string, unknown>,
-  });
+  ((opts: { name?: string; close?: boolean } & TOptions) => ServiceExtensionResult) {
+  const factory = (opts: { name?: string; close?: boolean } & TOptions): ServiceExtensionResult => {
+    const { name, close, ...rest } = opts as Record<string, unknown>;
+    return {
+      kind: "ServiceExtensionResult",
+      name: (name as string) ?? "",
+      extension: input.name,
+      close: close as boolean,
+      options: input.service.optionsSchema.parse(rest) as Record<string, unknown>,
+    };
+  };
   return Object.defineProperties(factory, {
     name: { value: input.name, writable: false },
     service: { value: input.service, writable: false },
   }) as BackendExtension &
-    ((opts: { close?: boolean } & TOptions) => Omit<ServiceExtensionResult, "name">);
+    ((opts: { name?: string; close?: boolean } & TOptions) => ServiceExtensionResult);
 }
 
 export interface AppBuilder<

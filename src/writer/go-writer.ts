@@ -531,9 +531,38 @@ function importPath(spec: string): string {
   return m ? m[1] : spec;
 }
 
+function extractImportsFromContent(content: string): string[] {
+  const specs: string[] = [];
+  // Match import block: import ( ... )
+  const blockMatch = content.match(/import\s*\(([\s\S]*?)\)/);
+  if (blockMatch) {
+    const inner = blockMatch[1];
+    for (const line of inner.split("\n")) {
+      const trimmed = line.trim();
+      if (trimmed && trimmed.startsWith('"') && trimmed.endsWith('"')) {
+        specs.push(trimmed);
+      }
+      // Handle aliased imports: alias "path"
+      const aliasMatch = trimmed.match(/^(\w+\s+)"([^"]+)"$/);
+      if (aliasMatch) {
+        specs.push(trimmed);
+      }
+    }
+  }
+  // Match single import: import "path"
+  const singleMatch = content.match(/import\s+"([^"]+)"/);
+  if (singleMatch && specs.length === 0) {
+    specs.push(`"${singleMatch[1]}"`);
+  }
+  return specs;
+}
+
 export function mergeImports(text: string, patch: GeneratedFilePatch, fileText: string): string {
+  process.stderr.write(`[mergeImports] ${patch.path} regions=${patch.regions.length}\n`);
   const plannedSpecs: string[] = [];
   const seenPaths = new Set<string>();
+
+  // Collect from region.imports array
   for (const region of patch.regions) {
     if (region.imports) {
       for (const imp of region.imports) {
@@ -545,16 +574,35 @@ export function mergeImports(text: string, patch: GeneratedFilePatch, fileText: 
       }
     }
   }
+
+  // Collect from region.content string (import blocks without imports array)
+  for (const region of patch.regions) {
+    if (region.kind === "imports" && !region.imports && region.content) {
+      const importSpecs = extractImportsFromContent(region.content);
+      for (const imp of importSpecs) {
+        const p = importPath(imp);
+        if (!seenPaths.has(p)) {
+          seenPaths.add(p);
+          plannedSpecs.push(imp);
+        }
+      }
+    }
+  }
+
   if (plannedSpecs.length === 0) return text;
 
   const importLineRe = /^(\w+\s+)?"([^"]+)"/;
   const importBlockRe = /^([ \t]*)import\s*\(([\s\S]*?)\)[ \t]*$/m;
   const singleImportRe = /^[ \t]*import\s+"([^"]+)"[ \t]*$/m;
 
-  const blockMatch = fileText.match(importBlockRe);
-  if (blockMatch) {
+  // Check if text already has an import block — if so, merge into it
+  const textBlockMatch = text.match(importBlockRe);
+  const fileBlockMatch = fileText.match(importBlockRe);
+
+  if (fileBlockMatch) {
+    // fileText (skeleton) has an import block — check if text needs it
     const existingSpecs = new Map<string, { spec: string; index: number }>();
-    const inner = blockMatch[2];
+    const inner = fileBlockMatch[2];
     const innerLines = inner.split("\n");
     for (let i = 0; i < innerLines.length; i++) {
       const trimmed = innerLines[i].trim();
@@ -574,7 +622,20 @@ export function mergeImports(text: string, patch: GeneratedFilePatch, fileText: 
       }
     }
 
-    if (toAdd.length === 0 && toUpdate.size === 0) return text;
+    // If no changes needed, ensure text has the import block from fileText
+    if (toAdd.length === 0 && toUpdate.size === 0) {
+      if (!textBlockMatch) {
+        // text is missing the import block — copy it from fileText
+        const fullBlock = fileBlockMatch[0];
+        const pkgIdx = text.search(/^package\s+\w+\s*$/m);
+        if (pkgIdx >= 0) {
+          const lineEnd = text.indexOf("\n", pkgIdx);
+          const insertAt = lineEnd >= 0 ? lineEnd + 1 : text.length;
+          return text.slice(0, insertAt) + `\n${fullBlock}\n` + text.slice(insertAt);
+        }
+      }
+      return text;
+    }
 
     let updatedInner: string;
     if (toUpdate.size > 0) {
@@ -587,14 +648,14 @@ export function mergeImports(text: string, patch: GeneratedFilePatch, fileText: 
       updatedInner = inner;
     }
 
-    const indent = blockMatch[1] ?? "";
+    const indent = fileBlockMatch[1] ?? "";
     if (toAdd.length > 0) {
       const newSpecLines = toAdd.map((s) => `${indent}\t${s}`).join("\n");
       updatedInner = updatedInner.replace(/[ \t]*\n?\s*$/, "") + "\n" + newSpecLines + "\n";
     }
     const updatedBlock = `${indent}import (${updatedInner}${indent})`;
 
-    if (importBlockRe.test(text)) {
+    if (textBlockMatch) {
       return text.replace(importBlockRe, updatedBlock);
     }
     const pkgIdx = text.search(/^package\s+\w+\s*$/m);
@@ -613,16 +674,30 @@ export function mergeImports(text: string, patch: GeneratedFilePatch, fileText: 
       (spec) => importPath(spec) === existingPath && spec !== `"${existingPath}"`,
     );
     const toAdd = plannedSpecs.filter((spec) => importPath(spec) !== existingPath);
-    if (toAdd.length === 0 && !aliasUpdate) return text;
+    if (toAdd.length === 0 && !aliasUpdate) {
+      if (!textBlockMatch && !text.match(singleImportRe)) {
+        const pkgIdx = text.search(/^package\s+\w+\s*$/m);
+        if (pkgIdx >= 0) {
+          const lineEnd = text.indexOf("\n", pkgIdx);
+          const insertAt = lineEnd >= 0 ? lineEnd + 1 : text.length;
+          return (
+            text.slice(0, insertAt) +
+            `\n${fileText.match(singleImportRe)![0]}\n` +
+            text.slice(insertAt)
+          );
+        }
+      }
+      return text;
+    }
 
     const existingEntry = aliasUpdate ?? `"${existingPath}"`;
     const allLines = [`\t${existingEntry}`, ...toAdd.map((s) => `\t${s}`)].sort();
     const updatedBlock = `import (\n${allLines.join("\n")}\n)`;
 
-    if (importBlockRe.test(text)) {
+    if (textBlockMatch) {
       return text.replace(importBlockRe, updatedBlock);
     }
-    if (singleImportRe.test(text)) {
+    if (text.match(singleImportRe)) {
       return text.replace(singleImportRe, updatedBlock);
     }
     const pkgIdx = text.search(/^package\s+\w+\s*$/m);
