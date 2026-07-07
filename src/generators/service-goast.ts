@@ -1,0 +1,230 @@
+import * as go from "@schemago/go-ast";
+import type { AppServiceDef, BackendExtension } from "../types/index.js";
+import { serviceConstructorName, serviceImplName, serviceTypeName } from "../utils/naming.js";
+import type { ScaffoldPart } from "./types.js";
+
+function toGoType(typeStr: string): go.Type {
+  if (typeStr.startsWith("*")) {
+    return go.star(toGoType(typeStr.slice(1)));
+  }
+  if (typeStr.startsWith("[]")) {
+    return go.sliceType(toGoType(typeStr.slice(2)));
+  }
+  if (typeStr.includes(".")) {
+    const parts = typeStr.split(".");
+    return go.qual(parts[0], parts[1]);
+  }
+  return go.id(typeStr);
+}
+
+function renderImports(imports: string[]): string {
+  const specs = imports.map(i => go.importSpec(i));
+  const decl: go.GenDecl = { kind: "GenDecl", token: "import", specs, lparen: true };
+  const sb = new go.StringBuilder();
+  go.printDeclaration(sb, decl, 0);
+  return sb.toString().trimEnd();
+}
+
+function renderInterfaceContent(
+  typeName: string,
+  importsList: string[],
+  dbAccessor: string | undefined,
+  dbType: string | undefined,
+  close: boolean | undefined,
+): string {
+  const parts: string[] = [];
+
+  if (importsList.length > 0) {
+    parts.push(renderImports(importsList));
+  }
+
+  const methods: go.Field[] = [];
+  if (dbAccessor && dbType) {
+    methods.push(
+      go.field([dbAccessor], go.funcType([], [go.field([], toGoType(dbType))])),
+    );
+  }
+  if (close) {
+    methods.push(
+      go.field(["Close"], go.funcType([], [go.field([], go.id("error"))])),
+    );
+  }
+
+  if (methods.length === 0) {
+    parts.push(`type ${typeName} interface {\n}`);
+  } else {
+    const iface = go.interfaceType(...methods);
+    const spec = go.typeSpec(typeName, iface);
+    const decl = go.genDecl("type", spec);
+    const sb = new go.StringBuilder();
+    go.printDeclaration(sb, decl, 0);
+    let content = sb.toString().trimEnd();
+    content = content.replace(/^(\t+)(\w+)\s+func\(/gm, "$1$2(");
+    parts.push(content);
+  }
+
+  return parts.join("\n\n");
+}
+
+function renderStructContent(implName: string, needsConfig: boolean): string {
+  if (!needsConfig) {
+    return `type ${implName} struct {\n\n}`;
+  }
+  const st = go.structType(go.field(["cfg"], go.qual("config", "Config")));
+  const spec = go.typeSpec(implName, st);
+  const decl = go.genDecl("type", spec);
+  const sb = new go.StringBuilder();
+  go.printDeclaration(sb, decl, 0);
+  return sb.toString().trimEnd();
+}
+
+function constructorSignature(
+  ctorName: string,
+  needsConfig: boolean,
+  implName: string,
+): string {
+  const params = needsConfig
+    ? [go.field(["cfg"], go.qual("config", "Config"))]
+    : [];
+  const results = [
+    go.field([], go.star(go.id(implName))),
+    go.field([], go.id("error")),
+  ];
+  const fn = go.function_(ctorName, params, results);
+  const sb = new go.StringBuilder();
+  go.printDeclaration(sb, fn, 0);
+  return sb.toString().trimEnd();
+}
+
+function methodSignature(
+  receiverType: string,
+  name: string,
+  params: go.Field[],
+  results: go.Field[],
+): string {
+  const m = go.method(
+    go.field(["s"], go.star(go.id(receiverType))),
+    name,
+    params,
+    results,
+  );
+  const sb = new go.StringBuilder();
+  go.printDeclaration(sb, m, 0);
+  return sb.toString().trimEnd();
+}
+
+export function generateServiceFile(
+  svc: AppServiceDef,
+  extensions?: BackendExtension[],
+  modulePath?: string,
+): ScaffoldPart[] {
+  const typeName = serviceTypeName(svc.name);
+  const implName = serviceImplName(svc.name);
+  const ctorName = serviceConstructorName(svc.name);
+  const needsConfig = (svc.env?.length ?? 0) > 0;
+
+  if (svc.extension && extensions) {
+    const ext = extensions.find((e) => e.name === svc.extension);
+    if (ext?.service?.generateFile) {
+      return [
+        {
+          kind: "interface" as const,
+          symbolName: typeName,
+          content: ext.service.generateFile({
+            name: svc.name,
+            options: svc.extensionOptions ?? {},
+            typeName,
+            implName,
+            ctorName,
+            close: svc.close,
+          }),
+          expectsUserCode: false,
+          isStub: false,
+        },
+      ];
+    }
+  }
+
+  const parts: ScaffoldPart[] = [];
+
+  const importsList: string[] = [];
+  if (svc.dbTypePkg) {
+    importsList.push(svc.dbTypePkg);
+  }
+  if (needsConfig && modulePath) {
+    importsList.push(`"${modulePath}/internal/config"`);
+  }
+
+  const interfaceContent = renderInterfaceContent(
+    typeName,
+    importsList,
+    svc.dbAccessor,
+    svc.dbType,
+    svc.close,
+  );
+  parts.push({
+    kind: "interface" as const,
+    symbolName: typeName,
+    content: interfaceContent,
+    expectsUserCode: false,
+    isStub: false,
+  });
+
+  parts.push({
+    kind: "struct" as const,
+    symbolName: implName,
+    content: renderStructContent(implName, needsConfig),
+    expectsUserCode: false,
+    isStub: false,
+  });
+
+  const ctorArg = needsConfig ? "cfg: cfg" : "";
+  const ctorSig = constructorSignature(ctorName, needsConfig, implName);
+  parts.push({
+    kind: "function" as const,
+    symbolName: ctorName,
+    signature: ctorSig,
+    content: `\treturn &${implName}{${ctorArg}}, nil`,
+    expectsUserCode: false,
+    isStub: false,
+  });
+
+  if (svc.dbAccessor && svc.dbType) {
+    const accessorName = svc.dbAccessor;
+    const sig = methodSignature(
+      implName,
+      accessorName,
+      [],
+      [go.field([], toGoType(svc.dbType))],
+    );
+    parts.push({
+      kind: "method" as const,
+      symbolName: `${implName}.${accessorName}`,
+      receiver: `*${implName}`,
+      signature: sig,
+      content: `\t// TODO: return initialized ${svc.dbType}\n\treturn nil`,
+      expectsUserCode: false,
+      isStub: true,
+    });
+  }
+
+  if (svc.close) {
+    const sig = methodSignature(
+      implName,
+      "Close",
+      [],
+      [go.field([], go.id("error"))],
+    );
+    parts.push({
+      kind: "method" as const,
+      symbolName: `${implName}.Close`,
+      receiver: `*${implName}`,
+      signature: sig,
+      content: `\treturn nil`,
+      expectsUserCode: false,
+      isStub: false,
+    });
+  }
+
+  return parts;
+}
