@@ -373,7 +373,7 @@ app.defineModule({ name: "products", services: ["mygorm"], routes: productRoutes
 app.defineModule({
   name: "orders",
   services: ["mygorm", "redis"],
-  routes: [...orderRoutes, ...adminOrderRoutes],
+  routes: [orderRoutes, adminOrderRoutes],
 });
 app.defineModule({ name: "auth", routes: authRoutes });
 

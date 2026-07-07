@@ -223,13 +223,16 @@ export type CompileSettings = {
 };
 
 export type RouteDefinition<
+  TMethod extends HttpMethod = HttpMethod,
+  TPath extends string = string,
+  THandler extends string = string,
   TQuery extends SchemaLike | undefined = undefined,
   TBody extends SchemaLike | undefined = undefined,
   TResponse extends SchemaLike | undefined = undefined,
 > = {
   kind: "RouteDefinition";
-  method: HttpMethod;
-  path: string;
+  method: TMethod;
+  path: TPath;
   architecture?: ArchitectureRef | ArchitectureRef[] | ArchitectureSelection;
   adapter?: AdapterRef | AdapterRef[] | AdapterSelection;
   adapters?: AdapterRef[] | AdapterSelection;
@@ -238,7 +241,7 @@ export type RouteDefinition<
   query?: TQuery;
   body?: TBody;
   response?: TResponse;
-  handler: string;
+  handler: THandler;
   middleware: MiddlewareDefinition[];
   usecaseGroup?: string;
   metadata: Record<string, unknown>;
@@ -276,7 +279,7 @@ export type WSDefinition = {
 };
 
 export type RouteLike =
-  | RouteDefinition<SchemaLike | undefined, SchemaLike | undefined, SchemaLike | undefined>
+  | RouteDefinition<HttpMethod, string, string, SchemaLike | undefined, SchemaLike | undefined, SchemaLike | undefined>
   | SSEDefinition
   | WSDefinition;
 
@@ -295,7 +298,7 @@ export type ModuleDefinition = {
   usecaseOrganization?: UsecaseOrganization;
   responseFormat?: ResponseFormat;
   errors?: ErrorDefinition[];
-  routes: RouteLike[];
+  routes: readonly RouteLike[];
   middleware: MiddlewareDefinition[];
 };
 

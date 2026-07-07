@@ -3,6 +3,7 @@ import {
   defineApp,
   defineRoute,
   defineRouteGroup,
+  defineModule,
   defineMiddleware,
   defineResponseFormat,
   defineArchitecture,
@@ -96,6 +97,152 @@ describe("defineRouteGroup", () => {
       ],
     });
     expect(routes[0].path).toBe("/items");
+  });
+});
+
+describe("defineRouteGroup type constraints", () => {
+  it("allows same path with different methods", () => {
+    const routes = defineRouteGroup({
+      prefix: "/api",
+      routes: [
+        defineRoute({ method: "GET", path: "/items", handler: "List" }),
+        defineRoute({ method: "POST", path: "/items", handler: "Create" }),
+      ],
+    });
+    expect(routes).toHaveLength(2);
+  });
+});
+
+describe("defineRouteGroup runtime validation", () => {
+  it("throws on duplicate handlers", () => {
+    expect(() =>
+      defineRouteGroup({
+        prefix: "/api",
+        routes: [
+          defineRoute({ method: "GET", path: "/items", handler: "List" }),
+          defineRoute({ method: "POST", path: "/orders", handler: "List" }),
+        ],
+      } as never),
+    ).toThrow('duplicate handler "List"');
+  });
+
+  it("throws on duplicate method+path", () => {
+    expect(() =>
+      defineRouteGroup({
+        prefix: "/api",
+        routes: [
+          defineRoute({ method: "GET", path: "/items", handler: "List" }),
+          defineRoute({ method: "GET", path: "/items", handler: "List2" }),
+        ],
+      } as never),
+    ).toThrow("duplicate GET:/items");
+  });
+
+  it("throws on duplicate handlers across spread routes", () => {
+    expect(() =>
+      defineRouteGroup({
+        prefix: "/api",
+        routes: [
+          defineRoute({ method: "GET", path: "/items", handler: "List" }),
+          ...([
+            defineRoute({ method: "GET", path: "/orders", handler: "List" }),
+          ] as never),
+        ],
+      } as never),
+    ).toThrow('duplicate handler "List"');
+  });
+
+  it("throws on duplicate handlers across nested group (no spread)", () => {
+    expect(() =>
+      defineRouteGroup({
+        prefix: "/api",
+        routes: [
+          defineRoute({ method: "GET", path: "/items", handler: "List" }),
+          defineRouteGroup({
+            prefix: "",
+            routes: [
+              defineRoute({ method: "GET", path: "/itemsfe", handler: "List" }),
+            ],
+          }),
+        ],
+      } as never),
+    ).toThrow('duplicate handler "List"');
+  });
+
+  it("throws on duplicate method+path across nested group (no spread)", () => {
+    expect(() =>
+      defineRouteGroup({
+        prefix: "/api",
+        routes: [
+          defineRoute({ method: "GET", path: "/items", handler: "List" }),
+          defineRouteGroup({
+            prefix: "",
+            routes: [
+              defineRoute({ method: "GET", path: "/items", handler: "Other" }),
+            ],
+          }),
+        ],
+      } as never),
+    ).toThrow("duplicate GET:/items");
+  });
+
+  it("allows nested group with no duplicates", () => {
+    const routes = defineRouteGroup({
+      prefix: "/api",
+      routes: [
+        defineRoute({ method: "GET", path: "/items", handler: "List" }),
+        defineRouteGroup({
+          prefix: "/orders",
+          routes: [
+            defineRoute({ method: "GET", path: "", handler: "ListOrders" }),
+          ],
+        }),
+      ],
+    });
+    expect(routes).toHaveLength(2);
+  });
+});
+
+describe("defineModule with nested route groups", () => {
+  it("accepts nested defineRouteGroup without spreading", () => {
+    const mod = defineModule({
+      name: "products",
+      routes: [
+        defineRoute({ method: "GET", path: "/items", handler: "List" }),
+        defineRouteGroup({
+          prefix: "/admin",
+          routes: [
+            defineRoute({ method: "DELETE", path: "/items/:id", handler: "Delete" }),
+          ],
+        }),
+      ],
+    });
+    expect(mod.routes).toHaveLength(2);
+    expect(mod.routes[0].path).toBe("/items");
+    expect(mod.routes[1].path).toBe("/admin/items/:id");
+  });
+
+  it("flattens nested groups into flat routes", () => {
+    const mod = defineModule({
+      name: "shop",
+      routes: [
+        defineRouteGroup({
+          prefix: "/api",
+          routes: [
+            defineRoute({ method: "GET", path: "/items", handler: "List" }),
+            defineRouteGroup({
+              prefix: "/orders",
+              routes: [
+                defineRoute({ method: "POST", path: "", handler: "CreateOrder" }),
+              ],
+            }),
+          ],
+        }),
+      ],
+    });
+    expect(mod.routes).toHaveLength(2);
+    expect(mod.routes[0].path).toBe("/api/items");
+    expect(mod.routes[1].path).toBe("/api/orders");
   });
 });
 
