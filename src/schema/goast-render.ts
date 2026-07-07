@@ -1,31 +1,6 @@
 import * as go from "@schemago/go-ast";
+import { toGoType } from "../utils/go-ast.js";
 import type { GoStruct, GoField } from "./index.js";
-
-function toGoType(typeStr: string): go.Type {
-  if (typeStr.startsWith("[]")) {
-    return go.sliceType(toGoType(typeStr.slice(2)));
-  }
-  if (typeStr.startsWith("*")) {
-    return go.star(toGoType(typeStr.slice(1)));
-  }
-  if (typeStr.startsWith("map[")) {
-    const rest = typeStr.slice(4);
-    const bracketIdx = rest.indexOf("]");
-    if (bracketIdx !== -1) {
-      const keyStr = rest.slice(0, bracketIdx);
-      const valStr = rest.slice(bracketIdx + 1);
-      return go.mapType(toGoType(keyStr), toGoType(valStr));
-    }
-  }
-  if (typeStr.startsWith("...")) {
-    return go.sliceType(toGoType(typeStr.slice(3)));
-  }
-  if (typeStr.includes(".")) {
-    const parts = typeStr.split(".");
-    return go.qual(parts[0], parts[1]);
-  }
-  return go.id(typeStr);
-}
 
 function buildTag(field: GoField, responseContext: boolean): go.Tag | undefined {
   const omitempty = field.optional ? ",omitempty" : "";

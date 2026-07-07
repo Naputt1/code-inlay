@@ -1,5 +1,9 @@
 import type { ErrorDefinition, GeneratedFilePatch, RouteAst, SchemaLike } from "../types/index.js";
 import { featuresPath, pascalCase } from "../utils/naming.js";
+import {
+  renderStandardErrors as renderStandardErrorsAST,
+  renderModuleErrors as renderModuleErrorsAST,
+} from "./errors-goast.js";
 
 export const httpStatusConsts: Record<number, string> = {
   400: "http.StatusBadRequest",
@@ -96,7 +100,7 @@ export function generateStandardErrors(featuresDir?: string): GeneratedFilePatch
   ];
 }
 
-function renderStandardErrors(structs: ErrorStruct[]): string {
+export function renderStandardErrorsLegacy(structs: ErrorStruct[]): string {
   const parts: string[] = [`import "net/http"`, ``];
 
   for (const s of structs) {
@@ -111,6 +115,10 @@ function renderStandardErrors(structs: ErrorStruct[]): string {
 
   if (parts[parts.length - 1] === "") parts.pop();
   return parts.join("\n");
+}
+
+function renderStandardErrors(structs: ErrorStruct[]): string {
+  return renderStandardErrorsAST(structs);
 }
 
 export function generateModuleErrors(
@@ -212,7 +220,7 @@ function schemaToGoSimpleType(schema: SchemaLike): string {
   }
 }
 
-function renderModuleErrors(moduleName: string, structs: ErrorStruct[]): string {
+export function renderModuleErrorsLegacy(moduleName: string, structs: ErrorStruct[]): string {
   const parts: string[] = [`import "net/http"`, ``];
 
   for (const s of structs) {
@@ -234,4 +242,8 @@ function renderModuleErrors(moduleName: string, structs: ErrorStruct[]): string 
   if (parts[parts.length - 1] === "") parts.pop();
 
   return parts.join("\n");
+}
+
+function renderModuleErrors(moduleName: string, structs: ErrorStruct[]): string {
+  return renderModuleErrorsAST(moduleName, structs);
 }

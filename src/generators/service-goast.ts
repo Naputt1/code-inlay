@@ -1,21 +1,8 @@
 import * as go from "@schemago/go-ast";
+import { toGoType } from "../utils/go-ast.js";
 import type { AppServiceDef, BackendExtension } from "../types/index.js";
 import { serviceConstructorName, serviceImplName, serviceTypeName } from "../utils/naming.js";
 import type { ScaffoldPart } from "./types.js";
-
-function toGoType(typeStr: string): go.Type {
-  if (typeStr.startsWith("*")) {
-    return go.star(toGoType(typeStr.slice(1)));
-  }
-  if (typeStr.startsWith("[]")) {
-    return go.sliceType(toGoType(typeStr.slice(2)));
-  }
-  if (typeStr.includes(".")) {
-    const parts = typeStr.split(".");
-    return go.qual(parts[0], parts[1]);
-  }
-  return go.id(typeStr);
-}
 
 function renderImports(imports: string[]): string {
   const specs = imports.map(i => go.importSpec(i));
