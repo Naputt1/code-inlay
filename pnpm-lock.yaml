@@ -58,6 +58,21 @@ importers:
         specifier: ^3.2.4
         version: 3.2.6(@types/node@24.13.2)(tsx@4.22.4)
 
+  packages/go-ast:
+    devDependencies:
+      '@types/node':
+        specifier: ^24.0.3
+        version: 24.13.2
+      tsup:
+        specifier: ^8.5.0
+        version: 8.5.1(postcss@8.5.15)(tsx@4.22.4)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.6(@types/node@24.13.2)(tsx@4.22.4)
+
 packages:
 
   '@algolia/abtesting@1.21.0':
