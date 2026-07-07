@@ -1,13 +1,11 @@
 import type { ArchitectureAst } from "../types/index.js";
 import { featuresPath, pascalCase } from "../utils/naming.js";
+import type { HandlerStructOutput } from "./handler-goast.js";
 
-export type HandlerStructOutput = {
-  file: string;
-  regionId: string;
-  content: string;
-};
+export type { HandlerStructOutput };
 
-export function generateHandlerStructs(
+/** @deprecated Use generateHandlerStructs from ./handler-goast.js */
+export function generateHandlerStructsLegacy(
   architecture: ArchitectureAst,
   featuresDir?: string,
 ): HandlerStructOutput[] {
@@ -35,3 +33,5 @@ export function generateHandlerStructs(
 
   return result;
 }
+
+export { generateHandlerStructs } from "./handler-goast.js";
