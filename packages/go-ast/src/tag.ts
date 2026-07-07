@@ -10,7 +10,7 @@ export function parseTag(tag: Tag): Record<string, string> {
   const re = /(\w+):"((?:[^"\\]|\\.)*)"/g;
   let match: RegExpExecArray | null;
   while ((match = re.exec(tag)) !== null) {
-    result[match[1]] = match[2];
+    result[match[1]] = match[2].replace(/\\(.)/g, "$1");
   }
   return result;
 }
@@ -18,7 +18,7 @@ export function parseTag(tag: Tag): Record<string, string> {
 // Serialize { json: "name,omitempty" } into `json:"name,omitempty"`
 export function serializeTag(tags: Record<string, string>): Tag {
   return Object.entries(tags)
-    .map(([key, value]) => `${key}:"${value}"`)
+    .map(([key, value]) => `${key}:"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`)
     .join(" ");
 }
 

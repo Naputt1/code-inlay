@@ -75,7 +75,9 @@ export function defineRoute<
   TQuery extends SchemaLike | undefined = undefined,
   TBody extends SchemaLike | undefined = undefined,
   TResponse extends SchemaLike | undefined = undefined,
->(input: DefineRouteInput<TMethod, TPath, THandler, TQuery, TBody, TResponse>): RouteDefinition<TMethod, TPath, THandler, TQuery, TBody, TResponse> {
+>(
+  input: DefineRouteInput<TMethod, TPath, THandler, TQuery, TBody, TResponse>,
+): RouteDefinition<TMethod, TPath, THandler, TQuery, TBody, TResponse> {
   return {
     kind: "RouteDefinition",
     method: input.method as TMethod,
@@ -454,30 +456,33 @@ function flattenRoutes(routes: readonly RouteInput[]): RouteLike[] {
   return result;
 }
 
-type ExtractHandlers<T extends readonly unknown[]> =
-  T extends readonly [infer First, ...infer Rest]
-    ? First extends readonly unknown[]
-      ? [...ExtractHandlers<First>, ...ExtractHandlers<Rest>]
-      : First extends { handler: infer H extends string }
-        ? [H, ...ExtractHandlers<Rest>]
-        : ExtractHandlers<Rest>
-    : [];
+type ExtractHandlers<T extends readonly unknown[]> = T extends readonly [infer First, ...infer Rest]
+  ? First extends readonly unknown[]
+    ? [...ExtractHandlers<First>, ...ExtractHandlers<Rest>]
+    : First extends { handler: infer H extends string }
+      ? [H, ...ExtractHandlers<Rest>]
+      : ExtractHandlers<Rest>
+  : [];
 
-type ExtractMethodPaths<T extends readonly unknown[]> =
-  T extends readonly [infer First, ...infer Rest]
-    ? First extends readonly unknown[]
-      ? [...ExtractMethodPaths<First>, ...ExtractMethodPaths<Rest>]
-      : First extends { method: infer M extends string; path: infer P extends string }
-        ? [`${M}:${P}`, ...ExtractMethodPaths<Rest>]
-        : ExtractMethodPaths<Rest>
-    : [];
+type ExtractMethodPaths<T extends readonly unknown[]> = T extends readonly [
+  infer First,
+  ...infer Rest,
+]
+  ? First extends readonly unknown[]
+    ? [...ExtractMethodPaths<First>, ...ExtractMethodPaths<Rest>]
+    : First extends { method: infer M extends string; path: infer P extends string }
+      ? [`${M}:${P}`, ...ExtractMethodPaths<Rest>]
+      : ExtractMethodPaths<Rest>
+  : [];
 
-type FindDuplicate<T extends readonly string[], Seen extends string = never> =
-  T extends readonly [infer First extends string, ...infer Rest extends string[]]
-    ? First extends Seen
-      ? First
-      : FindDuplicate<Rest, Seen | First>
-    : false;
+type FindDuplicate<T extends readonly string[], Seen extends string = never> = T extends readonly [
+  infer First extends string,
+  ...infer Rest extends string[],
+]
+  ? First extends Seen
+    ? First
+    : FindDuplicate<Rest, Seen | First>
+  : false;
 
 type AssertUniqueHandlers<TRoutes extends readonly RouteInput[]> =
   FindDuplicate<ExtractHandlers<TRoutes>> extends false ? true : false;
@@ -485,9 +490,7 @@ type AssertUniqueHandlers<TRoutes extends readonly RouteInput[]> =
 type AssertUniqueMethodPaths<TRoutes extends readonly RouteInput[]> =
   FindDuplicate<ExtractMethodPaths<TRoutes>> extends false ? true : false;
 
-export function defineRouteGroup<
-  const TRoutes extends readonly RouteInput[],
->(input: {
+export function defineRouteGroup<const TRoutes extends readonly RouteInput[]>(input: {
   prefix: string;
   middleware?: MiddlewareDefinition[];
   architecture?: ArchitectureRef | ArchitectureRef[] | ArchitectureSelection;
@@ -506,7 +509,8 @@ export function defineRouteGroup<
     if ("method" in r) {
       const key = `${r.method}:${r.path}`;
       const prev = mpSeen.get(key);
-      if (prev !== undefined) throw new Error(`defineRouteGroup: duplicate ${key} (handlers: "${prev}", "${r.handler}")`);
+      if (prev !== undefined)
+        throw new Error(`defineRouteGroup: duplicate ${key} (handlers: "${prev}", "${r.handler}")`);
       mpSeen.set(key, r.handler);
     }
   }
@@ -520,7 +524,10 @@ export function defineRouteGroup<
       _group: input.prefix,
       _groupMw: (input.middleware ?? []).map((m) => m.name),
     },
-  })) as unknown as [AssertUniqueHandlers<TRoutes>, AssertUniqueMethodPaths<TRoutes>] extends [true, true]
+  })) as unknown as [AssertUniqueHandlers<TRoutes>, AssertUniqueMethodPaths<TRoutes>] extends [
+    true,
+    true,
+  ]
     ? TRoutes
     : never;
 }

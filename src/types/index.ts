@@ -279,7 +279,14 @@ export type WSDefinition = {
 };
 
 export type RouteLike =
-  | RouteDefinition<HttpMethod, string, string, SchemaLike | undefined, SchemaLike | undefined, SchemaLike | undefined>
+  | RouteDefinition<
+      HttpMethod,
+      string,
+      string,
+      SchemaLike | undefined,
+      SchemaLike | undefined,
+      SchemaLike | undefined
+    >
   | SSEDefinition
   | WSDefinition;
 

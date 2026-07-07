@@ -144,9 +144,7 @@ describe("defineRouteGroup runtime validation", () => {
         prefix: "/api",
         routes: [
           defineRoute({ method: "GET", path: "/items", handler: "List" }),
-          ...([
-            defineRoute({ method: "GET", path: "/orders", handler: "List" }),
-          ] as never),
+          ...([defineRoute({ method: "GET", path: "/orders", handler: "List" })] as never),
         ],
       } as never),
     ).toThrow('duplicate handler "List"');
@@ -160,9 +158,7 @@ describe("defineRouteGroup runtime validation", () => {
           defineRoute({ method: "GET", path: "/items", handler: "List" }),
           defineRouteGroup({
             prefix: "",
-            routes: [
-              defineRoute({ method: "GET", path: "/itemsfe", handler: "List" }),
-            ],
+            routes: [defineRoute({ method: "GET", path: "/itemsfe", handler: "List" })],
           }),
         ],
       } as never),
@@ -177,9 +173,7 @@ describe("defineRouteGroup runtime validation", () => {
           defineRoute({ method: "GET", path: "/items", handler: "List" }),
           defineRouteGroup({
             prefix: "",
-            routes: [
-              defineRoute({ method: "GET", path: "/items", handler: "Other" }),
-            ],
+            routes: [defineRoute({ method: "GET", path: "/items", handler: "Other" })],
           }),
         ],
       } as never),
@@ -193,9 +187,7 @@ describe("defineRouteGroup runtime validation", () => {
         defineRoute({ method: "GET", path: "/items", handler: "List" }),
         defineRouteGroup({
           prefix: "/orders",
-          routes: [
-            defineRoute({ method: "GET", path: "", handler: "ListOrders" }),
-          ],
+          routes: [defineRoute({ method: "GET", path: "", handler: "ListOrders" })],
         }),
       ],
     });
@@ -211,9 +203,7 @@ describe("defineModule with nested route groups", () => {
         defineRoute({ method: "GET", path: "/items", handler: "List" }),
         defineRouteGroup({
           prefix: "/admin",
-          routes: [
-            defineRoute({ method: "DELETE", path: "/items/:id", handler: "Delete" }),
-          ],
+          routes: [defineRoute({ method: "DELETE", path: "/items/:id", handler: "Delete" })],
         }),
       ],
     });
@@ -232,9 +222,7 @@ describe("defineModule with nested route groups", () => {
             defineRoute({ method: "GET", path: "/items", handler: "List" }),
             defineRouteGroup({
               prefix: "/orders",
-              routes: [
-                defineRoute({ method: "POST", path: "", handler: "CreateOrder" }),
-              ],
+              routes: [defineRoute({ method: "POST", path: "", handler: "CreateOrder" })],
             }),
           ],
         }),

@@ -3,19 +3,69 @@
 // ─────────────────────────────────────────────────────────────
 
 import type {
-  Expression, Statement, Type, Declaration, Spec, Field, File,
-  Ident, BasicLit, StarExpr, SelectorExpr, CallExpr,
-  UnaryExpr, BinaryExpr, KeyValueExpr, CompositeLit, IndexExpr,
-  SliceExpr, TypeAssertExpr, ParenExpr, FuncLit, BadExpr,
-  BlockStmt, ReturnStmt, AssignStmt, ExprStmt, IfStmt, ForStmt,
-  RangeStmt, GoStmt, DeferStmt, DeclStmt, EmptyStmt, LabeledStmt,
-  SendStmt, IncDecStmt, BranchStmt, SwitchStmt, TypeSwitchStmt,
-  SelectStmt, CaseClause, CommClause,
-  FuncDecl, GenDecl, TypeSpec, ValueSpec, ImportSpec,
-  StructType, InterfaceType, FuncType, ArrayType, SliceType,
-  MapType, ChanType, ChanDir,
-  Tag, CommentGroup, Comment,
-  AssignOp, BinaryOp, UnaryOp, BranchToken, Token,
+  Expression,
+  Statement,
+  Type,
+  Declaration,
+  Spec,
+  Field,
+  File,
+  Ident,
+  BasicLit,
+  StarExpr,
+  SelectorExpr,
+  CallExpr,
+  UnaryExpr,
+  BinaryExpr,
+  KeyValueExpr,
+  CompositeLit,
+  IndexExpr,
+  SliceExpr,
+  TypeAssertExpr,
+  ParenExpr,
+  FuncLit,
+  BadExpr,
+  BlockStmt,
+  ReturnStmt,
+  AssignStmt,
+  ExprStmt,
+  IfStmt,
+  ForStmt,
+  RangeStmt,
+  GoStmt,
+  DeferStmt,
+  DeclStmt,
+  EmptyStmt,
+  LabeledStmt,
+  SendStmt,
+  IncDecStmt,
+  BranchStmt,
+  SwitchStmt,
+  TypeSwitchStmt,
+  SelectStmt,
+  CaseClause,
+  CommClause,
+  FuncDecl,
+  GenDecl,
+  TypeSpec,
+  ValueSpec,
+  ImportSpec,
+  StructType,
+  InterfaceType,
+  FuncType,
+  ArrayType,
+  SliceType,
+  MapType,
+  ChanType,
+  ChanDir,
+  Tag,
+  CommentGroup,
+  Comment,
+  AssignOp,
+  BinaryOp,
+  UnaryOp,
+  BranchToken,
+  Token,
 } from "./nodes.js";
 
 // ─── Expression shortcuts ──────────────────────────────────
@@ -161,11 +211,22 @@ export function ifStmt(cond: Expression, body: BlockStmt, elseStmt?: Statement):
   return { kind: "IfStmt", cond, body, elseStmt };
 }
 
-export function forStmt(init: Statement | undefined, cond: Expression | undefined, post: Statement | undefined, body: BlockStmt): ForStmt {
+export function forStmt(
+  init: Statement | undefined,
+  cond: Expression | undefined,
+  post: Statement | undefined,
+  body: BlockStmt,
+): ForStmt {
   return { kind: "ForStmt", init, cond, post, body };
 }
 
-export function rangeStmt(key: Expression | undefined, value: Expression | undefined, token: "=" | ":=", expr: Expression, body: BlockStmt): RangeStmt {
+export function rangeStmt(
+  key: Expression | undefined,
+  value: Expression | undefined,
+  token: "=" | ":=",
+  expr: Expression,
+  body: BlockStmt,
+): RangeStmt {
   return { kind: "RangeStmt", key, value, token, expr, body };
 }
 
@@ -197,8 +258,17 @@ export function defaultClause(...body: Statement[]): CaseClause {
   return { kind: "CaseClause", values: [], body };
 }
 
-export function switchStmt(init: Statement | undefined, tag: Expression | undefined, ...cases: CaseClause[]): SwitchStmt {
-  return { kind: "SwitchStmt", init, tag, body: { kind: "BlockStmt", list: cases as unknown as Statement[] } };
+export function switchStmt(
+  init: Statement | undefined,
+  tag: Expression | undefined,
+  ...cases: CaseClause[]
+): SwitchStmt {
+  return {
+    kind: "SwitchStmt",
+    init,
+    tag,
+    body: { kind: "BlockStmt", list: cases as unknown as Statement[] },
+  };
 }
 
 // ─── Type shortcuts ────────────────────────────────────────
