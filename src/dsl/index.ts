@@ -45,35 +45,40 @@ import type {
 } from "../types/index.js";
 
 export type DefineRouteInput<
+  TMethod extends HttpMethod,
+  TPath extends string,
+  THandler extends string,
   TQuery extends SchemaLike | undefined,
   TBody extends SchemaLike | undefined,
   TResponse extends SchemaLike | undefined,
 > = {
-  path: string;
+  path: TPath;
   architecture?: ArchitectureRef | ArchitectureRef[] | ArchitectureSelection;
   adapter?: AdapterRef | AdapterRef[] | AdapterSelection;
   adapters?: AdapterRef[] | AdapterSelection;
   responseFormat?: ResponseFormat;
   errors?: ErrorDefinition[];
   response?: TResponse;
-  handler: string;
+  handler: THandler;
   usecaseGroup?: string;
   middleware?: MiddlewareDefinition[];
   metadata?: Record<string, unknown>;
   query?: TQuery;
-} & (
-  | { method: "GET" | "DELETE"; body?: undefined }
-  | { method: Exclude<HttpMethod, "GET" | "DELETE">; body?: TBody }
-);
+  method: TMethod;
+  body?: TMethod extends "GET" | "DELETE" ? undefined : TBody;
+};
 
 export function defineRoute<
+  const TMethod extends HttpMethod,
+  const TPath extends string,
+  const THandler extends string,
   TQuery extends SchemaLike | undefined = undefined,
   TBody extends SchemaLike | undefined = undefined,
   TResponse extends SchemaLike | undefined = undefined,
->(input: DefineRouteInput<TQuery, TBody, TResponse>): RouteDefinition<TQuery, TBody, TResponse> {
+>(input: DefineRouteInput<TMethod, TPath, THandler, TQuery, TBody, TResponse>): RouteDefinition<TMethod, TPath, THandler, TQuery, TBody, TResponse> {
   return {
     kind: "RouteDefinition",
-    method: input.method,
+    method: input.method as TMethod,
     path: input.path,
     architecture: input.architecture,
     adapter: input.adapter,
@@ -166,7 +171,7 @@ export function defineModule(input: {
   usecaseOrganization?: UsecaseOrganization;
   responseFormat?: ResponseFormat;
   errors?: ErrorDefinition[];
-  routes?: RouteLike[];
+  routes?: readonly RouteInput[];
   middleware?: MiddlewareDefinition[];
 }): ModuleDefinition {
   return {
@@ -178,7 +183,7 @@ export function defineModule(input: {
     usecaseOrganization: input.usecaseOrganization,
     responseFormat: input.responseFormat,
     errors: input.errors,
-    routes: input.routes ?? [],
+    routes: flattenRoutes(input.routes ?? []),
     middleware: input.middleware ?? [],
   };
 }
@@ -240,7 +245,7 @@ export interface AppBuilder<
     usecaseOrganization?: UsecaseOrganization;
     responseFormat?: ResponseFormat;
     errors?: ErrorDefinition[];
-    routes?: RouteLike[];
+    routes?: readonly RouteInput[];
     middleware?: MiddlewareDefinition[];
   }): AppBuilder<TEnv, TServiceNames, TModuleNames | TName>;
 }
@@ -416,7 +421,7 @@ export function defineApp<
       usecaseOrganization?: UsecaseOrganization;
       responseFormat?: ResponseFormat;
       errors?: ErrorDefinition[];
-      routes?: RouteLike[];
+      routes?: readonly RouteInput[];
       middleware?: MiddlewareDefinition[];
     }) => {
       state.modules.push({
@@ -428,7 +433,7 @@ export function defineApp<
         usecaseOrganization: modInput.usecaseOrganization,
         responseFormat: modInput.responseFormat,
         errors: modInput.errors,
-        routes: modInput.routes ?? [],
+        routes: flattenRoutes(modInput.routes ?? []),
         middleware: modInput.middleware ?? [],
       });
       return builder;
@@ -438,13 +443,74 @@ export function defineApp<
   return builder as unknown as AppBuilder<TEnv, keyof TServices & string, never>;
 }
 
-export function defineRouteGroup<TRoute extends RouteLike>(input: {
+export type RouteInput = RouteLike | readonly RouteInput[];
+
+function flattenRoutes(routes: readonly RouteInput[]): RouteLike[] {
+  const result: RouteLike[] = [];
+  for (const r of routes) {
+    if (Array.isArray(r)) result.push(...flattenRoutes(r));
+    else result.push(r as RouteLike);
+  }
+  return result;
+}
+
+type ExtractHandlers<T extends readonly unknown[]> =
+  T extends readonly [infer First, ...infer Rest]
+    ? First extends readonly unknown[]
+      ? [...ExtractHandlers<First>, ...ExtractHandlers<Rest>]
+      : First extends { handler: infer H extends string }
+        ? [H, ...ExtractHandlers<Rest>]
+        : ExtractHandlers<Rest>
+    : [];
+
+type ExtractMethodPaths<T extends readonly unknown[]> =
+  T extends readonly [infer First, ...infer Rest]
+    ? First extends readonly unknown[]
+      ? [...ExtractMethodPaths<First>, ...ExtractMethodPaths<Rest>]
+      : First extends { method: infer M extends string; path: infer P extends string }
+        ? [`${M}:${P}`, ...ExtractMethodPaths<Rest>]
+        : ExtractMethodPaths<Rest>
+    : [];
+
+type FindDuplicate<T extends readonly string[], Seen extends string = never> =
+  T extends readonly [infer First extends string, ...infer Rest extends string[]]
+    ? First extends Seen
+      ? First
+      : FindDuplicate<Rest, Seen | First>
+    : false;
+
+type AssertUniqueHandlers<TRoutes extends readonly RouteInput[]> =
+  FindDuplicate<ExtractHandlers<TRoutes>> extends false ? true : false;
+
+type AssertUniqueMethodPaths<TRoutes extends readonly RouteInput[]> =
+  FindDuplicate<ExtractMethodPaths<TRoutes>> extends false ? true : false;
+
+export function defineRouteGroup<
+  const TRoutes extends readonly RouteInput[],
+>(input: {
   prefix: string;
   middleware?: MiddlewareDefinition[];
   architecture?: ArchitectureRef | ArchitectureRef[] | ArchitectureSelection;
-  routes: TRoute[];
-}): TRoute[] {
-  return input.routes.map((route) => ({
+  routes: TRoutes;
+}): [AssertUniqueHandlers<TRoutes>, AssertUniqueMethodPaths<TRoutes>] extends [true, true]
+  ? TRoutes
+  : never {
+  const flat = flattenRoutes(input.routes);
+  const seen = new Set<string>();
+  for (const r of flat) {
+    if (seen.has(r.handler)) throw new Error(`defineRouteGroup: duplicate handler "${r.handler}"`);
+    seen.add(r.handler);
+  }
+  const mpSeen = new Map<string, string>();
+  for (const r of flat) {
+    if ("method" in r) {
+      const key = `${r.method}:${r.path}`;
+      const prev = mpSeen.get(key);
+      if (prev !== undefined) throw new Error(`defineRouteGroup: duplicate ${key} (handlers: "${prev}", "${r.handler}")`);
+      mpSeen.set(key, r.handler);
+    }
+  }
+  return flat.map((route) => ({
     ...route,
     path: joinPath(input.prefix, route.path),
     architecture: route.architecture ?? input.architecture,
@@ -454,7 +520,9 @@ export function defineRouteGroup<TRoute extends RouteLike>(input: {
       _group: input.prefix,
       _groupMw: (input.middleware ?? []).map((m) => m.name),
     },
-  }));
+  })) as unknown as [AssertUniqueHandlers<TRoutes>, AssertUniqueMethodPaths<TRoutes>] extends [true, true]
+    ? TRoutes
+    : never;
 }
 
 function joinPath(prefix: string, path: string): string {
