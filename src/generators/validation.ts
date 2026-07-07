@@ -44,7 +44,7 @@ export type BindingErrorConfig = {
   bodySchema?: SchemaLike;
 };
 
-export function generateBindingErrorFunction(config: BindingErrorConfig): string {
+export function generateBindingErrorFunctionLegacy(config: BindingErrorConfig): string {
   const statusCode = config.httpStatus ?? 400;
   const statusConst = httpStatusConsts[statusCode] ?? String(statusCode);
 
@@ -56,7 +56,7 @@ export function generateBindingErrorFunction(config: BindingErrorConfig): string
     ].join("\n");
   }
 
-  const bodyExpr = compileSchema(config.bodySchema, 4);
+  const bodyExpr = compileSchemaLegacy(config.bodySchema, 4);
 
   return [
     `func ResolveBindingError(err error) (int, any) {`,
@@ -73,37 +73,21 @@ function tabs(n: number): string {
   return Array(n + 1).join("\t");
 }
 
-function compileSchema(schema: SchemaLike, depth: number): string {
+function compileSchemaLegacy(schema: SchemaLike, depth: number): string {
   const tn = typeName(schema);
 
-  if (tn === "ZodObject") {
-    return compileObject(schema, depth);
-  }
-  if (tn === "ZodArray") {
-    return compileArray(schema, depth);
-  }
-  if (tn === "ZodOptional" || tn === "ZodNullable") {
-    return compileOptional(schema, depth);
-  }
-  if (isValidationType(tn)) {
-    return validationTypeToGoExpr(tn, "fe");
-  }
-  if (tn === "ZodLiteral") {
-    return compileLiteral(schema);
-  }
-  if (tn === "ZodString") {
-    return `""`;
-  }
-  if (tn === "ZodNumber") {
-    return `0`;
-  }
-  if (tn === "ZodBoolean") {
-    return `false`;
-  }
+  if (tn === "ZodObject") return compileObjectLegacy(schema, depth);
+  if (tn === "ZodArray") return compileArrayLegacy(schema, depth);
+  if (tn === "ZodOptional" || tn === "ZodNullable") return compileOptionalLegacy(schema, depth);
+  if (isValidationType(tn)) return validationTypeToGoExpr(tn, "fe");
+  if (tn === "ZodLiteral") return compileLiteralLegacy(schema);
+  if (tn === "ZodString") return `""`;
+  if (tn === "ZodNumber") return `0`;
+  if (tn === "ZodBoolean") return `false`;
   return `nil`;
 }
 
-function compileObject(schema: SchemaLike, depth: number): string {
+function compileObjectLegacy(schema: SchemaLike, depth: number): string {
   const def = (schema as unknown as Record<string, unknown>)._def as
     | Record<string, unknown>
     | undefined;
@@ -114,20 +98,20 @@ function compileObject(schema: SchemaLike, depth: number): string {
 
   const fields: string[] = [];
   for (const [key, fieldSchema] of Object.entries(rawShape)) {
-    const compiled = compileSchema(fieldSchema as SchemaLike, depth + 1);
+    const compiled = compileSchemaLegacy(fieldSchema as SchemaLike, depth + 1);
     fields.push(`${tabs(depth + 1)}"${key}": ${compiled},`);
   }
 
   return `map[string]any{\n${fields.join("\n")}\n${tabs(depth)}}`;
 }
 
-function compileArray(schema: SchemaLike, depth: number): string {
+function compileArrayLegacy(schema: SchemaLike, depth: number): string {
   const def = (schema as unknown as Record<string, unknown>)._def as
     | Record<string, unknown>
     | undefined;
   const element = (def?.type as SchemaLike | undefined) ?? (def?.element as SchemaLike | undefined);
   if (!element) return `nil`;
-  const itemExpr = compileSchema(element, depth + 2);
+  const itemExpr = compileSchemaLegacy(element, depth + 2);
 
   const lines: string[] = [
     `func() any {`,
@@ -141,7 +125,7 @@ function compileArray(schema: SchemaLike, depth: number): string {
   return lines.join("\n");
 }
 
-function compileOptional(schema: SchemaLike, depth: number): string {
+function compileOptionalLegacy(schema: SchemaLike, depth: number): string {
   const def = (schema as unknown as Record<string, unknown>)._def as
     | Record<string, unknown>
     | undefined;
@@ -153,10 +137,10 @@ function compileOptional(schema: SchemaLike, depth: number): string {
     const expr = validationTypeToGoExpr(tn, "fe");
     return `func() any { if v := ${expr}; v != "" { return v }; return nil }()`;
   }
-  return compileSchema(innerSchema, depth);
+  return compileSchemaLegacy(innerSchema, depth);
 }
 
-function compileLiteral(schema: SchemaLike): string {
+function compileLiteralLegacy(schema: SchemaLike): string {
   const def = (schema as unknown as Record<string, unknown>)._def as
     | Record<string, unknown>
     | undefined;
@@ -166,3 +150,5 @@ function compileLiteral(schema: SchemaLike): string {
   if (typeof value === "boolean") return value ? "true" : "false";
   return `nil`;
 }
+
+export { generateBindingErrorFunction } from "./validation-goast.js";
