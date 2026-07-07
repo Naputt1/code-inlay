@@ -20,24 +20,32 @@ import {
   unwrap,
 } from "../schema/extras.js";
 
-type ProtoField = {
+import {
+  generateStubPbGoContent,
+  generateFromProtoFunc,
+  generateToProtoFunc,
+  generateFromProtoBytesFunc,
+  generateToProtoBytesFunc,
+} from "./proto-goast.js";
+
+export type ProtoField = {
   name: string;
   protoType: string;
   number: number;
   repeated: boolean;
 };
 
-type ProtoMessage = {
+export type ProtoMessage = {
   name: string;
   fields: ProtoField[];
 };
 
-type ProtoEnum = {
+export type ProtoEnum = {
   name: string;
   values: string[];
 };
 
-type FieldMapping = {
+export type FieldMapping = {
   goName: string;
   protoName: string;
   goType: string;
@@ -61,7 +69,7 @@ function shouldGenerateProto(route: RouteLikeAst): boolean {
   return false;
 }
 
-const protoScalarToGo: Record<string, string> = {
+export const protoScalarToGo: Record<string, string> = {
   string: "string",
   bool: "bool",
   int32: "int32",
@@ -70,7 +78,7 @@ const protoScalarToGo: Record<string, string> = {
   double: "float64",
 };
 
-function isProtoScalar(t: string): boolean {
+export function isProtoScalar(t: string): boolean {
   return t in protoScalarToGo;
 }
 
@@ -87,7 +95,7 @@ function protoTypeToGoType(
   return { goType: protoType, nested: false };
 }
 
-function buildMappings(msg: ProtoMessage, allMessages: ProtoMessage[]): FieldMapping[] {
+export function buildMappings(msg: ProtoMessage, allMessages: ProtoMessage[]): FieldMapping[] {
   return msg.fields.map((f) => {
     const { goType, nested } = protoTypeToGoType(f.protoType, allMessages);
     return {
@@ -101,7 +109,7 @@ function buildMappings(msg: ProtoMessage, allMessages: ProtoMessage[]): FieldMap
   });
 }
 
-function generateFromProtoFunc(msg: ProtoMessage, allMessages: ProtoMessage[]): string {
+function generateFromProtoFuncLegacy(msg: ProtoMessage, allMessages: ProtoMessage[]): string {
   const mappings = buildMappings(msg, allMessages);
   const lines: string[] = [];
   lines.push(`func ${msg.name}FromProto(src *pb.${msg.name}) ${msg.name} {`);
@@ -137,12 +145,12 @@ function generateFromProtoFunc(msg: ProtoMessage, allMessages: ProtoMessage[]): 
   return lines.join("\n");
 }
 
-function protoTypeToGoStruct(protoType: string): string {
+export function protoTypeToGoStruct(protoType: string): string {
   if (protoType.endsWith("Msg")) return protoType.slice(0, -3);
   return protoType;
 }
 
-function generateToProtoFunc(msg: ProtoMessage, allMessages: ProtoMessage[]): string {
+function generateToProtoFuncLegacy(msg: ProtoMessage, allMessages: ProtoMessage[]): string {
   const mappings = buildMappings(msg, allMessages);
   const lines: string[] = [];
   lines.push(`func ${msg.name}ToProto(src ${msg.name}) *pb.${msg.name} {`);
@@ -348,11 +356,11 @@ function readGoModulePath(cwd: string): string | undefined {
   }
 }
 
-function snakeToCamel(s: string): string {
+export function snakeToCamel(s: string): string {
   return s.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
 }
 
-function generateStubPbGoContent(
+function generateStubPbGoContentLegacy(
   packageName: string,
   messages: ProtoMessage[],
   _enums: ProtoEnum[],
@@ -422,7 +430,7 @@ function generateStubPbGoContent(
   return parts.join("\n");
 }
 
-function generateFromProtoBytesFunc(msg: ProtoMessage): string {
+function generateFromProtoBytesFuncLegacy(msg: ProtoMessage): string {
   const lines: string[] = [];
   lines.push(`func ${msg.name}FromProtoBytes(data []byte) ${msg.name} {`);
   lines.push(`\tvar src pb.${msg.name}`);
@@ -434,7 +442,7 @@ function generateFromProtoBytesFunc(msg: ProtoMessage): string {
   return lines.join("\n");
 }
 
-function generateToProtoBytesFunc(msg: ProtoMessage): string {
+function generateToProtoBytesFuncLegacy(msg: ProtoMessage): string {
   const lines: string[] = [];
   lines.push(`func ${msg.name}ToProtoBytes(src ${msg.name}) []byte {`);
   lines.push(`\tdst := ${msg.name}ToProto(src)`);
@@ -624,4 +632,20 @@ export const protoTarget: CodeTarget = {
 
     return patches;
   },
+};
+
+export {
+  generateStubPbGoContent,
+  generateFromProtoFunc,
+  generateToProtoFunc,
+  generateFromProtoBytesFunc,
+  generateToProtoBytesFunc,
+};
+
+export {
+  generateStubPbGoContentLegacy,
+  generateFromProtoFuncLegacy,
+  generateToProtoFuncLegacy,
+  generateFromProtoBytesFuncLegacy,
+  generateToProtoBytesFuncLegacy,
 };
