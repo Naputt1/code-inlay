@@ -58,7 +58,8 @@ export class GoParser {
     if (!this.binaryPath) {
       return {
         kind: "ParseError",
-        message: "decl-parser binary not found. Build it with: cd tools/decl-parser && go build -o decl-parser .",
+        message:
+          "decl-parser binary not found. Build it with: cd tools/decl-parser && go build -o decl-parser .",
       };
     }
 
@@ -153,7 +154,14 @@ function convertFuncDecl(pd: ParsedDeclaration): Declaration | null {
   return {
     kind: "FuncDecl",
     name,
-    recv: isMethod ? { kind: "Field", names: [], type: { kind: "Ident", name: pd.receiver ?? "" }, embedded: true } : undefined,
+    recv: isMethod
+      ? {
+          kind: "Field",
+          names: [],
+          type: { kind: "Ident", name: pd.receiver ?? "" },
+          embedded: true,
+        }
+      : undefined,
     type: { kind: "FuncType", params: [], results: [] },
     body: pd.body ? { kind: "BlockStmt", list: [] } : undefined,
   };

@@ -53,11 +53,7 @@ export type GenDecl = {
   doc?: CommentGroup;
 };
 
-export type Token =
-  | "import"
-  | "const"
-  | "type"
-  | "var";
+export type Token = "import" | "const" | "type" | "var";
 
 // ─── Specs ─────────────────────────────────────────────────
 
@@ -259,9 +255,12 @@ export type UnaryExpr = {
 };
 
 export type UnaryOp =
-  | "+" | "-" | "!" | "^"
-  | "*"   // pointer dereference
-  | "&"   // address of
+  | "+"
+  | "-"
+  | "!"
+  | "^"
+  | "*" // pointer dereference
+  | "&" // address of
   | "<-"; // channel receive
 
 export type BinaryExpr = {
@@ -273,14 +272,28 @@ export type BinaryExpr = {
 
 export type BinaryOp =
   // arithmetic
-  | "+" | "-" | "*" | "/" | "%"
+  | "+"
+  | "-"
+  | "*"
+  | "/"
+  | "%"
   // bitwise
-  | "&" | "|" | "^" | "<<"
-  | ">>" | "&^"
+  | "&"
+  | "|"
+  | "^"
+  | "<<"
+  | ">>"
+  | "&^"
   // comparison
-  | "==" | "!=" | "<" | "<=" | ">" | ">="
+  | "=="
+  | "!="
+  | "<"
+  | "<="
+  | ">"
+  | ">="
   // logical
-  | "&&" | "||";
+  | "&&"
+  | "||";
 
 export type KeyValueExpr = {
   kind: "KeyValueExpr";
@@ -352,9 +365,19 @@ export type AssignStmt = {
 };
 
 export type AssignOp =
-  | "=" | ":="
-  | "+=" | "-=" | "*=" | "/=" | "%="
-  | "&=" | "|=" | "^=" | "<<=" | ">>=" | "&^=";
+  | "="
+  | ":="
+  | "+="
+  | "-="
+  | "*="
+  | "/="
+  | "%="
+  | "&="
+  | "|="
+  | "^="
+  | "<<="
+  | ">>="
+  | "&^=";
 
 export type GoStmt = {
   kind: "GoStmt";
@@ -377,8 +400,7 @@ export type BranchStmt = {
   label?: string;
 };
 
-export type BranchToken =
-  | "break" | "continue" | "goto" | "fallthrough";
+export type BranchToken = "break" | "continue" | "goto" | "fallthrough";
 
 export type BlockStmt = {
   kind: "BlockStmt";

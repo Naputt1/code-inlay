@@ -3,20 +3,63 @@
 // ─────────────────────────────────────────────────────────────
 
 import type {
-  File, CommentGroup,
-  Declaration, FuncDecl, GenDecl,
-  Spec, ImportSpec, TypeSpec, ValueSpec,
-  Type, Field,
-  Expression, Statement,
-  Ident, BasicLit, StarExpr, SelectorExpr, CallExpr,
-  UnaryExpr, BinaryExpr, KeyValueExpr, CompositeLit, FuncLit,
-  IndexExpr, SliceExpr, TypeAssertExpr, ParenExpr, BadExpr,
-  StructType, InterfaceType, FuncType, ArrayType, SliceType,
-  MapType, ChanType,
-  BlockStmt, ReturnStmt, AssignStmt, ExprStmt, IfStmt, ForStmt,
-  RangeStmt, GoStmt, DeferStmt, DeclStmt, EmptyStmt, LabeledStmt,
-  SendStmt, IncDecStmt, BranchStmt, SwitchStmt, TypeSwitchStmt,
-  SelectStmt, CaseClause, CommClause, Tag,
+  File,
+  CommentGroup,
+  Declaration,
+  FuncDecl,
+  GenDecl,
+  Spec,
+  ImportSpec,
+  TypeSpec,
+  ValueSpec,
+  Type,
+  Field,
+  Expression,
+  Statement,
+  Ident,
+  BasicLit,
+  StarExpr,
+  SelectorExpr,
+  CallExpr,
+  UnaryExpr,
+  BinaryExpr,
+  KeyValueExpr,
+  CompositeLit,
+  FuncLit,
+  IndexExpr,
+  SliceExpr,
+  TypeAssertExpr,
+  ParenExpr,
+  BadExpr,
+  StructType,
+  InterfaceType,
+  FuncType,
+  ArrayType,
+  SliceType,
+  MapType,
+  ChanType,
+  BlockStmt,
+  ReturnStmt,
+  AssignStmt,
+  ExprStmt,
+  IfStmt,
+  ForStmt,
+  RangeStmt,
+  GoStmt,
+  DeferStmt,
+  DeclStmt,
+  EmptyStmt,
+  LabeledStmt,
+  SendStmt,
+  IncDecStmt,
+  BranchStmt,
+  SwitchStmt,
+  TypeSwitchStmt,
+  SelectStmt,
+  CaseClause,
+  CommClause,
+  Tag,
+  AssignOp,
 } from "./nodes.js";
 
 // ─── Precedence levels (matching Go spec) ──────────────────
@@ -24,9 +67,23 @@ import type {
 const PREC: Record<string, number> = {
   "||": 1,
   "&&": 2,
-  "==": 3, "!=": 3, "<": 3, "<=": 3, ">": 3, ">=": 3,
-  "+": 4, "-": 4, "|": 4, "^": 4,
-  "*": 5, "/": 5, "%": 5, "<<": 5, ">>": 5, "&": 5, "&^": 5,
+  "==": 3,
+  "!=": 3,
+  "<": 3,
+  "<=": 3,
+  ">": 3,
+  ">=": 3,
+  "+": 4,
+  "-": 4,
+  "|": 4,
+  "^": 4,
+  "*": 5,
+  "/": 5,
+  "%": 5,
+  "<<": 5,
+  ">>": 5,
+  "&": 5,
+  "&^": 5,
 };
 
 function binOpPrec(op: string): number {
@@ -44,8 +101,11 @@ function needParens(inner: Expression, outerPrec: number, leftAssoc: boolean): b
 function nodePrec(e: Expression): number | undefined {
   if (e.kind === "BinaryExpr") return binOpPrec(e.op);
   if (e.kind === "UnaryExpr") return 6;
+  if (e.kind === "StarExpr") return 6;
   return undefined;
 }
+
+const SELECTOR_PREC = 7;
 
 export type PrintConfig = {
   indent?: string;
@@ -79,19 +139,32 @@ export function printFile(file: File): string {
 
 export function printDeclaration(sb: StringBuilder, decl: Declaration, depth: number): void {
   switch (decl.kind) {
-    case "FuncDecl": return printFuncDecl(sb, decl, depth);
-    case "GenDecl": return printGenDecl(sb, decl, depth);
+    case "FuncDecl":
+      return printFuncDecl(sb, decl, depth);
+    case "GenDecl":
+      return printGenDecl(sb, decl, depth);
   }
 }
 
-export function printExpr(sb: StringBuilder, expr: Expression, prec?: number, depth?: number): void {
+export function printExpr(
+  sb: StringBuilder,
+  expr: Expression,
+  prec?: number,
+  depth?: number,
+): void {
   const outerPrec = prec ?? 0;
   const outerDepth = depth ?? 0;
 
   switch (expr.kind) {
-    case "BadExpr": sb.push("BAD"); break;
-    case "Ident": sb.push(expr.name); break;
-    case "BasicLit": sb.push(expr.value); break;
+    case "BadExpr":
+      sb.push("BAD");
+      break;
+    case "Ident":
+      sb.push(expr.name);
+      break;
+    case "BasicLit":
+      sb.push(expr.value);
+      break;
     case "ParenExpr":
       sb.push("(");
       printExpr(sb, expr.x, 0, outerDepth);
@@ -101,11 +174,15 @@ export function printExpr(sb: StringBuilder, expr: Expression, prec?: number, de
       sb.push("*");
       printExpr(sb, expr.x as Expression, 6, outerDepth);
       break;
-    case "SelectorExpr":
-      printExpr(sb, expr.x, 6, outerDepth);
+    case "SelectorExpr": {
+      const needSelParen = needParens(expr.x, SELECTOR_PREC, true);
+      if (needSelParen) sb.push("(");
+      printExpr(sb, expr.x, SELECTOR_PREC, outerDepth);
+      if (needSelParen) sb.push(")");
       sb.push(".");
       sb.push(expr.sel);
       break;
+    }
     case "CallExpr":
       printExpr(sb, expr.func, 6, outerDepth);
       sb.push("(");
@@ -137,14 +214,18 @@ export function printExpr(sb: StringBuilder, expr: Expression, prec?: number, de
       if (expr.type) {
         printType(sb, expr.type);
       }
-      sb.push("{\n");
-      for (const el of expr.elts) {
-        sb.push(getIndent(outerDepth + 1));
-        printExpr(sb, el, 0, outerDepth + 1);
-        sb.push(",\n");
+      if (expr.elts.length === 0) {
+        sb.push("{}");
+      } else {
+        sb.push("{\n");
+        for (const el of expr.elts) {
+          sb.push(getIndent(outerDepth + 1));
+          printExpr(sb, el, 0, outerDepth + 1);
+          sb.push(",\n");
+        }
+        sb.push(getIndent(outerDepth));
+        sb.push("}");
       }
-      sb.push(getIndent(outerDepth));
-      sb.push("}");
       break;
     case "KeyValueExpr":
       printExpr(sb, expr.key, 0, outerDepth);
@@ -163,7 +244,10 @@ export function printExpr(sb: StringBuilder, expr: Expression, prec?: number, de
       if (expr.low) printExpr(sb, expr.low, 0, outerDepth);
       sb.push(":");
       if (expr.high) printExpr(sb, expr.high, 0, outerDepth);
-      if (expr.max) { sb.push(":"); printExpr(sb, expr.max, 0, outerDepth); }
+      if (expr.max) {
+        sb.push(":");
+        printExpr(sb, expr.max, 0, outerDepth);
+      }
       sb.push("]");
       break;
     case "TypeAssertExpr":
@@ -181,6 +265,7 @@ export function printExpr(sb: StringBuilder, expr: Expression, prec?: number, de
       printFuncType(sb, expr.type, 0);
       sb.push(" ");
       printBlock(sb, expr.body, outerDepth);
+      sb.push("\n");
       break;
     default:
       sb.push("/* unhandled expr */");
@@ -212,92 +297,108 @@ export function printStatement(sb: StringBuilder, stmt: Statement, depth: number
       sb.push(indent);
       for (let i = 0; i < stmt.lhs.length; i++) {
         if (i > 0) sb.push(", ");
-        printExpr(sb, stmt.lhs[i]);
+        printExpr(sb, stmt.lhs[i], 0, depth);
       }
       sb.push(` ${stmt.token} `);
       for (let i = 0; i < stmt.rhs.length; i++) {
         if (i > 0) sb.push(", ");
-        printExpr(sb, stmt.rhs[i]);
+        printExpr(sb, stmt.rhs[i], 0, depth);
       }
       sb.push("\n");
       break;
     case "BlockStmt":
       printBlock(sb, stmt, depth);
+      sb.push("\n");
       break;
     case "IfStmt": {
       sb.push(indent);
       sb.push("if ");
       if (stmt.init) {
-        printStatementSimple(sb, stmt.init);
+        printStatementSimple(sb, stmt.init, depth);
         sb.push("; ");
       }
-      printExpr(sb, stmt.cond);
+      printExpr(sb, stmt.cond, 0, depth);
       sb.push(" ");
       printBlock(sb, stmt.body, depth);
       if (stmt.elseStmt) {
         sb.push(" else ");
         if (stmt.elseStmt.kind === "IfStmt") {
-          printStatement(sb, stmt.elseStmt, depth);
+          sb.push("if ");
+          printIfContent(sb, stmt.elseStmt, depth);
         } else {
           printBlock(sb, stmt.elseStmt as BlockStmt, depth);
         }
       }
+      sb.push("\n");
       break;
     }
     case "ForStmt":
       sb.push(indent);
       sb.push("for ");
-      if (stmt.init || stmt.cond || stmt.post) {
+      if (stmt.init || stmt.post) {
         if (stmt.init) {
-          printStatementSimple(sb, stmt.init);
+          printStatementSimple(sb, stmt.init, depth);
+          sb.push("; ");
+        } else {
+          sb.push("; ");
         }
-        sb.push("; ");
-        if (stmt.cond) printExpr(sb, stmt.cond);
-        sb.push("; ");
-        if (stmt.post) printStatementSimple(sb, stmt.post);
+        if (stmt.cond) {
+          printExpr(sb, stmt.cond, 0, depth);
+          sb.push("; ");
+        } else {
+          sb.push("; ");
+        }
+        if (stmt.post) {
+          printStatementSimple(sb, stmt.post, depth);
+        }
+        sb.push(" ");
+      } else if (stmt.cond) {
+        printExpr(sb, stmt.cond, 0, depth);
         sb.push(" ");
       }
       printBlock(sb, stmt.body, depth);
+      sb.push("\n");
       break;
     case "RangeStmt":
       sb.push(indent);
       sb.push("for ");
       if (stmt.key || stmt.value) {
         if (stmt.key) {
-          printExpr(sb, stmt.key);
+          printExpr(sb, stmt.key, 0, depth);
         } else {
           sb.push("_");
         }
         if (stmt.value) {
           sb.push(", ");
-          printExpr(sb, stmt.value);
+          printExpr(sb, stmt.value, 0, depth);
         }
         sb.push(` ${stmt.token} `);
       }
       sb.push("range ");
-      printExpr(sb, stmt.expr);
+      printExpr(sb, stmt.expr, 0, depth);
       sb.push(" ");
       printBlock(sb, stmt.body, depth);
+      sb.push("\n");
       break;
     case "GoStmt":
       sb.push(indent);
       sb.push("go ");
-      printExpr(sb, stmt.call.func, 6);
+      printExpr(sb, stmt.call.func, 6, depth);
       sb.push("(");
       for (let i = 0; i < stmt.call.args.length; i++) {
         if (i > 0) sb.push(", ");
-        printExpr(sb, stmt.call.args[i]);
+        printExpr(sb, stmt.call.args[i], 0, depth);
       }
       sb.push(")\n");
       break;
     case "DeferStmt":
       sb.push(indent);
       sb.push("defer ");
-      printExpr(sb, stmt.call.func, 6);
+      printExpr(sb, stmt.call.func, 6, depth);
       sb.push("(");
       for (let i = 0; i < stmt.call.args.length; i++) {
         if (i > 0) sb.push(", ");
-        printExpr(sb, stmt.call.args[i]);
+        printExpr(sb, stmt.call.args[i], 0, depth);
       }
       sb.push(")\n");
       break;
@@ -308,14 +409,17 @@ export function printStatement(sb: StringBuilder, stmt: Statement, depth: number
       break;
     case "IncDecStmt":
       sb.push(indent);
-      printExpr(sb, stmt.expr);
+      printExpr(sb, stmt.expr, 0, depth);
       sb.push(stmt.token);
       sb.push("\n");
       break;
     case "BranchStmt":
       sb.push(indent);
       sb.push(stmt.token);
-      if (stmt.label) { sb.push(" "); sb.push(stmt.label); }
+      if (stmt.label) {
+        sb.push(" ");
+        sb.push(stmt.label);
+      }
       sb.push("\n");
       break;
     case "LabeledStmt":
@@ -328,28 +432,39 @@ export function printStatement(sb: StringBuilder, stmt: Statement, depth: number
       sb.push(indent);
       sb.push("switch ");
       if (stmt.init) {
-        printStatementSimple(sb, stmt.init);
+        printStatementSimple(sb, stmt.init, depth);
         sb.push("; ");
       }
-      if (stmt.tag) { printExpr(sb, stmt.tag); sb.push(" "); }
+      if (stmt.tag) {
+        printExpr(sb, stmt.tag, 0, depth);
+        sb.push(" ");
+      }
       printSwitchBody(sb, stmt.body, depth);
+      sb.push("\n");
       break;
     case "TypeSwitchStmt":
       sb.push(indent);
       sb.push("switch ");
       if (stmt.init) {
-        printStatementSimple(sb, stmt.init);
+        printStatementSimple(sb, stmt.init, depth);
         sb.push("; ");
       }
-      printStatementSimple(sb, stmt.assign);
+      printStatementSimple(sb, stmt.assign, depth);
       sb.push(" ");
       printSwitchBody(sb, stmt.body, depth);
+      sb.push("\n");
       break;
     case "SendStmt":
       sb.push(indent);
-      printExpr(sb, stmt.chan);
+      printExpr(sb, stmt.chan, 0, depth);
       sb.push(" <- ");
-      printExpr(sb, stmt.value);
+      printExpr(sb, stmt.value, 0, depth);
+      sb.push("\n");
+      break;
+    case "SelectStmt":
+      sb.push(indent);
+      sb.push("select ");
+      printSelectBody(sb, stmt.body, depth);
       sb.push("\n");
       break;
     default:
@@ -358,28 +473,28 @@ export function printStatement(sb: StringBuilder, stmt: Statement, depth: number
   }
 }
 
-function printStatementSimple(sb: StringBuilder, stmt: Statement): void {
+function printStatementSimple(sb: StringBuilder, stmt: Statement, depth: number = 0): void {
   switch (stmt.kind) {
     case "ExprStmt":
-      printExpr(sb, stmt.expr);
+      printExpr(sb, stmt.expr, 0, depth);
       break;
     case "AssignStmt":
       for (let i = 0; i < stmt.lhs.length; i++) {
         if (i > 0) sb.push(", ");
-        printExpr(sb, stmt.lhs[i]);
+        printExpr(sb, stmt.lhs[i], 0, depth);
       }
       sb.push(` ${stmt.token} `);
       for (let i = 0; i < stmt.rhs.length; i++) {
         if (i > 0) sb.push(", ");
-        printExpr(sb, stmt.rhs[i]);
+        printExpr(sb, stmt.rhs[i], 0, depth);
       }
       break;
     case "IncDecStmt":
-      printExpr(sb, stmt.expr);
+      printExpr(sb, stmt.expr, 0, depth);
       sb.push(stmt.token);
       break;
     default:
-      printStatement(sb, stmt, 0);
+      printStatement(sb, stmt, depth);
   }
 }
 
@@ -389,7 +504,7 @@ export function printBlock(sb: StringBuilder, block: BlockStmt, depth: number): 
   for (const stmt of block.list) {
     printStatement(sb, stmt, depth + 1);
   }
-  sb.push(`${indent}}\n`);
+  sb.push(`${indent}}`);
 }
 
 function printSwitchBody(sb: StringBuilder, block: BlockStmt, depth: number): void {
@@ -402,7 +517,7 @@ function printSwitchBody(sb: StringBuilder, block: BlockStmt, depth: number): vo
       printStatement(sb, item, depth + 1);
     }
   }
-  sb.push(`${indent}}\n`);
+  sb.push(`${indent}}`);
 }
 
 function printCaseClause(sb: StringBuilder, cc: CaseClause, depth: number): void {
@@ -414,8 +529,55 @@ function printCaseClause(sb: StringBuilder, cc: CaseClause, depth: number): void
     sb.push("case ");
     for (let i = 0; i < cc.values.length; i++) {
       if (i > 0) sb.push(", ");
-      printExpr(sb, cc.values[i]);
+      printExpr(sb, cc.values[i], 0, depth);
     }
+    sb.push(":\n");
+  }
+  for (const stmt of cc.body) {
+    printStatement(sb, stmt, depth + 1);
+  }
+}
+
+function printIfContent(sb: StringBuilder, stmt: IfStmt, depth: number): void {
+  if (stmt.init) {
+    printStatementSimple(sb, stmt.init, depth);
+    sb.push("; ");
+  }
+  printExpr(sb, stmt.cond, 0, depth);
+  sb.push(" ");
+  printBlock(sb, stmt.body, depth);
+  if (stmt.elseStmt) {
+    sb.push(" else ");
+    if (stmt.elseStmt.kind === "IfStmt") {
+      sb.push("if ");
+      printIfContent(sb, stmt.elseStmt, depth);
+    } else {
+      printBlock(sb, stmt.elseStmt as BlockStmt, depth);
+    }
+  }
+}
+
+function printSelectBody(sb: StringBuilder, block: BlockStmt, depth: number): void {
+  const indent = getIndent(depth);
+  sb.push("{\n");
+  for (const item of block.list) {
+    if (item.kind === "CommClause") {
+      printCommClause(sb, item, depth);
+    } else {
+      printStatement(sb, item, depth + 1);
+    }
+  }
+  sb.push(`${indent}}`);
+}
+
+function printCommClause(sb: StringBuilder, cc: CommClause, depth: number): void {
+  const caseIndent = getIndent(depth);
+  if (!cc.comm) {
+    sb.push(`${caseIndent}default:\n`);
+  } else {
+    sb.push(caseIndent);
+    sb.push("case ");
+    printStatementSimple(sb, cc.comm, depth);
     sb.push(":\n");
   }
   for (const stmt of cc.body) {
@@ -462,14 +624,15 @@ export function printType(sb: StringBuilder, type: Type): void {
       printType(sb, type.value);
       break;
     case "StructType":
-      sb.push("struct {");
-      if (type.fields.length > 0) {
-        sb.push("\n");
+      if (type.fields.length === 0) {
+        sb.push("struct{}");
+      } else {
+        sb.push("struct {\n");
         for (const f of type.fields) {
           printFieldDecl(sb, f, 1);
         }
+        sb.push("}");
       }
-      sb.push("}");
       break;
     case "InterfaceType":
       sb.push("interface {");
@@ -531,6 +694,7 @@ function printFuncDecl(sb: StringBuilder, decl: FuncDecl, depth: number): void {
   if (decl.body) {
     sb.push(" ");
     printBlock(sb, decl.body, depth);
+    sb.push("\n");
   } else {
     sb.push("\n");
   }
@@ -553,13 +717,15 @@ function printGenDecl(sb: StringBuilder, decl: GenDecl, depth: number): void {
     sb.push(`${indent})`);
   } else if (decl.specs.length === 1) {
     sb.push(" ");
-    printSpec(sb, decl.specs[0], depth);
+    printSpec(sb, decl.specs[0], 0);
   }
   sb.push("\n");
 }
 
 function printSpec(sb: StringBuilder, spec: Spec, depth: number): void {
   const indent = getIndent(depth);
+  const doc: CommentGroup | undefined = spec.kind === "ImportSpec" ? spec.comment : spec.doc;
+  if (doc) printCommentGroup(sb, doc, depth);
   switch (spec.kind) {
     case "ImportSpec":
       sb.push(indent);

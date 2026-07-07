@@ -38,6 +38,7 @@
     "docs:preview": "vitepress preview docs"
   },
   "dependencies": {
+    "@schemago/go-ast": "workspace:*",
     "semver": "^7.8.5",
     "tsx": "^4.20.3",
     "zod": "^3.25.67"

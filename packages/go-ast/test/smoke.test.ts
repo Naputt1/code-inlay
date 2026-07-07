@@ -2,18 +2,20 @@ import { describe, it, expect } from "vitest";
 import * as go from "../src/index.js";
 
 describe("@schemago/go-ast", () => {
-
   it("builds a simple struct and prints it", () => {
-    const f = go.file("entity",
-      go.genDecl("import",
-        go.importSpec("time"),
-      ),
-      go.genDecl("type",
-        go.typeSpec("User", go.structType(
-          go.field(["ID"], go.id("string"), go.tag({ json: "id" })),
-          go.field(["Name"], go.id("string"), go.tag({ json: "name" })),
-          go.field(["Age"], go.id("int")),
-        )),
+    const f = go.file(
+      "entity",
+      go.genDecl("import", go.importSpec("time")),
+      go.genDecl(
+        "type",
+        go.typeSpec(
+          "User",
+          go.structType(
+            go.field(["ID"], go.id("string"), go.tag({ json: "id" })),
+            go.field(["Name"], go.id("string"), go.tag({ json: "name" })),
+            go.field(["Age"], go.id("int")),
+          ),
+        ),
       ),
     );
 
@@ -30,12 +32,7 @@ describe("@schemago/go-ast", () => {
       "NewHandler",
       [go.field(["name"], go.id("string"))],
       [go.field([], go.star(go.qual("handler", "Handler")))],
-      go.block(
-        go.return_(go.addr(go.elt(
-          go.id("Handler"),
-          go.kv("name", go.id("name")),
-        ))),
-      ),
+      go.block(go.return_(go.addr(go.elt(go.id("Handler"), go.kv("name", go.id("name")))))),
     );
 
     const f = go.file("handler", fn);
@@ -51,9 +48,7 @@ describe("@schemago/go-ast", () => {
       "Serve",
       [go.field([], go.id("string"))],
       undefined,
-      go.block(
-        go.return_(go.str("ok")),
-      ),
+      go.block(go.return_(go.str("ok"))),
     );
 
     const f = go.file("handler", m);
@@ -74,9 +69,7 @@ describe("@schemago/go-ast", () => {
         go.ifStmt(
           go.binary(go.id("input"), "==", go.id("nil")),
           go.block(
-            go.expr(go.call(go.sel(go.id("c"), "JSON"),
-              go.int(400), go.qual("gin", "H")),
-            ),
+            go.expr(go.call(go.sel(go.id("c"), "JSON"), go.int(400), go.qual("gin", "H"))),
             go.return_(),
           ),
         ),
@@ -84,10 +77,9 @@ describe("@schemago/go-ast", () => {
       ),
     );
 
-    const f = go.file("handler",
-      go.genDecl("import",
-        go.importSpec("github.com/gin-gonic/gin"),
-      ),
+    const f = go.file(
+      "handler",
+      go.genDecl("import", go.importSpec("github.com/gin-gonic/gin")),
       handler,
     );
 
@@ -97,14 +89,12 @@ describe("@schemago/go-ast", () => {
   });
 
   it("walks and finds nodes", () => {
-    const f = go.file("test",
-      go.genDecl("type",
-        go.typeSpec("Foo", go.structType(
-          go.field(["x"], go.id("string")),
-        )),
-        go.typeSpec("Bar", go.structType(
-          go.field(["y"], go.id("int")),
-        )),
+    const f = go.file(
+      "test",
+      go.genDecl(
+        "type",
+        go.typeSpec("Foo", go.structType(go.field(["x"], go.id("string")))),
+        go.typeSpec("Bar", go.structType(go.field(["y"], go.id("int")))),
       ),
     );
 
@@ -113,12 +103,9 @@ describe("@schemago/go-ast", () => {
   });
 
   it("transforms node tree", () => {
-    const f = go.file("test",
-      go.genDecl("type",
-        go.typeSpec("User", go.structType(
-          go.field(["Name"], go.id("string")),
-        )),
-      ),
+    const f = go.file(
+      "test",
+      go.genDecl("type", go.typeSpec("User", go.structType(go.field(["Name"], go.id("string"))))),
     );
 
     const result = go.transform(f, {

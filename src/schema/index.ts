@@ -15,6 +15,7 @@ import {
   isZodLiteral,
   unwrap,
 } from "./extras.js";
+import { renderStructAST, renderEntityStructAST } from "./goast-render.js";
 
 export type GoField = {
   name: string;
@@ -559,20 +560,7 @@ function schemaToGoType(schema: SchemaLike, diagnostics: Diagnostic[]): string {
   return type;
 }
 
-function renderEntityStruct(goStruct: GoStruct): string {
-  if (goStruct.fields.length === 0) {
-    return `type ${goStruct.name} struct{}`;
-  }
-  const fields = goStruct.fields
-    .map((field) => {
-      const omitempty = field.optional ? ",omitempty" : "";
-      return `\t${field.name} ${field.type} \`json:"${field.jsonName}${omitempty}"\``;
-    })
-    .join("\n");
-  return `type ${goStruct.name} struct {\n${fields}\n}`;
-}
-
-function renderStruct(goStruct: GoStruct, responseContext: boolean = false): string {
+export function renderStructLegacy(goStruct: GoStruct, responseContext: boolean = false): string {
   if (goStruct.fields.length === 0) {
     return `type ${goStruct.name} struct{}`;
   }
@@ -594,6 +582,27 @@ function renderStruct(goStruct: GoStruct, responseContext: boolean = false): str
     .join("\n");
 
   return `type ${goStruct.name} struct {\n${fields}\n}`;
+}
+
+export function renderEntityStructLegacy(goStruct: GoStruct): string {
+  if (goStruct.fields.length === 0) {
+    return `type ${goStruct.name} struct{}`;
+  }
+  const fields = goStruct.fields
+    .map((field) => {
+      const omitempty = field.optional ? ",omitempty" : "";
+      return `\t${field.name} ${field.type} \`json:"${field.jsonName}${omitempty}"\``;
+    })
+    .join("\n");
+  return `type ${goStruct.name} struct {\n${fields}\n}`;
+}
+
+function renderStruct(goStruct: GoStruct, responseContext: boolean = false): string {
+  return renderStructAST(goStruct, responseContext);
+}
+
+function renderEntityStruct(goStruct: GoStruct): string {
+  return renderEntityStructAST(goStruct);
 }
 
 export function generateNamedStructs(
