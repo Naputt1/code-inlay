@@ -1,0 +1,188 @@
+import * as go from "@schemago/go-ast";
+import { toGoType } from "../utils/go-ast.js";
+import type {
+  AppServiceDef,
+  BackendExtension,
+  RepositoryMethod,
+  RouteAst,
+} from "../types/index.js";
+import { lowerIdent, pascalCase } from "../utils/naming.js";
+import type { ScaffoldPart } from "./types.js";
+import {
+  inferRepositoryMethod,
+  generateDialectMethodPart,
+} from "./repository-legacy.js";
+
+function parseParams(params: string): go.Field[] {
+  if (!params.trim()) return [];
+  return params.split(", ").map((p) => {
+    const lastSpace = p.lastIndexOf(" ");
+    const name = p.slice(0, lastSpace);
+    const typeStr = p.slice(lastSpace + 1);
+    return go.field([name], toGoType(typeStr));
+  });
+}
+
+function parseResults(results: string): go.Field[] {
+  if (results === "error") {
+    return [go.field([], go.id("error"))];
+  }
+  const inner = results.startsWith("(") && results.endsWith(")")
+    ? results.slice(1, -1)
+    : results;
+  const parts = inner.split(", ").map((s) => s.trim()).filter(Boolean);
+  return parts.map((t) => go.field([], toGoType(t)));
+}
+
+function renderRepoInterface(
+  typeName: string,
+  methods: RepositoryMethod[],
+): string {
+  if (methods.length === 0) {
+    return [
+      `type ${typeName}Repository interface {`,
+      `\t// Add developer-owned persistence methods outside generated regions as needed.`,
+      `}`,
+    ].join("\n");
+  }
+  const body = methods
+    .map((m) => `\t${m.name}(${m.params}) ${m.results}`)
+    .join("\n");
+  return [`type ${typeName}Repository interface {`, body, `}`].join("\n");
+}
+
+function renderRepoStruct(implName: string, dbType: string | undefined): string {
+  if (!dbType) {
+    return `type ${implName} struct {}`;
+  }
+  const f = go.field(["db"], toGoType(dbType));
+  const st = go.structType(f);
+  const spec = go.typeSpec(implName, st);
+  const decl = go.genDecl("type", spec);
+  const sb = new go.StringBuilder();
+  go.printDeclaration(sb, decl, 0);
+  return sb.toString().trimEnd();
+}
+
+function renderCtorSignature(
+  typeName: string,
+  implName: string,
+  dbType: string | undefined,
+): string {
+  const params = dbType ? [go.field(["db"], toGoType(dbType))] : [];
+  const results = [go.field([], go.star(go.id(implName)))];
+  const fn = go.function_(`New${typeName}Repository`, params, results);
+  const sb = new go.StringBuilder();
+  go.printDeclaration(sb, fn, 0);
+  return sb.toString().trimEnd();
+}
+
+export function generateRepository(
+  routes: RouteAst[],
+  moduleName: string,
+  dbProvider: AppServiceDef | undefined,
+  extensions: BackendExtension[],
+): ScaffoldPart[] {
+  const typeName = pascalCase(moduleName);
+  const baseEntity = typeName;
+  const implName = `${lowerIdent(moduleName)}RepositoryImpl`;
+  const dbType = dbProvider?.dbType ?? "*gorm.DB";
+  const dbTypePkg = dbProvider?.dbTypePkg ?? "";
+  const dialect = dbProvider?.extension;
+  const seen = new Map<string, RepositoryMethod>();
+
+  for (const route of routes) {
+    const method = inferRepositoryMethod(route, moduleName);
+    if (!method) continue;
+    const key = `${method.name}(${method.params})`;
+    if (!seen.has(key)) {
+      seen.set(key, method);
+    }
+  }
+
+  const parts: ScaffoldPart[] = [];
+
+  if (dbProvider) {
+    const importLines = [`import (`, `\t"context"`];
+    if (dbTypePkg) importLines.push(`\t"${dbTypePkg}"`);
+    importLines.push(`)`);
+    parts.push({
+      kind: "imports" as const,
+      symbolName: "",
+      content: importLines.join("\n"),
+      expectsUserCode: false,
+      isStub: false,
+      imports: [...(dbTypePkg ? ["context", dbTypePkg] : ["context"])],
+    });
+  }
+
+  if (seen.size === 0) {
+    parts.push({
+      kind: "interface" as const,
+      symbolName: `${typeName}Repository`,
+      content: renderRepoInterface(typeName, []),
+      expectsUserCode: false,
+      isStub: false,
+    });
+
+    parts.push({
+      kind: "struct" as const,
+      symbolName: implName,
+      content: renderRepoStruct(implName, undefined),
+      expectsUserCode: false,
+      isStub: false,
+    });
+
+    const ctorSig = renderCtorSignature(typeName, implName, undefined);
+    parts.push({
+      kind: "function" as const,
+      symbolName: `New${typeName}Repository`,
+      signature: ctorSig,
+      content: `\treturn &${implName}{}`,
+      expectsUserCode: false,
+      isStub: false,
+    });
+  } else {
+    parts.push({
+      kind: "interface" as const,
+      symbolName: `${typeName}Repository`,
+      content: renderRepoInterface(typeName, [...seen.values()]),
+      expectsUserCode: false,
+      isStub: false,
+    });
+
+    if (dbProvider) {
+      parts.push({
+        kind: "struct" as const,
+        symbolName: implName,
+        content: renderRepoStruct(implName, dbType),
+        expectsUserCode: false,
+        isStub: false,
+      });
+
+      const ctorSig = renderCtorSignature(typeName, implName, dbType);
+      parts.push({
+        kind: "function" as const,
+        symbolName: `New${typeName}Repository`,
+        signature: ctorSig,
+        content: `\treturn &${implName}{db: db}`,
+        expectsUserCode: false,
+        isStub: false,
+      });
+
+      for (const method of seen.values()) {
+        const methodPart = generateDialectMethodPart(
+          method,
+          baseEntity,
+          implName,
+          dialect,
+          extensions,
+          dbProvider.extensionOptions,
+        );
+        if (methodPart) parts.push(methodPart);
+      }
+    }
+  }
+
+  return parts;
+}

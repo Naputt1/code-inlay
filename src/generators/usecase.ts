@@ -8,7 +8,8 @@ function shortHash(id: string): string {
   return createHash("sha256").update(id).digest("hex").slice(0, 8);
 }
 
-export function generateUsecaseInterface(route: RouteAst, hasDomain?: boolean): string {
+/** @deprecated Use generateUsecaseInterface from ./usecase-goast.js */
+export function generateUsecaseInterfaceLegacy(route: RouteAst, hasDomain?: boolean): string {
   const respType = responseType(route);
   let executeParams: string;
   if (hasDomain) {
@@ -30,7 +31,8 @@ export function generateUsecaseInterface(route: RouteAst, hasDomain?: boolean): 
   );
 }
 
-export function generateUsecaseScaffold(
+/** @deprecated Use generateUsecaseScaffold from ./usecase-goast.js */
+export function generateUsecaseScaffoldLegacy(
   route: RouteAst,
   moduleName: string,
   hasRepository: boolean,
@@ -293,3 +295,5 @@ function repoMethodName(
       return "";
   }
 }
+
+export { generateUsecaseInterface, generateUsecaseScaffold } from "./usecase-goast.js";
