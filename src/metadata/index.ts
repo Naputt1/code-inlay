@@ -1,28 +1,14 @@
 import type { AppAst, GeneratedFilePatch, RouteAst, RouteLikeAst } from "../types/index.js";
 import { pascalCase } from "../utils/naming.js";
 import { stableHash } from "../utils/hash.js";
+import { generateRegistryGo, generateSchemaReflection } from "./metadata-goast.js";
 
 export function generateMetadata(ast: AppAst): GeneratedFilePatch[] {
   if (!ast.options.metadata?.enabled) return [];
 
   const patches: GeneratedFilePatch[] = [];
 
-  const routeInfos: string[] = [];
-  const moduleInfos: Map<string, string[]> = new Map();
-
-  for (const module of ast.modules) {
-    const moduleRoutes: string[] = [];
-
-    for (const route of module.routes) {
-      const routeInfo = generateRouteInfo(route);
-      routeInfos.push(routeInfo);
-      moduleRoutes.push(routeInfo);
-    }
-
-    moduleInfos.set(module.name, moduleRoutes);
-  }
-
-  const registryContent = generateRegistryGo(ast, moduleInfos);
+  const registryContent = generateRegistryGo(ast);
   patches.push({
     path: "internal/metadata/registry.go",
     regions: [
@@ -68,7 +54,7 @@ function generateRouteInfo(route: RouteLikeAst): string {
   return `{ID: "${route.id}", Method: "${typeLabel}", Path: "${route.fullPath}", Handler: "${route.handlerName}", Module: "${route.moduleName}"}`;
 }
 
-function generateRegistryGo(ast: AppAst, moduleInfos: Map<string, string[]>): string {
+function generateRegistryGoLegacy(ast: AppAst, moduleInfos: Map<string, string[]>): string {
   const lines: string[] = [];
 
   lines.push(`package metadata`);
@@ -111,7 +97,7 @@ function generateRegistryGo(ast: AppAst, moduleInfos: Map<string, string[]>): st
   return lines.join("\n");
 }
 
-function generateSchemaReflection(route: RouteAst | RouteLikeAst): string {
+function generateSchemaReflectionLegacy(route: RouteAst | RouteLikeAst): string {
   if (route.kind !== "Route") return "";
   const lines: string[] = [];
 
