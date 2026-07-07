@@ -29,7 +29,7 @@ function renderEnvString(s: string, env?: Record<string, EnvVarInfo>): string {
 export const serverFilePath = "cmd/server/main.go";
 export const serverMainRegionId = "server.main";
 
-export function generateServer(
+export function generateServerLegacy(
   ast: AppAst,
   architecture: ArchitectureAst,
   moduleInfo: GoModuleInfo,
@@ -260,3 +260,5 @@ function generateLoggerInit(loggerConfig: NonNullable<RuntimeConfig["logger"]>):
     `\truntime.SetDefaultLogger(logger)`,
   ];
 }
+
+export { generateServer } from "./server-goast.js";
