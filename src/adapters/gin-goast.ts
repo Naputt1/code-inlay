@@ -829,7 +829,7 @@ function generateWSNegotiationPreamble(
       upgraderFields.push(
         go.kv(go.id("Subprotocols"),
           go.elt(go.sliceType(go.id("string")),
-            ...Object.keys(codec.codecs).map((k) => go.kv(go.id(""), go.str(k))),
+            ...Object.keys(codec.codecs).map((k) => go.str(k)),
           ),
         ),
       );
