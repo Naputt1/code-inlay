@@ -11,11 +11,11 @@ import (
 )
 
 type OrdersHandler struct {
-	CreateUsecase CreateUsecase
-	ListUsecase ListUsecase
-	GetUsecase GetUsecase
-	CancelUsecase CancelUsecase
-	TrackOrderUsecase TrackOrderUsecase
+	CreateUsecase             CreateUsecase
+	ListUsecase               ListUsecase
+	GetUsecase                GetUsecase
+	CancelUsecase             CancelUsecase
+	TrackOrderUsecase         TrackOrderUsecase
 	AdminListAllOrdersUsecase AdminListAllOrdersUsecase
 }
 
@@ -29,8 +29,8 @@ func (h *OrdersHandler) AdminListAllOrders(c *gin.Context) {
 	output, err := h.AdminListAllOrdersUsecase.Execute(c.Request.Context(), input)
 	if err != nil {
 		var httpErr interface {
-	HTTPStatus() int
-}
+			HTTPStatus() int
+		}
 		if errors.As(err, &httpErr) {
 			c.JSON(httpErr.HTTPStatus(), err)
 		} else {
@@ -54,8 +54,8 @@ func (h *OrdersHandler) Cancel(c *gin.Context) {
 	output, err := h.CancelUsecase.Execute(c.Request.Context(), input)
 	if err != nil {
 		var httpErr interface {
-	HTTPStatus() int
-}
+			HTTPStatus() int
+		}
 		if errors.As(err, &httpErr) {
 			c.JSON(httpErr.HTTPStatus(), err)
 		} else {
@@ -82,8 +82,8 @@ func (h *OrdersHandler) Create(c *gin.Context) {
 	output, err := h.CreateUsecase.Execute(c.Request.Context(), entity)
 	if err != nil {
 		var httpErr interface {
-	HTTPStatus() int
-}
+			HTTPStatus() int
+		}
 		if errors.As(err, &httpErr) {
 			c.JSON(httpErr.HTTPStatus(), err)
 		} else {
@@ -101,8 +101,8 @@ func (h *OrdersHandler) Get(c *gin.Context) {
 	output, err := h.GetUsecase.Execute(c.Request.Context(), id)
 	if err != nil {
 		var httpErr interface {
-	HTTPStatus() int
-}
+			HTTPStatus() int
+		}
 		if errors.As(err, &httpErr) {
 			c.JSON(httpErr.HTTPStatus(), err)
 		} else {
@@ -125,8 +125,8 @@ func (h *OrdersHandler) List(c *gin.Context) {
 	output, err := h.ListUsecase.Execute(c.Request.Context(), input)
 	if err != nil {
 		var httpErr interface {
-	HTTPStatus() int
-}
+			HTTPStatus() int
+		}
 		if errors.As(err, &httpErr) {
 			c.JSON(httpErr.HTTPStatus(), err)
 		} else {
@@ -142,8 +142,8 @@ func (h *OrdersHandler) List(c *gin.Context) {
 func (h *OrdersHandler) TrackOrder(c *gin.Context) {
 	upgrader := websocket.Upgrader{
 		Subprotocols: []string{
-			: "json",
-			: "protobuf",
+			"json",
+			"protobuf",
 		},
 	}
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
