@@ -5,41 +5,6 @@ import {
   renderModuleErrors as renderModuleErrorsAST,
 } from "./errors-goast.js";
 
-export const httpStatusConsts: Record<number, string> = {
-  400: "http.StatusBadRequest",
-  401: "http.StatusUnauthorized",
-  402: "http.StatusPaymentRequired",
-  403: "http.StatusForbidden",
-  404: "http.StatusNotFound",
-  405: "http.StatusMethodNotAllowed",
-  406: "http.StatusNotAcceptable",
-  408: "http.StatusRequestTimeout",
-  409: "http.StatusConflict",
-  410: "http.StatusGone",
-  411: "http.StatusLengthRequired",
-  412: "http.StatusPreconditionFailed",
-  413: "http.StatusRequestEntityTooLarge",
-  414: "http.StatusRequestURITooLong",
-  415: "http.StatusUnsupportedMediaType",
-  416: "http.StatusRequestedRangeNotSatisfiable",
-  417: "http.StatusExpectationFailed",
-  418: "http.StatusTeapot",
-  421: "http.StatusMisdirectedRequest",
-  422: "http.StatusUnprocessableEntity",
-  423: "http.StatusLocked",
-  424: "http.StatusFailedDependency",
-  426: "http.StatusUpgradeRequired",
-  428: "http.StatusPreconditionRequired",
-  429: "http.StatusTooManyRequests",
-  431: "http.StatusRequestHeaderFieldsTooLarge",
-  451: "http.StatusUnavailableForLegalReasons",
-  500: "http.StatusInternalServerError",
-  501: "http.StatusNotImplemented",
-  502: "http.StatusBadGateway",
-  503: "http.StatusServiceUnavailable",
-  504: "http.StatusGatewayTimeout",
-};
-
 const standardErrors: { name: string; httpStatus: number }[] = [
   { name: "BadRequest", httpStatus: 400 },
   { name: "Unauthorized", httpStatus: 401 },
@@ -131,18 +96,7 @@ export function generateModuleErrors(
   ];
 }
 
-export function collectModuleErrors(routes: RouteAst[]): ErrorDefinition[] {
-  const seen = new Map<string, ErrorDefinition>();
-  for (const route of routes) {
-    if (!("errors" in route)) continue;
-    for (const err of route.errors) {
-      if (!seen.has(err.name)) {
-        seen.set(err.name, err);
-      }
-    }
-  }
-  return Array.from(seen.values());
-}
+export { collectModuleErrors } from "./errors-goast.js";
 
 type ErrorStruct = {
   name: string;

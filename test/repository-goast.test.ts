@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { AppServiceDef, BackendExtension, RouteAst } from "../src/types/index.js";
-import { generateRepository } from "../src/generators/repository.js";
+import { generateRepository } from "../src/generators/repository-goast.js";
 
 function mockRoute(overrides: Partial<RouteAst> = {}): RouteAst {
   return {
