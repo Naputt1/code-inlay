@@ -1,4 +1,4 @@
-import * as go from "@schemago/go-ast";
+import * as go from "@schemago/goast";
 import { serviceConstructorName } from "../utils/naming.js";
 import type {
   AppAst,

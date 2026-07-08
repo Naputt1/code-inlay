@@ -16,7 +16,7 @@ function routeModule(moduleName: string, name: string, layers: string[]): RouteE
   };
 }
 
-describe("go-ast handler struct generation", () => {
+describe("goast handler struct generation", () => {
   it("1. no routes returns empty array", () => {
     const arch: ArchitectureAst = { nodes: [], routes: [] };
     const result = generateHandlerStructs(arch);

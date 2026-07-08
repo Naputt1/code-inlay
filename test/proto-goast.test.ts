@@ -8,7 +8,7 @@ import {
   generateToProtoBytesFunc,
 } from "../src/targets/proto.js";
 
-describe("go-ast proto generation", () => {
+describe("goast proto generation", () => {
   it("1. empty struct — no fields", () => {
     const msg: ProtoMessage = { name: "Empty", fields: [] };
     const result = generateStubPbGoContent("pkg", [msg], []);

@@ -117,7 +117,7 @@ function compare(ast: AppAst) {
   expect(new_).toEqual(old_);
 }
 
-describe("go-ast middleware generation", () => {
+describe("goast middleware generation", () => {
   it("1. single middleware with default handler name", () => {
     compare(makeAst([{ name: "RateLimit" }]));
   });

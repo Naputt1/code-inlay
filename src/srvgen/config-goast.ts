@@ -1,4 +1,4 @@
-import * as go from "@schemago/go-ast";
+import * as go from "@schemago/goast";
 import type { EnvVarInfo, GeneratedFilePatch } from "../types/index.js";
 import type { GoModuleInfo } from "../utils/env.js";
 

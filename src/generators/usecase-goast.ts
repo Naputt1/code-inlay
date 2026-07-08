@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
-import * as go from "@schemago/go-ast";
-import { toGoType } from "../utils/go-ast.js";
+import * as go from "@schemago/goast";
+import { toGoType } from "../utils/goast.js";
 import type { RouteAst } from "../types/index.js";
 import { extractEntityContext, requestType, responseType } from "../schema/index.js";
 import { extractPathParams, lowerIdent, pascalCase } from "../utils/naming.js";

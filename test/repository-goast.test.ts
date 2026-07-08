@@ -23,7 +23,7 @@ function mockRoute(overrides: Partial<RouteAst> = {}): RouteAst {
   } as RouteAst;
 }
 
-describe("go-ast repository generation", () => {
+describe("goast repository generation", () => {
   it("1. empty repo — no routes, no db", () => {
     const result = generateRepository([], "user", undefined, []);
     expect(result.length).toBeGreaterThan(0);

@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────
-// @schemago/go-ast — Visitor / traversal utilities
+// @schemago/goast — Visitor / traversal utilities
 // ─────────────────────────────────────────────────────────────
 
 import type {

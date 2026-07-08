@@ -30,7 +30,7 @@ function ifaceResult(route: RouteAst, hasDomain?: boolean): string {
   return generateUsecaseInterface(route, hasDomain);
 }
 
-describe("go-ast usecase interface generation", () => {
+describe("goast usecase interface generation", () => {
   it("1. without domain", () => {
     const route = mockRoute({});
     const result = ifaceResult(route);
@@ -105,7 +105,7 @@ function scaffoldResult(
   return generateUsecaseScaffold(route, moduleName, hasRepository, serviceTypes, hasDomain);
 }
 
-describe("go-ast usecase scaffold generation", () => {
+describe("goast usecase scaffold generation", () => {
   it("1. no repository, no services", () => {
     const result = scaffoldResult(mockRoute({}), "user", false, []);
     expect(result.length).toBe(3);

@@ -35,7 +35,7 @@ async function buildBase() {
   return compile({ app, dryRun: true });
 }
 
-describe("generateServer — go-ast", () => {
+describe("generateServer — goast", () => {
   it("minimal (gin, no services, no config, no logger, no CORS)", async () => {
     const result = await buildBase();
     const patch = generateServer(result.ast!, result.architecture!, moduleInfo, mockAdapter);

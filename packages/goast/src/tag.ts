@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────
-// @schemago/go-ast — Go struct tag parser / builder
+// @schemago/goast — Go struct tag parser / builder
 // ─────────────────────────────────────────────────────────────
 
 import type { Tag } from "./nodes.js";

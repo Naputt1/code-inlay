@@ -1,4 +1,4 @@
-import * as go from "@schemago/go-ast";
+import * as go from "@schemago/goast";
 
 export function toGoType(typeStr: string): go.Type {
   if (typeStr.startsWith("[]")) {

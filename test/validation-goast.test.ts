@@ -3,7 +3,7 @@ import { validationZ } from "../src/schema/extras.js";
 import { z } from "../src/index.js";
 import { generateBindingErrorFunction } from "../src/generators/validation.js";
 
-describe("go-ast validation — output contains expected Go constructs", () => {
+describe("goast validation — output contains expected Go constructs", () => {
   it("1. no body schema", () => {
     const result = generateBindingErrorFunction({ httpStatus: 400 });
     expect(result).toContain("func ResolveBindingError(err error) (int, any) {");

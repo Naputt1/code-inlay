@@ -1,4 +1,4 @@
-import * as go from "@schemago/go-ast";
+import * as go from "@schemago/goast";
 import type { AppAst, AppServiceDef, ArchitectureAst } from "../types/index.js";
 import type { GoModuleInfo } from "../utils/env.js";
 import { featuresPath, lowerIdent, pascalCase, serviceTypeName } from "../utils/naming.js";

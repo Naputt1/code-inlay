@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { renderStandardErrors, renderModuleErrors } from "../src/generators/errors-goast.js";
 import { httpStatusConsts } from "../src/generators/errors-goast.js";
 
-describe("go-ast errors generation — standard errors", () => {
+describe("goast errors generation — standard errors", () => {
   it("1. single standard error — BadRequest", () => {
     const structs = [
       {
@@ -98,7 +98,7 @@ func (e *BadRequest) HTTPStatus() int {
   });
 });
 
-describe("go-ast errors generation — module errors", () => {
+describe("goast errors generation — module errors", () => {
   it("3. module error with no fields", () => {
     const structs = [{ name: "NotFound", fields: [], httpStatus: 404 }];
     const result = renderModuleErrors("test", structs);

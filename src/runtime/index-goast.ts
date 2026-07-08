@@ -1,7 +1,7 @@
 import type { AppAst, RuntimeConfig, GeneratedFilePatch } from "../types/index.js";
 import { contentHash } from "../utils/hash.js";
 import { generateLoggerCode } from "./loggers-goast.js";
-import * as go from "@schemago/go-ast";
+import * as go from "@schemago/goast";
 
 function printDecl(decl: go.Declaration): string {
   const sb = new go.StringBuilder();
