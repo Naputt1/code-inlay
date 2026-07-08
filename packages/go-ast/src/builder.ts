@@ -12,6 +12,7 @@ import type {
   File,
   Ident,
   BasicLit,
+  CommentStmt,
   StarExpr,
   SelectorExpr,
   CallExpr,
@@ -148,8 +149,8 @@ export function kv(key: Expression | string, value: Expression): KeyValueExpr {
   return { kind: "KeyValueExpr", key: k, value };
 }
 
-export function elt(type: Type, ...kvs: KeyValueExpr[]): CompositeLit {
-  return { kind: "CompositeLit", type, elts: kvs, incomplete: true };
+export function elt(type: Type, ...elts: Expression[]): CompositeLit {
+  return { kind: "CompositeLit", type, elts, incomplete: true };
 }
 
 export function index(x: Expression, index: Expression): IndexExpr {
@@ -177,6 +178,10 @@ export function badExpr(): BadExpr {
 }
 
 // ─── Statement shortcuts ───────────────────────────────────
+
+export function commentStmt(text: string): CommentStmt {
+  return { kind: "CommentStmt", text };
+}
 
 export function block(...stmts: Statement[]): BlockStmt {
   return { kind: "BlockStmt", list: stmts };

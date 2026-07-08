@@ -144,10 +144,11 @@ export type ChanDir = "send" | "recv" | "both";
 
 export type Field = {
   kind: "Field";
-  names: string[]; // empty for embedded/anonymous fields
+  names: string[];
   type: Type;
   tag?: Tag;
   embedded?: boolean;
+  variadic?: boolean;
   doc?: CommentGroup;
   comment?: CommentGroup;
 };
@@ -304,6 +305,7 @@ export type KeyValueExpr = {
 // ─── Statements ────────────────────────────────────────────
 
 export type Statement =
+  | CommentStmt
   | DeclStmt
   | EmptyStmt
   | LabeledStmt
@@ -328,6 +330,11 @@ export type Statement =
 export type DeclStmt = {
   kind: "DeclStmt";
   decl: Declaration;
+};
+
+export type CommentStmt = {
+  kind: "CommentStmt";
+  text: string;
 };
 
 export type EmptyStmt = {
