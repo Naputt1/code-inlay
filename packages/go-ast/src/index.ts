@@ -116,6 +116,8 @@ export {
   ifStmt,
   forStmt,
   rangeStmt,
+  sendStmt,
+  emptyStmt,
   goStmt,
   defer,
   declStmt,

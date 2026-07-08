@@ -235,6 +235,14 @@ export function rangeStmt(
   return { kind: "RangeStmt", key, value, token, expr, body };
 }
 
+export function sendStmt(chanExpr: Expression, valueExpr: Expression): SendStmt {
+  return { kind: "SendStmt", chan: chanExpr, value: valueExpr };
+}
+
+export function emptyStmt(): EmptyStmt {
+  return { kind: "EmptyStmt" };
+}
+
 export function goStmt(call: CallExpr): GoStmt {
   return { kind: "GoStmt", call };
 }
