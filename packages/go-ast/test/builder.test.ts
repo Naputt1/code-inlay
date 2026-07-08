@@ -502,6 +502,48 @@ describe("file", () => {
   });
 });
 
+// ─── Printing with generics ────────────────────────────────────
+describe("printing with generics", () => {
+  it("type with generic parameters", () => {
+    const tp = [go.field(["T"], go.id("any"))];
+    const spec = go.typeSpec("List", go.sliceType(go.id("T")), tp);
+    const decl = go.genDecl("type", spec);
+    const f = go.file("main", decl);
+    expect(go.printFile(f)).toBe(
+      `package main\n\ntype List[T any] []T\n`,
+    );
+  });
+
+  it("function with generic parameters", () => {
+    const tp = [
+      go.field(["T"], go.id("any")),
+      go.field(["U"], go.id("any")),
+    ];
+    const params = [go.field(["input"], go.id("T"))];
+    const results = [go.field([], go.id("U"))];
+    const ft = go.funcType(params, results);
+    ft.typeParams = tp;
+    const fn = go.funcDecl("Map", undefined, ft, go.block(go.return_(go.id("input"))));
+    const f = go.file("main", fn);
+    expect(go.printFile(f)).toBe(
+      `package main\n\nfunc Map[T any, U any](input T) U {\n\treturn input\n}\n`,
+    );
+  });
+
+  it("method with generic receiver", () => {
+    const tp = [go.field(["T"], go.id("any"))];
+    const recv = go.field(["s"], go.id("Stack[T]"));
+    const params = [go.field(["v"], go.id("T"))];
+    const ft = go.funcType(params);
+    ft.typeParams = tp;
+    const fn = go.funcDecl("Push", recv, ft, go.block());
+    const f = go.file("main", fn);
+    expect(go.printFile(f)).toBe(
+      `package main\n\nfunc (s Stack[T]) Push[T any](v T) {\n}\n`,
+    );
+  });
+});
+
 // ─── Tags ─────────────────────────────────────────────────────
 describe("tags", () => {
   it("tag with single key", () => {
