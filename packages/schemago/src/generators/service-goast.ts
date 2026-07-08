@@ -190,9 +190,7 @@ export function generateServiceFile(
   }
   const ctorArg = ctorFieldParts.join(", ");
 
-  const ctorBody = svc.ctor?.body
-    ? svc.ctor.body
-    : `\treturn &${implName}{${ctorArg}}, nil`;
+  const ctorBody = svc.ctor?.body ? svc.ctor.body : `\treturn &${implName}{${ctorArg}}, nil`;
 
   parts.push({
     kind: "function" as const,

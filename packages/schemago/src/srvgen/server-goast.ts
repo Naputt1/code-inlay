@@ -172,10 +172,7 @@ export function generateServer(
       addRaw(`\t${varName}, err := service.${ctorName}(${ctorArgs})`);
     } else {
       addStmt(
-        go.def(
-          [go.id(varName), go.id("err")],
-          [go.call(go.sel(go.id("service"), ctorName))],
-        ),
+        go.def([go.id(varName), go.id("err")], [go.call(go.sel(go.id("service"), ctorName))]),
       );
     }
     addStmt(
