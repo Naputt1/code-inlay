@@ -1,64 +1,30 @@
 {
-  "name": "@schemago/schemago",
-  "version": "0.0.1",
+  "private": true,
   "type": "module",
-  "files": [
-    "dist"
-  ],
-  "publishConfig": {
-    "access": "public",
-    "provenance": true
-  },
   "packageManager": "pnpm@11.6.0",
-  "bin": {
-    "schemago": "./dist/cli.js"
-  },
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    }
-  },
   "scripts": {
-    "build": "tsup src/index.ts src/cli.ts --format esm --dts --clean --splitting false",
-    "prebuild": "turbo run build --filter=@schemago/goast",
-    "postinstall": "cd tools/decl-parser && go build -o decl-parser . || true",
-    "check": "pnpm run lint && pnpm run format && pnpm run typecheck",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "check": "pnpm lint && pnpm format && turbo run typecheck",
     "lint": "eslint .",
     "format": "prettier --check .",
     "format:fix": "prettier --write .",
-    "test": "vitest run",
-    "coverage": "vitest run --coverage",
-    "generate": "node dist/cli.js generate --config backend.config.ts --cwd sample-project/maemoo",
-    "typecheck": "tsc --noEmit",
-    "snapshot:update": "UPDATE_SNAPSHOT=true vitest run test/snapshot.test.ts",
-    "docs:dev": "vitepress dev docs",
     "changeset": "changeset",
     "version-packages": "changeset version",
+    "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs"
-  },
-  "dependencies": {
-    "@schemago/goast": "workspace:*",
-    "semver": "^7.8.5",
-    "tsx": "^4.20.3",
-    "zod": "^3.25.67"
   },
   "devDependencies": {
     "@changesets/cli": "^2.31.0",
     "@eslint/js": "^10.0.1",
-    "@types/node": "^24.0.3",
-    "@types/semver": "^7.7.1",
-    "@vitest/coverage-v8": "^3.2.6",
-    "@vitest/ui": "3.2.6",
     "eslint": "^10.5.0",
     "eslint-config-prettier": "^10.1.8",
     "prettier": "^3.8.4",
-    "tsup": "^8.5.0",
     "turbo": "^2.10.4",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.61.1",
-    "vitepress": "^1.6.4",
-    "vitest": "^3.2.4"
+    "vitepress": "^1.6.4"
   }
 }
