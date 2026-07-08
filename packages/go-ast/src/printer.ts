@@ -25,6 +25,7 @@ import type {
   BinaryExpr,
   KeyValueExpr,
   CompositeLit,
+  SliceLit,
   FuncLit,
   IndexExpr,
   SliceExpr,
@@ -241,6 +242,15 @@ export function printExpr(
         sb.push(getIndent(outerDepth));
         sb.push("}");
       }
+      break;
+    case "SliceLit":
+      sb.push("{");
+      for (let i = 0; i < expr.elts.length; i++) {
+        if (i > 0) sb.push(", ");
+        printExpr(sb, expr.elts[i], 0, outerDepth);
+      }
+      if (expr.incomplete) sb.push(",");
+      sb.push("}");
       break;
     case "KeyValueExpr":
       printExpr(sb, expr.key, 0, outerDepth);

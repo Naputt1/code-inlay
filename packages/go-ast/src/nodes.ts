@@ -165,6 +165,7 @@ export type Expression =
   | BasicLit
   | FuncLit
   | CompositeLit
+  | SliceLit
   | ParenExpr
   | SelectorExpr
   | IndexExpr
@@ -204,6 +205,12 @@ export type CompositeLit = {
   type?: Type; // nil for bare `{1, 2, 3}`
   elts: Expression[];
   incomplete?: boolean; // trailing comma
+};
+
+export type SliceLit = {
+  kind: "SliceLit";
+  elts: Expression[];
+  incomplete?: boolean;
 };
 
 export type ParenExpr = {
@@ -475,8 +482,8 @@ export type RangeStmt = {
 export type Node =
   | File
   | Declaration
-  | GenDecl
   | FuncDecl
+  | GenDecl
   | Spec
   | ImportSpec
   | TypeSpec
@@ -489,4 +496,5 @@ export type Node =
   | CommentGroup
   | Comment
   | CaseClause
-  | CommClause;
+  | CommClause
+  | SliceLit;

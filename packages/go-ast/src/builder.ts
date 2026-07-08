@@ -20,6 +20,7 @@ import type {
   BinaryExpr,
   KeyValueExpr,
   CompositeLit,
+  SliceLit,
   IndexExpr,
   SliceExpr,
   TypeAssertExpr,
@@ -151,6 +152,10 @@ export function kv(key: Expression | string, value: Expression): KeyValueExpr {
 
 export function elt(type: Type, ...elts: Expression[]): CompositeLit {
   return { kind: "CompositeLit", type, elts, incomplete: true };
+}
+
+export function sliceLit(...elts: Expression[]): SliceLit {
+  return { kind: "SliceLit", elts, incomplete: true };
 }
 
 export function index(x: Expression, index: Expression): IndexExpr {
