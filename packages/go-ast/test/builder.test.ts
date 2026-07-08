@@ -214,6 +214,16 @@ describe("statements", () => {
     });
   });
 
+  it("sendStmt", () => {
+    const ch = go.id("ch");
+    const val = go.id("msg");
+    expect(go.sendStmt(ch, val)).toEqual({ kind: "SendStmt", chan: ch, value: val });
+  });
+
+  it("emptyStmt", () => {
+    expect(go.emptyStmt()).toEqual({ kind: "EmptyStmt" });
+  });
+
   it("goStmt", () => {
     const call = go.call("foo");
     expect(go.goStmt(call)).toEqual({ kind: "GoStmt", call });
