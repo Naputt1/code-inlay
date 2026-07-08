@@ -58,11 +58,32 @@ export function getLoggerGoModules(loggerConfig: LoggerConfig): string[] {
 function generateImports(cfg: LoggerConfig): string {
   switch (cfg.provider) {
     case "slog":
-      return printDecl(go.genDecl("import", go.importSpec("context"), go.importSpec("log/slog"), go.importSpec("os")));
+      return printDecl(
+        go.genDecl(
+          "import",
+          go.importSpec("context"),
+          go.importSpec("log/slog"),
+          go.importSpec("os"),
+        ),
+      );
     case "zerolog":
-      return printDecl(go.genDecl("import", go.importSpec("context"), go.importSpec("os"), go.importSpec("github.com/rs/zerolog")));
+      return printDecl(
+        go.genDecl(
+          "import",
+          go.importSpec("context"),
+          go.importSpec("os"),
+          go.importSpec("github.com/rs/zerolog"),
+        ),
+      );
     case "logrus":
-      return printDecl(go.genDecl("import", go.importSpec("context"), go.importSpec("os"), go.importSpec("github.com/sirupsen/logrus")));
+      return printDecl(
+        go.genDecl(
+          "import",
+          go.importSpec("context"),
+          go.importSpec("os"),
+          go.importSpec("github.com/sirupsen/logrus"),
+        ),
+      );
     default:
       return printDecl(go.genDecl("import", go.importSpec("context")));
   }
@@ -102,7 +123,9 @@ function generateLoggerConfigParts(): string {
   lines.push("func L() Logger { return defaultLogger }");
   lines.push("");
   lines.push("// CtxLogger returns a Logger enriched with request-scoped values from ctx.");
-  lines.push("// Use this in handlers and usecases instead of L() to get route, method, and request_id in log output.");
+  lines.push(
+    "// Use this in handlers and usecases instead of L() to get route, method, and request_id in log output.",
+  );
   lines.push("func CtxLogger(ctx context.Context) Logger {");
   lines.push(`${indent}l := L()`);
   lines.push(`${indent}if ctx == nil { return l }`);
@@ -149,44 +172,74 @@ func NewLogger(cfg LoggerConfig) Logger {
 function slogImpl(cfg: LoggerConfig): string {
   const format = cfg.format ?? "json";
 
-  const structDecl = go.genDecl("type", go.typeSpec("slogLogger", go.structType(
-    go.field(["logger"], go.star(go.qual("slog", "Logger"))),
-  )));
+  const structDecl = go.genDecl(
+    "type",
+    go.typeSpec(
+      "slogLogger",
+      go.structType(go.field(["logger"], go.star(go.qual("slog", "Logger")))),
+    ),
+  );
 
   const bodyStmts: go.Statement[] = [];
 
   bodyStmts.push(go.declStmt(go.genDecl("var", go.valueSpec(["level"], go.qual("slog", "Level")))));
 
-  bodyStmts.push(go.switchStmt(
-    undefined,
-    go.sel(go.id("cfg"), "Level"),
-    go.caseClause([go.str("debug")], go.assign([go.id("level")], "=", [go.qual("slog", "LevelDebug")])),
-    go.caseClause([go.str("warn")], go.assign([go.id("level")], "=", [go.qual("slog", "LevelWarn")])),
-    go.caseClause([go.str("error")], go.assign([go.id("level")], "=", [go.qual("slog", "LevelError")])),
-    go.defaultClause(go.assign([go.id("level")], "=", [go.qual("slog", "LevelInfo")])),
-  ));
+  bodyStmts.push(
+    go.switchStmt(
+      undefined,
+      go.sel(go.id("cfg"), "Level"),
+      go.caseClause(
+        [go.str("debug")],
+        go.assign([go.id("level")], "=", [go.qual("slog", "LevelDebug")]),
+      ),
+      go.caseClause(
+        [go.str("warn")],
+        go.assign([go.id("level")], "=", [go.qual("slog", "LevelWarn")]),
+      ),
+      go.caseClause(
+        [go.str("error")],
+        go.assign([go.id("level")], "=", [go.qual("slog", "LevelError")]),
+      ),
+      go.defaultClause(go.assign([go.id("level")], "=", [go.qual("slog", "LevelInfo")])),
+    ),
+  );
 
-  const handlerOpts = go.addr(go.elt(go.qual("slog", "HandlerOptions"),
-    go.kv("Level", go.id("level")),
-    go.kv("AddSource", go.id("true")),
-  ));
+  const handlerOpts = go.addr(
+    go.elt(
+      go.qual("slog", "HandlerOptions"),
+      go.kv("Level", go.id("level")),
+      go.kv("AddSource", go.id("true")),
+    ),
+  );
 
-  const handlerExpr: go.Expression = format === "text"
-    ? go.call(go.qual("slog", "NewTextHandler"), go.qual("os", "Stdout"), handlerOpts)
-    : go.call(go.qual("slog", "NewJSONHandler"), go.qual("os", "Stdout"), handlerOpts);
+  const handlerExpr: go.Expression =
+    format === "text"
+      ? go.call(go.qual("slog", "NewTextHandler"), go.qual("os", "Stdout"), handlerOpts)
+      : go.call(go.qual("slog", "NewJSONHandler"), go.qual("os", "Stdout"), handlerOpts);
 
   bodyStmts.push(go.def(go.id("handler"), handlerExpr));
 
-  bodyStmts.push(go.return_(go.addr(go.elt(go.id("slogLogger"),
-    go.kv("logger", go.call(go.qual("slog", "New"), go.id("handler"))),
-  ))));
+  bodyStmts.push(
+    go.return_(
+      go.addr(
+        go.elt(
+          go.id("slogLogger"),
+          go.kv("logger", go.call(go.qual("slog", "New"), go.id("handler"))),
+        ),
+      ),
+    ),
+  );
 
-  const newLogger = go.function_("NewLogger",
+  const newLogger = go.function_(
+    "NewLogger",
     [go.field(["cfg"], go.id("LoggerConfig"))],
     [go.field([], go.id("Logger"))],
     go.block(...bodyStmts),
   );
-  newLogger.doc = { kind: "CommentGroup", list: [{ kind: "Comment", text: "// NewLogger creates a new Logger backed by slog." }] };
+  newLogger.doc = {
+    kind: "CommentGroup",
+    list: [{ kind: "Comment", text: "// NewLogger creates a new Logger backed by slog." }],
+  };
 
   function variadicField(name: string, typ: go.Type): go.Field {
     const t = typ.kind === "SliceType" ? typ : go.sliceType(typ);
@@ -204,10 +257,14 @@ function slogImpl(cfg: LoggerConfig): string {
     "Info",
     [go.field(["msg"], go.id("string")), variadicField("keysAndValues", go.id("any"))],
     undefined,
-    go.block(go.expr(callWithEllipsis(
-      go.sel(go.sel(go.id("l"), "logger"), "Info"),
-      [go.id("msg"), go.id("keysAndValues")],
-    ))),
+    go.block(
+      go.expr(
+        callWithEllipsis(go.sel(go.sel(go.id("l"), "logger"), "Info"), [
+          go.id("msg"),
+          go.id("keysAndValues"),
+        ]),
+      ),
+    ),
   );
 
   const errorMethod = go.method(
@@ -215,10 +272,14 @@ function slogImpl(cfg: LoggerConfig): string {
     "Error",
     [go.field(["msg"], go.id("string")), variadicField("keysAndValues", go.id("any"))],
     undefined,
-    go.block(go.expr(callWithEllipsis(
-      go.sel(go.sel(go.id("l"), "logger"), "Error"),
-      [go.id("msg"), go.id("keysAndValues")],
-    ))),
+    go.block(
+      go.expr(
+        callWithEllipsis(go.sel(go.sel(go.id("l"), "logger"), "Error"), [
+          go.id("msg"),
+          go.id("keysAndValues"),
+        ]),
+      ),
+    ),
   );
 
   const withMethod = go.method(
@@ -226,12 +287,21 @@ function slogImpl(cfg: LoggerConfig): string {
     "With",
     [variadicField("keysAndValues", go.id("any"))],
     [go.field([], go.id("Logger"))],
-    go.block(go.return_(go.addr(go.elt(go.id("slogLogger"),
-      go.kv("logger", callWithEllipsis(
-        go.sel(go.sel(go.id("l"), "logger"), "With"),
-        [go.id("keysAndValues")],
-      )),
-    )))),
+    go.block(
+      go.return_(
+        go.addr(
+          go.elt(
+            go.id("slogLogger"),
+            go.kv(
+              "logger",
+              callWithEllipsis(go.sel(go.sel(go.id("l"), "logger"), "With"), [
+                go.id("keysAndValues"),
+              ]),
+            ),
+          ),
+        ),
+      ),
+    ),
   );
 
   const sb = new go.StringBuilder();
@@ -249,41 +319,61 @@ function slogImpl(cfg: LoggerConfig): string {
 function zerologImpl(cfg: LoggerConfig): string {
   const format = cfg.format ?? "json";
 
-  const structDecl = go.genDecl("type", go.typeSpec("zerologLogger", go.structType(
-    go.field(["logger"], go.qual("zerolog", "Logger")),
-  )));
+  const structDecl = go.genDecl(
+    "type",
+    go.typeSpec("zerologLogger", go.structType(go.field(["logger"], go.qual("zerolog", "Logger")))),
+  );
 
   const bodyStmts: go.Statement[] = [];
-  bodyStmts.push(go.declStmt(go.genDecl("var", go.valueSpec(["level"], go.qual("zerolog", "Level")))));
+  bodyStmts.push(
+    go.declStmt(go.genDecl("var", go.valueSpec(["level"], go.qual("zerolog", "Level")))),
+  );
 
-  bodyStmts.push(go.switchStmt(
-    undefined,
-    go.sel(go.id("cfg"), "Level"),
-    go.caseClause([go.str("debug")], go.assign([go.id("level")], "=", [go.qual("zerolog", "DebugLevel")])),
-    go.caseClause([go.str("warn")], go.assign([go.id("level")], "=", [go.qual("zerolog", "WarnLevel")])),
-    go.caseClause([go.str("error")], go.assign([go.id("level")], "=", [go.qual("zerolog", "ErrorLevel")])),
-    go.defaultClause(go.assign([go.id("level")], "=", [go.qual("zerolog", "InfoLevel")])),
-  ));
+  bodyStmts.push(
+    go.switchStmt(
+      undefined,
+      go.sel(go.id("cfg"), "Level"),
+      go.caseClause(
+        [go.str("debug")],
+        go.assign([go.id("level")], "=", [go.qual("zerolog", "DebugLevel")]),
+      ),
+      go.caseClause(
+        [go.str("warn")],
+        go.assign([go.id("level")], "=", [go.qual("zerolog", "WarnLevel")]),
+      ),
+      go.caseClause(
+        [go.str("error")],
+        go.assign([go.id("level")], "=", [go.qual("zerolog", "ErrorLevel")]),
+      ),
+      go.defaultClause(go.assign([go.id("level")], "=", [go.qual("zerolog", "InfoLevel")])),
+    ),
+  );
 
-  const chain: go.Expression = format === "text"
-    ? go.call(go.qual("zerolog", "New"), go.elt(go.qual("zerolog", "ConsoleWriter"), go.kv("Out", go.qual("os", "Stdout"))))
-    : go.call(go.qual("zerolog", "New"), go.qual("os", "Stdout"));
+  const chain: go.Expression =
+    format === "text"
+      ? go.call(
+          go.qual("zerolog", "New"),
+          go.elt(go.qual("zerolog", "ConsoleWriter"), go.kv("Out", go.qual("os", "Stdout"))),
+        )
+      : go.call(go.qual("zerolog", "New"), go.qual("os", "Stdout"));
 
   const levelCall = go.call(go.sel(chain, "Level"), go.id("level"));
   const withCall = go.call(go.sel(levelCall, "With"));
   const callerCall = go.call(go.sel(withCall, "Caller"));
   const loggerCall = go.call(go.sel(callerCall, "Logger"));
 
-  bodyStmts.push(go.return_(go.addr(go.elt(go.id("zerologLogger"),
-    go.kv("logger", loggerCall),
-  ))));
+  bodyStmts.push(go.return_(go.addr(go.elt(go.id("zerologLogger"), go.kv("logger", loggerCall)))));
 
-  const newLogger = go.function_("NewLogger",
+  const newLogger = go.function_(
+    "NewLogger",
     [go.field(["cfg"], go.id("LoggerConfig"))],
     [go.field([], go.id("Logger"))],
     go.block(...bodyStmts),
   );
-  newLogger.doc = { kind: "CommentGroup", list: [{ kind: "Comment", text: "// NewLogger creates a new Logger backed by zerolog." }] };
+  newLogger.doc = {
+    kind: "CommentGroup",
+    list: [{ kind: "Comment", text: "// NewLogger creates a new Logger backed by zerolog." }],
+  };
 
   const infoBody = `func (l *zerologLogger) Info(msg string, keysAndValues ...any) {
 \tl.logger.Info().Fields(toZerologFields(keysAndValues...)).Msg(msg)

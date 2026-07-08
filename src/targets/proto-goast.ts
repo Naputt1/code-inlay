@@ -25,11 +25,12 @@ export function generateStubPbGoContent(
       parts.push("");
       continue;
     }
-    const fields = msg.fields.map(f => {
+    const fields = msg.fields.map((f) => {
       const goType = isProtoScalar(f.protoType)
         ? protoScalarToGo[f.protoType]
-        : f.protoType.endsWith("Enum") ? "string"
-        : f.protoType;
+        : f.protoType.endsWith("Enum")
+          ? "string"
+          : f.protoType;
       const goName = pascalCase(f.name);
       const jsonName = snakeToCamel(f.name);
       const fieldType = f.repeated ? `[]${goType}` : goType;
@@ -48,8 +49,9 @@ export function generateStubPbGoContent(
     for (const f of msg.fields) {
       const goType = isProtoScalar(f.protoType)
         ? protoScalarToGo[f.protoType]
-        : f.protoType.endsWith("Enum") ? "string"
-        : f.protoType;
+        : f.protoType.endsWith("Enum")
+          ? "string"
+          : f.protoType;
       const goName = pascalCase(f.name);
       const fieldType = f.repeated ? `[]${goType}` : goType;
       let zeroValue: string;
@@ -94,10 +96,7 @@ function buildFromProtoClosureStr(m: FieldMapping): string {
 
 // ─── generateFromProtoFunc ─────────────────────────────────
 
-export function generateFromProtoFunc(
-  msg: ProtoMessage,
-  allMessages: ProtoMessage[],
-): string {
+export function generateFromProtoFunc(msg: ProtoMessage, allMessages: ProtoMessage[]): string {
   const mappings = buildMappings(msg, allMessages);
   const funcName = `${msg.name}FromProto`;
   const params = [go.field(["src"], go.star(go.qual("pb", msg.name)))];
@@ -118,10 +117,15 @@ export function generateFromProtoFunc(
     } else if (m.repeated) {
       kvs.push(go.kv(m.goName, go.call(go.sel(go.id("src"), `Get${m.goName}`))));
     } else if (m.nested) {
-      kvs.push(go.kv(m.goName, go.call(
-        go.id(`${protoTypeToGoStruct(m.protoFieldType)}FromProto`),
-        go.call(go.sel(go.id("src"), `Get${m.goName}`)),
-      )));
+      kvs.push(
+        go.kv(
+          m.goName,
+          go.call(
+            go.id(`${protoTypeToGoStruct(m.protoFieldType)}FromProto`),
+            go.call(go.sel(go.id("src"), `Get${m.goName}`)),
+          ),
+        ),
+      );
     } else {
       kvs.push(go.kv(m.goName, go.call(go.sel(go.id("src"), `Get${m.goName}`))));
     }
@@ -152,10 +156,7 @@ function buildToProtoClosureStr(m: FieldMapping): string {
 
 // ─── generateToProtoFunc ───────────────────────────────────
 
-export function generateToProtoFunc(
-  msg: ProtoMessage,
-  allMessages: ProtoMessage[],
-): string {
+export function generateToProtoFunc(msg: ProtoMessage, allMessages: ProtoMessage[]): string {
   const mappings = buildMappings(msg, allMessages);
   const funcName = `${msg.name}ToProto`;
   const params = [go.field(["src"], go.id(msg.name))];
@@ -176,10 +177,15 @@ export function generateToProtoFunc(
     } else if (m.repeated) {
       kvs.push(go.kv(m.goName, go.sel(go.id("src"), m.goName)));
     } else if (m.nested) {
-      kvs.push(go.kv(m.goName, go.call(
-        go.id(`${protoTypeToGoStruct(m.protoFieldType)}ToProto`),
-        go.sel(go.id("src"), m.goName),
-      )));
+      kvs.push(
+        go.kv(
+          m.goName,
+          go.call(
+            go.id(`${protoTypeToGoStruct(m.protoFieldType)}ToProto`),
+            go.sel(go.id("src"), m.goName),
+          ),
+        ),
+      );
     } else {
       kvs.push(go.kv(m.goName, go.sel(go.id("src"), m.goName)));
     }
@@ -225,10 +231,7 @@ export function generateToProtoBytesFunc(msg: ProtoMessage): string {
   const results = [go.field([], go.sliceType(go.id("byte")))];
   const body = go.block(
     go.def(go.id("dst"), go.call(go.id(`${msg.name}ToProto`), go.id("src"))),
-    go.def(
-      [go.id("data"), go.id("_")],
-      go.call(go.sel(go.id("json"), "Marshal"), go.id("dst")),
-    ),
+    go.def([go.id("data"), go.id("_")], go.call(go.sel(go.id("json"), "Marshal"), go.id("dst"))),
     go.return_(go.id("data")),
   );
   const decl = go.function_(funcName, params, results, body);

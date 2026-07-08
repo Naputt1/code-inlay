@@ -107,7 +107,15 @@ function makeChanType(typeStr: string): go.Ident {
   return go.id(`chan ${typeStr}`);
 }
 
-function toHandlerStmts(handlerName: string, modulePascal: string, pathParams: string[], hasDomain: boolean | undefined, hasQuery: boolean, hasBody: boolean, route: RouteAst): go.Statement[] {
+function toHandlerStmts(
+  handlerName: string,
+  modulePascal: string,
+  pathParams: string[],
+  hasDomain: boolean | undefined,
+  hasQuery: boolean,
+  hasBody: boolean,
+  route: RouteAst,
+): go.Statement[] {
   const usecaseField = `${handlerName}Usecase`;
   const reqType = requestType(route);
   const stmts: go.Statement[] = [];
@@ -120,27 +128,92 @@ function toHandlerStmts(handlerName: string, modulePascal: string, pathParams: s
       if (hasQuery) {
         stmts.push(...emitBindQueryStmts(reqType, pathParams, route));
         if (hasDomain && pathParams.length > 0) {
-          stmts.push(go.def(go.id("id"), go.call(go.id(baseID), go.call(go.sel(go.id("c"), "Param"), go.str(pathParams[0])))));
-          stmts.push(go.def([go.id("output"), go.id("err")], go.call(go.sel(go.sel(go.id("h"), usecaseField), "Execute"), go.call(go.sel(go.sel(go.id("c"), "Request"), "Context")), go.id("id"))));
+          stmts.push(
+            go.def(
+              go.id("id"),
+              go.call(go.id(baseID), go.call(go.sel(go.id("c"), "Param"), go.str(pathParams[0]))),
+            ),
+          );
+          stmts.push(
+            go.def(
+              [go.id("output"), go.id("err")],
+              go.call(
+                go.sel(go.sel(go.id("h"), usecaseField), "Execute"),
+                go.call(go.sel(go.sel(go.id("c"), "Request"), "Context")),
+                go.id("id"),
+              ),
+            ),
+          );
         } else {
-          stmts.push(go.def([go.id("output"), go.id("err")], go.call(go.sel(go.sel(go.id("h"), usecaseField), "Execute"), go.call(go.sel(go.sel(go.id("c"), "Request"), "Context")), go.id("input"))));
+          stmts.push(
+            go.def(
+              [go.id("output"), go.id("err")],
+              go.call(
+                go.sel(go.sel(go.id("h"), usecaseField), "Execute"),
+                go.call(go.sel(go.sel(go.id("c"), "Request"), "Context")),
+                go.id("input"),
+              ),
+            ),
+          );
         }
       } else if (hasBody) {
         stmts.push(...emitBindJSONStmts(reqType, pathParams, route));
         if (hasDomain && pathParams.length > 0) {
-          stmts.push(go.def(go.id("id"), go.call(go.id(baseID), go.call(go.sel(go.id("c"), "Param"), go.str(pathParams[0])))));
-          stmts.push(go.def([go.id("output"), go.id("err")], go.call(go.sel(go.sel(go.id("h"), usecaseField), "Execute"), go.call(go.sel(go.sel(go.id("c"), "Request"), "Context")), go.id("id"))));
+          stmts.push(
+            go.def(
+              go.id("id"),
+              go.call(go.id(baseID), go.call(go.sel(go.id("c"), "Param"), go.str(pathParams[0]))),
+            ),
+          );
+          stmts.push(
+            go.def(
+              [go.id("output"), go.id("err")],
+              go.call(
+                go.sel(go.sel(go.id("h"), usecaseField), "Execute"),
+                go.call(go.sel(go.sel(go.id("c"), "Request"), "Context")),
+                go.id("id"),
+              ),
+            ),
+          );
         } else {
-          stmts.push(go.def([go.id("output"), go.id("err")], go.call(go.sel(go.sel(go.id("h"), usecaseField), "Execute"), go.call(go.sel(go.sel(go.id("c"), "Request"), "Context")), go.id("input"))));
+          stmts.push(
+            go.def(
+              [go.id("output"), go.id("err")],
+              go.call(
+                go.sel(go.sel(go.id("h"), usecaseField), "Execute"),
+                go.call(go.sel(go.sel(go.id("c"), "Request"), "Context")),
+                go.id("input"),
+              ),
+            ),
+          );
         }
       } else if (pathParams.length > 0) {
-        stmts.push(go.def(go.id("id"), go.call(go.id(baseID), go.call(go.sel(go.id("c"), "Param"), go.str(pathParams[0])))));
-        stmts.push(go.def([go.id("output"), go.id("err")], go.call(go.sel(go.sel(go.id("h"), usecaseField), "Execute"), go.call(go.sel(go.sel(go.id("c"), "Request"), "Context")), go.id("id"))));
+        stmts.push(
+          go.def(
+            go.id("id"),
+            go.call(go.id(baseID), go.call(go.sel(go.id("c"), "Param"), go.str(pathParams[0]))),
+          ),
+        );
+        stmts.push(
+          go.def(
+            [go.id("output"), go.id("err")],
+            go.call(
+              go.sel(go.sel(go.id("h"), usecaseField), "Execute"),
+              go.call(go.sel(go.sel(go.id("c"), "Request"), "Context")),
+              go.id("id"),
+            ),
+          ),
+        );
       } else {
-        stmts.push(go.def(
-          [go.id("output"), go.id("err")],
-          go.call(go.sel(go.sel(go.id("h"), usecaseField), "Execute"), go.call(go.sel(go.sel(go.id("c"), "Request"), "Context"))),
-        ));
+        stmts.push(
+          go.def(
+            [go.id("output"), go.id("err")],
+            go.call(
+              go.sel(go.sel(go.id("h"), usecaseField), "Execute"),
+              go.call(go.sel(go.sel(go.id("c"), "Request"), "Context")),
+            ),
+          ),
+        );
       }
       stmts.push(...emitErrAndRespStmts(route.method));
     } else if (verb === "Create" || verb === "New") {
@@ -151,14 +224,20 @@ function toHandlerStmts(handlerName: string, modulePascal: string, pathParams: s
         stmts.push(go.declStmt(go.genDecl("var", go.valueSpec(["query"], toGoType(qn)))));
         stmts.push({
           kind: "IfStmt",
-          init: go.def(go.id("err"), go.call(go.sel(go.id("c"), "ShouldBindQuery"), go.addr(go.id("query")))),
+          init: go.def(
+            go.id("err"),
+            go.call(go.sel(go.id("c"), "ShouldBindQuery"), go.addr(go.id("query"))),
+          ),
           cond: go.neq(go.id("err"), go.id("nil")),
           body: go.block(...emitBindErrorResponseStmts(), go.return_()),
         } as go.IfStmt);
         stmts.push(go.declStmt(go.genDecl("var", go.valueSpec(["requestBody"], toGoType(bn)))));
         stmts.push({
           kind: "IfStmt",
-          init: go.def(go.id("err"), go.call(go.sel(go.id("c"), "ShouldBindJSON"), go.addr(go.id("requestBody")))),
+          init: go.def(
+            go.id("err"),
+            go.call(go.sel(go.id("c"), "ShouldBindJSON"), go.addr(go.id("requestBody"))),
+          ),
           cond: go.neq(go.id("err"), go.id("nil")),
           body: go.block(...emitBindErrorResponseStmts(), go.return_()),
         } as go.IfStmt);
@@ -170,7 +249,10 @@ function toHandlerStmts(handlerName: string, modulePascal: string, pathParams: s
         stmts.push(go.declStmt(go.genDecl("var", go.valueSpec(["binding"], toGoType(reqType)))));
         stmts.push({
           kind: "IfStmt",
-          init: go.def(go.id("err"), go.call(go.sel(go.id("c"), "ShouldBindJSON"), go.addr(go.id("binding")))),
+          init: go.def(
+            go.id("err"),
+            go.call(go.sel(go.id("c"), "ShouldBindJSON"), go.addr(go.id("binding"))),
+          ),
           cond: go.neq(go.id("err"), go.id("nil")),
           body: go.block(...emitBindErrorResponseStmts(), go.return_()),
         } as go.IfStmt);
@@ -182,7 +264,10 @@ function toHandlerStmts(handlerName: string, modulePascal: string, pathParams: s
         stmts.push(go.declStmt(go.genDecl("var", go.valueSpec(["binding"], toGoType(reqType)))));
         stmts.push({
           kind: "IfStmt",
-          init: go.def(go.id("err"), go.call(go.sel(go.id("c"), "ShouldBindQuery"), go.addr(go.id("binding")))),
+          init: go.def(
+            go.id("err"),
+            go.call(go.sel(go.id("c"), "ShouldBindQuery"), go.addr(go.id("binding"))),
+          ),
           cond: go.neq(go.id("err"), go.id("nil")),
           body: go.block(...emitBindErrorResponseStmts(), go.return_()),
         } as go.IfStmt);
@@ -196,19 +281,36 @@ function toHandlerStmts(handlerName: string, modulePascal: string, pathParams: s
         stmts.push(go.def(go.id("entity"), go.elt(toGoType(modulePascal))));
         stmts.push(go.commentStmt(` @gen:end ${handlerSh}`));
       }
-      stmts.push(go.def([go.id("output"), go.id("err")], go.call(go.sel(go.sel(go.id("h"), usecaseField), "Execute"), go.call(go.sel(go.sel(go.id("c"), "Request"), "Context")), go.id("entity"))));
+      stmts.push(
+        go.def(
+          [go.id("output"), go.id("err")],
+          go.call(
+            go.sel(go.sel(go.id("h"), usecaseField), "Execute"),
+            go.call(go.sel(go.sel(go.id("c"), "Request"), "Context")),
+            go.id("entity"),
+          ),
+        ),
+      );
       stmts.push(...emitErrAndRespStmts(route.method));
     } else if (verb === "Update" || verb === "Edit") {
       const handlerSh = shortHash(defaultRegionId(route, "handler"));
       stmts.push(go.declStmt(go.genDecl("var", go.valueSpec(["binding"], toGoType(reqType)))));
       stmts.push({
         kind: "IfStmt",
-        init: go.def(go.id("err"), go.call(go.sel(go.id("c"), "ShouldBindJSON"), go.addr(go.id("binding")))),
+        init: go.def(
+          go.id("err"),
+          go.call(go.sel(go.id("c"), "ShouldBindJSON"), go.addr(go.id("binding"))),
+        ),
         cond: go.neq(go.id("err"), go.id("nil")),
         body: go.block(...emitBindErrorResponseStmts(), go.return_()),
       } as go.IfStmt);
       if (pathParams.length > 0) {
-        stmts.push(go.def(go.id("id"), go.call(go.id(baseID), go.call(go.sel(go.id("c"), "Param"), go.str(pathParams[0])))));
+        stmts.push(
+          go.def(
+            go.id("id"),
+            go.call(go.id(baseID), go.call(go.sel(go.id("c"), "Param"), go.str(pathParams[0]))),
+          ),
+        );
       } else {
         stmts.push(go.declStmt(go.genDecl("var", go.valueSpec(["id"], toGoType(baseID)))));
       }
@@ -216,27 +318,56 @@ function toHandlerStmts(handlerName: string, modulePascal: string, pathParams: s
       stmts.push(go.commentStmt(` TODO: construct ${modulePascal} entity from binding`));
       stmts.push(go.def(go.id("entity"), go.elt(toGoType(modulePascal))));
       stmts.push(go.commentStmt(` @gen:end ${handlerSh}`));
-      stmts.push(go.def([go.id("output"), go.id("err")], go.call(go.sel(go.sel(go.id("h"), usecaseField), "Execute"), go.call(go.sel(go.sel(go.id("c"), "Request"), "Context")), go.id("id"), go.id("entity"))));
+      stmts.push(
+        go.def(
+          [go.id("output"), go.id("err")],
+          go.call(
+            go.sel(go.sel(go.id("h"), usecaseField), "Execute"),
+            go.call(go.sel(go.sel(go.id("c"), "Request"), "Context")),
+            go.id("id"),
+            go.id("entity"),
+          ),
+        ),
+      );
       stmts.push(...emitErrAndRespStmts(route.method));
     } else if (verb === "Set") {
       stmts.push(go.declStmt(go.genDecl("var", go.valueSpec(["binding"], toGoType(reqType)))));
       stmts.push({
         kind: "IfStmt",
-        init: go.def(go.id("err"), go.call(go.sel(go.id("c"), "ShouldBindJSON"), go.addr(go.id("binding")))),
+        init: go.def(
+          go.id("err"),
+          go.call(go.sel(go.id("c"), "ShouldBindJSON"), go.addr(go.id("binding"))),
+        ),
         cond: go.neq(go.id("err"), go.id("nil")),
         body: go.block(...emitBindErrorResponseStmts(), go.return_()),
       } as go.IfStmt);
       if (pathParams.length > 0) {
-        stmts.push(go.def(go.id("id"), go.call(go.id(baseID), go.call(go.sel(go.id("c"), "Param"), go.str(pathParams[0])))));
-        stmts.push(go.def(
-          [go.id("output"), go.id("err")],
-          go.call(go.sel(go.sel(go.id("h"), usecaseField), "Execute"), go.call(go.sel(go.sel(go.id("c"), "Request"), "Context")), go.id("id")),
-        ));
+        stmts.push(
+          go.def(
+            go.id("id"),
+            go.call(go.id(baseID), go.call(go.sel(go.id("c"), "Param"), go.str(pathParams[0]))),
+          ),
+        );
+        stmts.push(
+          go.def(
+            [go.id("output"), go.id("err")],
+            go.call(
+              go.sel(go.sel(go.id("h"), usecaseField), "Execute"),
+              go.call(go.sel(go.sel(go.id("c"), "Request"), "Context")),
+              go.id("id"),
+            ),
+          ),
+        );
       } else {
-        stmts.push(go.def(
-          [go.id("output"), go.id("err")],
-          go.call(go.sel(go.sel(go.id("h"), usecaseField), "Execute"), go.call(go.sel(go.sel(go.id("c"), "Request"), "Context"))),
-        ));
+        stmts.push(
+          go.def(
+            [go.id("output"), go.id("err")],
+            go.call(
+              go.sel(go.sel(go.id("h"), usecaseField), "Execute"),
+              go.call(go.sel(go.sel(go.id("c"), "Request"), "Context")),
+            ),
+          ),
+        );
       }
       stmts.push(...emitErrAndRespStmts(route.method));
     } else if (verb === "List") {
@@ -244,19 +375,33 @@ function toHandlerStmts(handlerName: string, modulePascal: string, pathParams: s
         stmts.push(go.declStmt(go.genDecl("var", go.valueSpec(["input"], toGoType(reqType)))));
         stmts.push({
           kind: "IfStmt",
-          init: go.def(go.id("err"), go.call(go.sel(go.id("c"), "ShouldBindQuery"), go.addr(go.id("input")))),
+          init: go.def(
+            go.id("err"),
+            go.call(go.sel(go.id("c"), "ShouldBindQuery"), go.addr(go.id("input"))),
+          ),
           cond: go.neq(go.id("err"), go.id("nil")),
           body: go.block(...emitBindErrorResponseStmts(), go.return_()),
         } as go.IfStmt);
-        stmts.push(go.def(
-          [go.id("output"), go.id("err")],
-          go.call(go.sel(go.sel(go.id("h"), usecaseField), "Execute"), go.call(go.sel(go.sel(go.id("c"), "Request"), "Context")), go.id("input")),
-        ));
+        stmts.push(
+          go.def(
+            [go.id("output"), go.id("err")],
+            go.call(
+              go.sel(go.sel(go.id("h"), usecaseField), "Execute"),
+              go.call(go.sel(go.sel(go.id("c"), "Request"), "Context")),
+              go.id("input"),
+            ),
+          ),
+        );
       } else {
-        stmts.push(go.def(
-          [go.id("output"), go.id("err")],
-          go.call(go.sel(go.sel(go.id("h"), usecaseField), "Execute"), go.call(go.sel(go.sel(go.id("c"), "Request"), "Context"))),
-        ));
+        stmts.push(
+          go.def(
+            [go.id("output"), go.id("err")],
+            go.call(
+              go.sel(go.sel(go.id("h"), usecaseField), "Execute"),
+              go.call(go.sel(go.sel(go.id("c"), "Request"), "Context")),
+            ),
+          ),
+        );
       }
       stmts.push(...emitErrAndRespStmts(route.method));
     } else {
@@ -269,7 +414,14 @@ function toHandlerStmts(handlerName: string, modulePascal: string, pathParams: s
   return stmts;
 }
 
-function emitGenericStmts(hasQuery: boolean, hasBody: boolean, pathParams: string[], route: RouteAst, reqType: string, usecaseField: string): go.Statement[] {
+function emitGenericStmts(
+  hasQuery: boolean,
+  hasBody: boolean,
+  pathParams: string[],
+  route: RouteAst,
+  reqType: string,
+  usecaseField: string,
+): go.Statement[] {
   const stmts: go.Statement[] = [];
   if (hasQuery && hasBody) {
     const queryType = routeTypeName(route, "Query");
@@ -278,27 +430,51 @@ function emitGenericStmts(hasQuery: boolean, hasBody: boolean, pathParams: strin
     stmts.push(go.declStmt(go.genDecl("var", go.valueSpec(["query"], toGoType(queryType)))));
     stmts.push({
       kind: "IfStmt",
-      init: go.def(go.id("err"), go.call(go.sel(go.id("c"), "ShouldBindQuery"), go.addr(go.id("query")))),
+      init: go.def(
+        go.id("err"),
+        go.call(go.sel(go.id("c"), "ShouldBindQuery"), go.addr(go.id("query"))),
+      ),
       cond: go.neq(go.id("err"), go.id("nil")),
       body: go.block(...emitBindErrorResponseStmts(), go.return_()),
     } as go.IfStmt);
     stmts.push(go.declStmt(go.genDecl("var", go.valueSpec(["requestBody"], toGoType(bodyType)))));
     stmts.push({
       kind: "IfStmt",
-      init: go.def(go.id("err"), go.call(go.sel(go.id("c"), "ShouldBindJSON"), go.addr(go.id("requestBody")))),
+      init: go.def(
+        go.id("err"),
+        go.call(go.sel(go.id("c"), "ShouldBindJSON"), go.addr(go.id("requestBody"))),
+      ),
       cond: go.neq(go.id("err"), go.id("nil")),
       body: go.block(...emitBindErrorResponseStmts(), go.return_()),
     } as go.IfStmt);
     const queryFields = getSchemaFieldNames(route.query!);
     const bodyFields = getSchemaFieldNames(route.body!);
     for (const f of queryFields) {
-      stmts.push(go.assign(go.sel(go.id("input"), pascalCase(f)), "=", go.sel(go.id("query"), pascalCase(f))));
+      stmts.push(
+        go.assign(
+          go.sel(go.id("input"), pascalCase(f)),
+          "=",
+          go.sel(go.id("query"), pascalCase(f)),
+        ),
+      );
     }
     for (const f of bodyFields) {
-      stmts.push(go.assign(go.sel(go.id("input"), pascalCase(f)), "=", go.sel(go.id("requestBody"), pascalCase(f))));
+      stmts.push(
+        go.assign(
+          go.sel(go.id("input"), pascalCase(f)),
+          "=",
+          go.sel(go.id("requestBody"), pascalCase(f)),
+        ),
+      );
     }
     for (const param of pathParams) {
-      stmts.push(go.assign(go.sel(go.id("input"), pascalCase(param)), "=", go.call(go.sel(go.id("c"), "Param"), go.str(param))));
+      stmts.push(
+        go.assign(
+          go.sel(go.id("input"), pascalCase(param)),
+          "=",
+          go.call(go.sel(go.id("c"), "Param"), go.str(param)),
+        ),
+      );
     }
   } else if (hasQuery) {
     stmts.push(...emitBindQueryStmts(reqType, pathParams, route));
@@ -307,12 +483,27 @@ function emitGenericStmts(hasQuery: boolean, hasBody: boolean, pathParams: strin
   } else if (pathParams.length > 0) {
     stmts.push(go.declStmt(go.genDecl("var", go.valueSpec(["input"], toGoType(reqType)))));
     for (const param of pathParams) {
-      stmts.push(go.assign(go.sel(go.id("input"), pascalCase(param)), "=", go.call(go.sel(go.id("c"), "Param"), go.str(param))));
+      stmts.push(
+        go.assign(
+          go.sel(go.id("input"), pascalCase(param)),
+          "=",
+          go.call(go.sel(go.id("c"), "Param"), go.str(param)),
+        ),
+      );
     }
   } else {
     stmts.push(go.def(go.id("input"), go.elt(go.structType())));
   }
-  stmts.push(go.def([go.id("output"), go.id("err")], go.call(go.sel(go.sel(go.id("h"), usecaseField), "Execute"), go.call(go.sel(go.sel(go.id("c"), "Request"), "Context")), go.id("input"))));
+  stmts.push(
+    go.def(
+      [go.id("output"), go.id("err")],
+      go.call(
+        go.sel(go.sel(go.id("h"), usecaseField), "Execute"),
+        go.call(go.sel(go.sel(go.id("c"), "Request"), "Context")),
+        go.id("input"),
+      ),
+    ),
+  );
   stmts.push(...emitErrAndRespStmts(route.method));
   return stmts;
 }
@@ -337,7 +528,9 @@ function emitErrAndRespStmts(method: string): go.Statement[] {
 
   if (method === "DELETE") {
     (innerIf.body as go.BlockStmt).list.push(
-      go.expr(go.call(go.sel(go.id("c"), "Status"), go.call(go.sel(go.id("httpErr"), "HTTPStatus")))),
+      go.expr(
+        go.call(go.sel(go.id("c"), "Status"), go.call(go.sel(go.id("httpErr"), "HTTPStatus"))),
+      ),
     );
     (innerIf.elseStmt as go.BlockStmt).list.push(
       go.expr(go.call(go.sel(go.id("c"), "Status"), go.qual("http", "StatusInternalServerError"))),
@@ -349,11 +542,25 @@ function emitErrAndRespStmts(method: string): go.Statement[] {
     ];
   } else {
     (innerIf.body as go.BlockStmt).list.push(
-      go.expr(go.call(go.sel(go.id("c"), "JSON"), go.call(go.sel(go.id("httpErr"), "HTTPStatus")), go.id("err"))),
+      go.expr(
+        go.call(
+          go.sel(go.id("c"), "JSON"),
+          go.call(go.sel(go.id("httpErr"), "HTTPStatus")),
+          go.id("err"),
+        ),
+      ),
     );
     (innerIf.elseStmt as go.BlockStmt).list.push(
-      go.expr(go.call(go.sel(go.id("c"), "JSON"), go.qual("http", "StatusInternalServerError"),
-        go.elt(go.qual("gin", "H"), go.kv(go.str("error"), go.call(go.sel(go.id("err"), "Error")))))),
+      go.expr(
+        go.call(
+          go.sel(go.id("c"), "JSON"),
+          go.qual("http", "StatusInternalServerError"),
+          go.elt(
+            go.qual("gin", "H"),
+            go.kv(go.str("error"), go.call(go.sel(go.id("err"), "Error"))),
+          ),
+        ),
+      ),
     );
     return [
       ifStmt,
@@ -364,24 +571,40 @@ function emitErrAndRespStmts(method: string): go.Statement[] {
 
 function emitBindErrorResponseStmts(): go.Statement[] {
   return [
-    go.def([go.id("status"), go.id("body")], go.call(go.qual("httperr", "ResolveBindingError"), go.id("err"))),
+    go.def(
+      [go.id("status"), go.id("body")],
+      go.call(go.qual("httperr", "ResolveBindingError"), go.id("err")),
+    ),
     go.expr(go.call(go.sel(go.id("c"), "JSON"), go.id("status"), go.id("body"))),
   ];
 }
 
-function emitBindQueryStmts(reqType: string, pathParams: string[], route: RouteAst): go.Statement[] {
+function emitBindQueryStmts(
+  reqType: string,
+  pathParams: string[],
+  route: RouteAst,
+): go.Statement[] {
   const stmts: go.Statement[] = [];
   stmts.push(go.declStmt(go.genDecl("var", go.valueSpec(["input"], toGoType(reqType)))));
   stmts.push({
     kind: "IfStmt",
-    init: go.def(go.id("err"), go.call(go.sel(go.id("c"), "ShouldBindQuery"), go.addr(go.id("input")))),
+    init: go.def(
+      go.id("err"),
+      go.call(go.sel(go.id("c"), "ShouldBindQuery"), go.addr(go.id("input"))),
+    ),
     cond: go.neq(go.id("err"), go.id("nil")),
     body: go.block(...emitBindErrorResponseStmts(), go.return_()),
   } as go.IfStmt);
   for (const param of pathParams) {
     const fn = pascalCase(param);
     if (route.query && !fieldInSchema(route.query, param)) {
-      stmts.push(go.assign(go.sel(go.id("input"), fn), "=", go.call(go.sel(go.id("c"), "Param"), go.str(param))));
+      stmts.push(
+        go.assign(
+          go.sel(go.id("input"), fn),
+          "=",
+          go.call(go.sel(go.id("c"), "Param"), go.str(param)),
+        ),
+      );
     }
   }
   return stmts;
@@ -392,14 +615,23 @@ function emitBindJSONStmts(reqType: string, pathParams: string[], route: RouteAs
   stmts.push(go.declStmt(go.genDecl("var", go.valueSpec(["input"], toGoType(reqType)))));
   stmts.push({
     kind: "IfStmt",
-    init: go.def(go.id("err"), go.call(go.sel(go.id("c"), "ShouldBindJSON"), go.addr(go.id("input")))),
+    init: go.def(
+      go.id("err"),
+      go.call(go.sel(go.id("c"), "ShouldBindJSON"), go.addr(go.id("input"))),
+    ),
     cond: go.neq(go.id("err"), go.id("nil")),
     body: go.block(...emitBindErrorResponseStmts(), go.return_()),
   } as go.IfStmt);
   for (const param of pathParams) {
     const fn = pascalCase(param);
     if (route.body && !fieldInSchema(route.body, param)) {
-      stmts.push(go.assign(go.sel(go.id("input"), fn), "=", go.call(go.sel(go.id("c"), "Param"), go.str(param))));
+      stmts.push(
+        go.assign(
+          go.sel(go.id("input"), fn),
+          "=",
+          go.call(go.sel(go.id("c"), "Param"), go.str(param)),
+        ),
+      );
     }
   }
   return stmts;
@@ -417,7 +649,15 @@ export function generateGinHandler(
   const hasQuery = !!route.query;
   const hasBody = !!route.body;
 
-  const stmts = toHandlerStmts(handlerName, modulePascal, pathParams, hasDomain, hasQuery, hasBody, route);
+  const stmts = toHandlerStmts(
+    handlerName,
+    modulePascal,
+    pathParams,
+    hasDomain,
+    hasQuery,
+    hasBody,
+    route,
+  );
 
   const methodDecl = go.method(
     go.field(["h"], go.star(go.id(`${modulePascal}Handler`))),
@@ -462,16 +702,12 @@ function sseMarshalExpr(codec: ResolvedCodecSingle, eventType: string): go.Expre
   if (codec.kind === "preset") {
     return go.funcLit(
       go.funcType(params, results),
-      go.block(
-        go.return_(go.call(go.qual("json", "Marshal"), go.id("v"))),
-      ),
+      go.block(go.return_(go.call(go.qual("json", "Marshal"), go.id("v")))),
     );
   }
   return go.funcLit(
     go.funcType(params, results),
-    go.block(
-      go.return_(go.call(go.id(codec.marshal), go.id("v"))),
-    ),
+    go.block(go.return_(go.call(go.id(codec.marshal), go.id("v")))),
   );
 }
 
@@ -491,10 +727,18 @@ function generateSSENegotiationPreamble(
     const cases: go.CaseClause[] = [];
     for (const [key, cd] of Object.entries(codec.codecs)) {
       if (key === codec.defaultKey) continue;
-      cases.push(go.caseClause(
-        [go.call(go.qual("strings", "Contains"), go.id("accept"), go.str(`application/x-${key}`))],
-        go.assign(go.id(marshalVar), "=", sseMarshalExpr(cd, eventType)),
-      ));
+      cases.push(
+        go.caseClause(
+          [
+            go.call(
+              go.qual("strings", "Contains"),
+              go.id("accept"),
+              go.str(`application/x-${key}`),
+            ),
+          ],
+          go.assign(go.id(marshalVar), "=", sseMarshalExpr(cd, eventType)),
+        ),
+      );
     }
     stmts.push(go.switchStmt(undefined, undefined, ...cases));
   } else if (strategy === "query-param") {
@@ -503,10 +747,12 @@ function generateSSENegotiationPreamble(
     const cases: go.CaseClause[] = [];
     for (const [key, cd] of Object.entries(codec.codecs)) {
       if (key === codec.defaultKey) continue;
-      cases.push(go.caseClause(
-        [go.str(key)],
-        go.assign(go.id(marshalVar), "=", sseMarshalExpr(cd, eventType)),
-      ));
+      cases.push(
+        go.caseClause(
+          [go.str(key)],
+          go.assign(go.id(marshalVar), "=", sseMarshalExpr(cd, eventType)),
+        ),
+      );
     }
     stmts.push(go.switchStmt(undefined, go.id("format"), ...cases));
   } else if (strategy === "subprotocol") {
@@ -515,10 +761,18 @@ function generateSSENegotiationPreamble(
     const cases: go.CaseClause[] = [];
     for (const [key, cd] of Object.entries(codec.codecs)) {
       if (key === codec.defaultKey) continue;
-      cases.push(go.caseClause(
-        [go.call(go.qual("strings", "Contains"), go.id("accept"), go.str(`application/x-${key}`))],
-        go.assign(go.id(marshalVar), "=", sseMarshalExpr(cd, eventType)),
-      ));
+      cases.push(
+        go.caseClause(
+          [
+            go.call(
+              go.qual("strings", "Contains"),
+              go.id("accept"),
+              go.str(`application/x-${key}`),
+            ),
+          ],
+          go.assign(go.id(marshalVar), "=", sseMarshalExpr(cd, eventType)),
+        ),
+      );
     }
     stmts.push(go.switchStmt(undefined, undefined, ...cases));
   }
@@ -535,28 +789,52 @@ function generateSSEMarshalLines(
   if (marshalVar) {
     stmts.push(go.def([go.id("data"), go.id("err")], go.call(go.id(marshalVar), go.id("event"))));
   } else {
-    stmts.push(go.def([go.id("data"), go.id("err")], go.call(go.qual("json", "Marshal"), go.id("event"))));
+    stmts.push(
+      go.def([go.id("data"), go.id("err")], go.call(go.qual("json", "Marshal"), go.id("event"))),
+    );
   }
   stmts.push(go.ifStmt(go.neq(go.id("err"), go.id("nil")), go.block(go.return_(go.id("false")))));
   if (sseFields) {
     if (sseFields.eventField) {
-      stmts.push(go.ifStmt(
-        go.neq(go.sel(go.id("event"), pascalCase(sseFields.eventField)), go.str("")),
-        go.block(
-          go.expr(go.call(go.qual("fmt", "Fprintf"), go.id("w"), go.str(`event: %s\\n`), go.sel(go.id("event"), pascalCase(sseFields.eventField)))),
+      stmts.push(
+        go.ifStmt(
+          go.neq(go.sel(go.id("event"), pascalCase(sseFields.eventField)), go.str("")),
+          go.block(
+            go.expr(
+              go.call(
+                go.qual("fmt", "Fprintf"),
+                go.id("w"),
+                go.str(`event: %s\\n`),
+                go.sel(go.id("event"), pascalCase(sseFields.eventField)),
+              ),
+            ),
+          ),
         ),
-      ));
+      );
     }
     if (sseFields.idField) {
-      stmts.push(go.ifStmt(
-        go.neq(go.sel(go.id("event"), pascalCase(sseFields.idField)), go.str("")),
-        go.block(
-          go.expr(go.call(go.qual("fmt", "Fprintf"), go.id("w"), go.str(`id: %s\\n`), go.sel(go.id("event"), pascalCase(sseFields.idField)))),
+      stmts.push(
+        go.ifStmt(
+          go.neq(go.sel(go.id("event"), pascalCase(sseFields.idField)), go.str("")),
+          go.block(
+            go.expr(
+              go.call(
+                go.qual("fmt", "Fprintf"),
+                go.id("w"),
+                go.str(`id: %s\\n`),
+                go.sel(go.id("event"), pascalCase(sseFields.idField)),
+              ),
+            ),
+          ),
         ),
-      ));
+      );
     }
   }
-  stmts.push(go.expr(go.call(go.qual("fmt", "Fprintf"), go.id("w"), go.str(`data: %s\\n\\n`), go.id("data"))));
+  stmts.push(
+    go.expr(
+      go.call(go.qual("fmt", "Fprintf"), go.id("w"), go.str(`data: %s\\n\\n`), go.id("data")),
+    ),
+  );
   return stmts;
 }
 
@@ -566,15 +844,33 @@ export function generateGinSSEHandler(route: SSEAst): GeneratedRegion {
   const codec = route.codec;
   const stmts: go.Statement[] = [];
 
-  stmts.push(go.expr(go.call(
-    go.sel(go.call(go.sel(go.sel(go.id("c"), "Writer"), "Header")), "Set"),
-    go.str("Content-Type"), go.str("text/event-stream"))));
-  stmts.push(go.expr(go.call(
-    go.sel(go.call(go.sel(go.sel(go.id("c"), "Writer"), "Header")), "Set"),
-    go.str("Cache-Control"), go.str("no-cache"))));
-  stmts.push(go.expr(go.call(
-    go.sel(go.call(go.sel(go.sel(go.id("c"), "Writer"), "Header")), "Set"),
-    go.str("Connection"), go.str("keep-alive"))));
+  stmts.push(
+    go.expr(
+      go.call(
+        go.sel(go.call(go.sel(go.sel(go.id("c"), "Writer"), "Header")), "Set"),
+        go.str("Content-Type"),
+        go.str("text/event-stream"),
+      ),
+    ),
+  );
+  stmts.push(
+    go.expr(
+      go.call(
+        go.sel(go.call(go.sel(go.sel(go.id("c"), "Writer"), "Header")), "Set"),
+        go.str("Cache-Control"),
+        go.str("no-cache"),
+      ),
+    ),
+  );
+  stmts.push(
+    go.expr(
+      go.call(
+        go.sel(go.call(go.sel(go.sel(go.id("c"), "Writer"), "Header")), "Set"),
+        go.str("Connection"),
+        go.str("keep-alive"),
+      ),
+    ),
+  );
 
   const hasMarshalVar =
     codec &&
@@ -595,22 +891,36 @@ export function generateGinSSEHandler(route: SSEAst): GeneratedRegion {
   if (route.usecaseCodec && !hasMarshalVar) {
     const params = [go.field(["v"], toGoType(eventType))];
     const results = [go.field([], go.sliceType(go.id("byte"))), go.field([], go.id("error"))];
-    stmts.push(go.def(go.id("marshalEvent"),
-      go.funcLit(go.funcType(params, results),
-        go.block(go.return_(go.call(go.qual("json", "Marshal"), go.id("v")))),
+    stmts.push(
+      go.def(
+        go.id("marshalEvent"),
+        go.funcLit(
+          go.funcType(params, results),
+          go.block(go.return_(go.call(go.qual("json", "Marshal"), go.id("v")))),
+        ),
       ),
-    ));
+    );
   }
 
   stmts.push(go.def(go.id("ch"), go.call(go.id("make"), makeChanType(eventType))));
   const usecaseArgs = route.usecaseCodec
-    ? [go.call(go.sel(go.sel(go.id("c"), "Request"), "Context")), go.id("ch"), go.id("marshalEvent")]
+    ? [
+        go.call(go.sel(go.sel(go.id("c"), "Request"), "Context")),
+        go.id("ch"),
+        go.id("marshalEvent"),
+      ]
     : [go.call(go.sel(go.sel(go.id("c"), "Request"), "Context")), go.id("ch")];
-  stmts.push(go.goStmt(go.call(go.sel(go.sel(go.id("h"), `${route.handlerName}Usecase`), "Execute"), ...usecaseArgs)));
+  stmts.push(
+    go.goStmt(
+      go.call(go.sel(go.sel(go.id("h"), `${route.handlerName}Usecase`), "Execute"), ...usecaseArgs),
+    ),
+  );
 
   const useMarshalVar = hasMarshalVar || route.usecaseCodec;
   const streamBody: go.Statement[] = [];
-  streamBody.push(go.def([go.id("event"), go.id("ok")], { kind: "UnaryExpr", op: "<-", x: go.id("ch") }));
+  streamBody.push(
+    go.def([go.id("event"), go.id("ok")], { kind: "UnaryExpr", op: "<-", x: go.id("ch") }),
+  );
   streamBody.push(go.ifStmt(go.not(go.id("ok")), go.block(go.return_(go.id("false")))));
 
   const marshalLines = generateSSEMarshalLines(
@@ -621,12 +931,17 @@ export function generateGinSSEHandler(route: SSEAst): GeneratedRegion {
   streamBody.push(...marshalLines);
   streamBody.push(go.return_(go.id("true")));
 
-  stmts.push(go.expr(go.call(go.sel(go.id("c"), "Stream"),
-    go.funcLit(
-      go.funcType([go.field(["w"], go.id("io.Writer"))], [go.field([], go.id("bool"))]),
-      go.block(...streamBody),
+  stmts.push(
+    go.expr(
+      go.call(
+        go.sel(go.id("c"), "Stream"),
+        go.funcLit(
+          go.funcType([go.field(["w"], go.id("io.Writer"))], [go.field([], go.id("bool"))]),
+          go.block(...streamBody),
+        ),
+      ),
     ),
-  )));
+  );
 
   const methodDecl = go.method(
     go.field(["h"], go.star(go.id(`${modulePascal}Handler`))),
@@ -670,14 +985,15 @@ function wsProtoMarshalExpr(eventType: string): go.Expression {
   const results = [go.field([], go.sliceType(go.id("byte"))), go.field([], go.id("error"))];
   return go.funcLit(
     go.funcType(params, results),
-    go.block(
-      go.return_(go.call(go.id(`${eventType}ToProtoBytes`), go.id("v")), go.id("nil")),
-    ),
+    go.block(go.return_(go.call(go.id(`${eventType}ToProtoBytes`), go.id("v")), go.id("nil"))),
   );
 }
 
 function wsUnmarshalExpr(codec: ResolvedCodecSingle, msgType: string): go.Expression {
-  const params = [go.field(["data"], go.sliceType(go.id("byte"))), go.field(["msg"], go.star(toGoType(msgType)))];
+  const params = [
+    go.field(["data"], go.sliceType(go.id("byte"))),
+    go.field(["msg"], go.star(toGoType(msgType))),
+  ];
   const results = [go.field([], go.id("error"))];
   if (codec.kind === "preset") {
     return go.funcLit(
@@ -693,12 +1009,19 @@ function wsUnmarshalExpr(codec: ResolvedCodecSingle, msgType: string): go.Expres
 }
 
 function wsProtoUnmarshalExpr(msgType: string): go.Expression {
-  const params = [go.field(["data"], go.sliceType(go.id("byte"))), go.field(["msg"], go.star(toGoType(msgType)))];
+  const params = [
+    go.field(["data"], go.sliceType(go.id("byte"))),
+    go.field(["msg"], go.star(toGoType(msgType))),
+  ];
   const results = [go.field([], go.id("error"))];
   return go.funcLit(
     go.funcType(params, results),
     go.block(
-      go.assign(go.star(go.id("msg")), "=", go.call(go.id(`${msgType}FromProtoBytes`), go.id("data"))),
+      go.assign(
+        go.star(go.id("msg")),
+        "=",
+        go.call(go.id(`${msgType}FromProtoBytes`), go.id("data")),
+      ),
       go.return_(go.id("nil")),
     ),
   );
@@ -719,13 +1042,23 @@ function wsReadExpr(codec: ResolvedCodecSingle, msgType: string): go.Expression 
   return go.funcLit(
     go.funcType([], [go.field([], toGoType(msgType)), go.field([], go.id("error"))]),
     go.block(
-      go.def([go.id("_"), go.id("data"), go.id("err")], go.call(go.sel(go.id("conn"), "ReadMessage"))),
-      go.ifStmt(go.neq(go.id("err"), go.id("nil")), go.block(
-        go.declStmt(go.genDecl("var", go.valueSpec(["z"], toGoType(msgType)))),
-        go.return_(go.id("z"), go.id("err")),
-      )),
+      go.def(
+        [go.id("_"), go.id("data"), go.id("err")],
+        go.call(go.sel(go.id("conn"), "ReadMessage")),
+      ),
+      go.ifStmt(
+        go.neq(go.id("err"), go.id("nil")),
+        go.block(
+          go.declStmt(go.genDecl("var", go.valueSpec(["z"], toGoType(msgType)))),
+          go.return_(go.id("z"), go.id("err")),
+        ),
+      ),
       go.declStmt(go.genDecl("var", go.valueSpec(["msg"], toGoType(msgType)))),
-      go.assign(go.id("err"), "=", go.call(go.id(unmarshalFn), go.id("data"), go.addr(go.id("msg")))),
+      go.assign(
+        go.id("err"),
+        "=",
+        go.call(go.id(unmarshalFn), go.id("data"), go.addr(go.id("msg"))),
+      ),
       go.return_(go.id("msg"), go.id("err")),
     ),
   );
@@ -735,11 +1068,17 @@ function wsProtoReadExpr(msgType: string): go.Expression {
   return go.funcLit(
     go.funcType([], [go.field([], toGoType(msgType)), go.field([], go.id("error"))]),
     go.block(
-      go.def([go.id("_"), go.id("data"), go.id("err")], go.call(go.sel(go.id("conn"), "ReadMessage"))),
-      go.ifStmt(go.neq(go.id("err"), go.id("nil")), go.block(
-        go.declStmt(go.genDecl("var", go.valueSpec(["z"], toGoType(msgType)))),
-        go.return_(go.id("z"), go.id("err")),
-      )),
+      go.def(
+        [go.id("_"), go.id("data"), go.id("err")],
+        go.call(go.sel(go.id("conn"), "ReadMessage")),
+      ),
+      go.ifStmt(
+        go.neq(go.id("err"), go.id("nil")),
+        go.block(
+          go.declStmt(go.genDecl("var", go.valueSpec(["z"], toGoType(msgType)))),
+          go.return_(go.id("z"), go.id("err")),
+        ),
+      ),
       go.return_(go.call(go.id(`${msgType}FromProtoBytes`), go.id("data")), go.id("nil")),
     ),
   );
@@ -749,9 +1088,7 @@ function wsWriteExpr(codec: ResolvedCodecSingle, eventType: string): go.Expressi
   if (codec.kind === "preset") {
     return go.funcLit(
       go.funcType([go.field(["v"], toGoType(eventType))], [go.field([], go.id("error"))]),
-      go.block(
-        go.return_(go.call(go.sel(go.id("conn"), "WriteJSON"), go.id("v"))),
-      ),
+      go.block(go.return_(go.call(go.sel(go.id("conn"), "WriteJSON"), go.id("v")))),
     );
   }
   return go.funcLit(
@@ -759,7 +1096,13 @@ function wsWriteExpr(codec: ResolvedCodecSingle, eventType: string): go.Expressi
     go.block(
       go.def([go.id("data"), go.id("err")], go.call(go.id(codec.marshal), go.id("v"))),
       go.ifStmt(go.neq(go.id("err"), go.id("nil")), go.block(go.return_(go.id("err")))),
-      go.return_(go.call(go.sel(go.id("conn"), "WriteMessage"), go.qual("websocket", "TextMessage"), go.id("data"))),
+      go.return_(
+        go.call(
+          go.sel(go.id("conn"), "WriteMessage"),
+          go.qual("websocket", "TextMessage"),
+          go.id("data"),
+        ),
+      ),
     ),
   );
 }
@@ -768,8 +1111,13 @@ function wsProtoWriteExpr(eventType: string): go.Expression {
   return go.funcLit(
     go.funcType([go.field(["v"], toGoType(eventType))], [go.field([], go.id("error"))]),
     go.block(
-      go.return_(go.call(go.sel(go.id("conn"), "WriteMessage"), go.qual("websocket", "BinaryMessage"),
-        go.call(go.id(`${eventType}ToProtoBytes`), go.id("v")))),
+      go.return_(
+        go.call(
+          go.sel(go.id("conn"), "WriteMessage"),
+          go.qual("websocket", "BinaryMessage"),
+          go.call(go.id(`${eventType}ToProtoBytes`), go.id("v")),
+        ),
+      ),
     ),
   );
 }
@@ -827,10 +1175,9 @@ function generateWSNegotiationPreamble(
   if (hasUsecaseCodec) {
     if (strategy === "subprotocol") {
       upgraderFields.push(
-        go.kv(go.id("Subprotocols"),
-          go.elt(go.sliceType(go.id("string")),
-            ...Object.keys(codec.codecs).map((k) => go.str(k)),
-          ),
+        go.kv(
+          go.id("Subprotocols"),
+          go.elt(go.sliceType(go.id("string")), ...Object.keys(codec.codecs).map((k) => go.str(k))),
         ),
       );
       bodyStmts.push(go.def(go.id("subproto"), go.call(go.sel(go.id("conn"), "Subprotocol"))));
@@ -845,7 +1192,9 @@ function generateWSNegotiationPreamble(
       }
       bodyStmts.push(go.switchStmt(undefined, go.id("subproto"), ...cases));
     } else if (strategy === "query-param") {
-      bodyStmts.push(go.def(go.id("format"), go.call(go.sel(go.id("c"), "Query"), go.str("format"))));
+      bodyStmts.push(
+        go.def(go.id("format"), go.call(go.sel(go.id("c"), "Query"), go.str("format"))),
+      );
       bodyStmts.push(go.def(go.id("readMessage"), defaultRead));
       bodyStmts.push(go.def(go.id("writeEvent"), defaultWrite));
       bodyStmts.push(go.def(go.id("marshalEvent"), defaultMarshal!));
@@ -857,7 +1206,9 @@ function generateWSNegotiationPreamble(
       }
       bodyStmts.push(go.switchStmt(undefined, go.id("format"), ...cases));
     } else {
-      bodyStmts.push(go.def(go.id("accept"), go.call(go.sel(go.id("c"), "GetHeader"), go.str("Accept"))));
+      bodyStmts.push(
+        go.def(go.id("accept"), go.call(go.sel(go.id("c"), "GetHeader"), go.str("Accept"))),
+      );
       bodyStmts.push(go.def(go.id("readMessage"), defaultRead));
       bodyStmts.push(go.def(go.id("writeEvent"), defaultWrite));
       bodyStmts.push(go.def(go.id("marshalEvent"), defaultMarshal!));
@@ -865,20 +1216,27 @@ function generateWSNegotiationPreamble(
       const cases: go.CaseClause[] = [];
       for (const [key, cd] of Object.entries(codec.codecs)) {
         if (key === defaultKey) continue;
-        cases.push(go.caseClause(
-          [go.call(go.qual("strings", "Contains"), go.id("accept"), go.str(`application/x-${key}`))],
-          ...emitSwitchBodies(cd),
-        ));
+        cases.push(
+          go.caseClause(
+            [
+              go.call(
+                go.qual("strings", "Contains"),
+                go.id("accept"),
+                go.str(`application/x-${key}`),
+              ),
+            ],
+            ...emitSwitchBodies(cd),
+          ),
+        );
       }
       bodyStmts.push(go.switchStmt(undefined, undefined, ...cases));
     }
   } else {
     if (strategy === "subprotocol") {
       upgraderFields.push(
-        go.kv(go.id("Subprotocols"),
-          go.elt(go.sliceType(go.id("string")),
-            ...Object.keys(codec.codecs).map((k) => go.str(k)),
-          ),
+        go.kv(
+          go.id("Subprotocols"),
+          go.elt(go.sliceType(go.id("string")), ...Object.keys(codec.codecs).map((k) => go.str(k))),
         ),
       );
       bodyStmts.push(go.def(go.id("subproto"), go.call(go.sel(go.id("conn"), "Subprotocol"))));
@@ -891,7 +1249,9 @@ function generateWSNegotiationPreamble(
       }
       bodyStmts.push(go.switchStmt(undefined, go.id("subproto"), ...cases));
     } else if (strategy === "query-param") {
-      bodyStmts.push(go.def(go.id("format"), go.call(go.sel(go.id("c"), "Query"), go.str("format"))));
+      bodyStmts.push(
+        go.def(go.id("format"), go.call(go.sel(go.id("c"), "Query"), go.str("format"))),
+      );
       bodyStmts.push(go.def(go.id("readMessage"), defaultRead));
       bodyStmts.push(go.def(go.id("writeEvent"), defaultWrite));
       const cases: go.CaseClause[] = [];
@@ -901,16 +1261,26 @@ function generateWSNegotiationPreamble(
       }
       bodyStmts.push(go.switchStmt(undefined, go.id("format"), ...cases));
     } else {
-      bodyStmts.push(go.def(go.id("accept"), go.call(go.sel(go.id("c"), "GetHeader"), go.str("Accept"))));
+      bodyStmts.push(
+        go.def(go.id("accept"), go.call(go.sel(go.id("c"), "GetHeader"), go.str("Accept"))),
+      );
       bodyStmts.push(go.def(go.id("readMessage"), defaultRead));
       bodyStmts.push(go.def(go.id("writeEvent"), defaultWrite));
       const cases: go.CaseClause[] = [];
       for (const [key, cd] of Object.entries(codec.codecs)) {
         if (key === defaultKey) continue;
-        cases.push(go.caseClause(
-          [go.call(go.qual("strings", "Contains"), go.id("accept"), go.str(`application/x-${key}`))],
-          ...emitSwitchBodies(cd),
-        ));
+        cases.push(
+          go.caseClause(
+            [
+              go.call(
+                go.qual("strings", "Contains"),
+                go.id("accept"),
+                go.str(`application/x-${key}`),
+              ),
+            ],
+            ...emitSwitchBodies(cd),
+          ),
+        );
       }
       bodyStmts.push(go.switchStmt(undefined, undefined, ...cases));
     }
@@ -939,8 +1309,9 @@ export function generateGinWSHandler(route: WSAst): GeneratedRegion {
       eventType,
     );
     if (neg.upgraderFields.length > 0) {
-      stmts.push(go.def(go.id("upgrader"),
-        go.elt(go.qual("websocket", "Upgrader"), ...neg.upgraderFields)));
+      stmts.push(
+        go.def(go.id("upgrader"), go.elt(go.qual("websocket", "Upgrader"), ...neg.upgraderFields)),
+      );
     } else {
       stmts.push(go.def(go.id("upgrader"), go.elt(go.qual("websocket", "Upgrader"))));
     }
@@ -948,8 +1319,17 @@ export function generateGinWSHandler(route: WSAst): GeneratedRegion {
     stmts.push(go.def(go.id("upgrader"), go.elt(go.qual("websocket", "Upgrader"))));
   }
 
-  stmts.push(go.def([go.id("conn"), go.id("err")],
-    go.call(go.sel(go.id("upgrader"), "Upgrade"), go.sel(go.id("c"), "Writer"), go.sel(go.id("c"), "Request"), go.id("nil"))));
+  stmts.push(
+    go.def(
+      [go.id("conn"), go.id("err")],
+      go.call(
+        go.sel(go.id("upgrader"), "Upgrade"),
+        go.sel(go.id("c"), "Writer"),
+        go.sel(go.id("c"), "Request"),
+        go.id("nil"),
+      ),
+    ),
+  );
   stmts.push(go.ifStmt(go.neq(go.id("err"), go.id("nil")), go.block(go.return_())));
   stmts.push(go.defer(go.call(go.sel(go.id("conn"), "Close"))));
 
@@ -970,23 +1350,46 @@ export function generateGinWSHandler(route: WSAst): GeneratedRegion {
         (codec.kind === "preset" && codec.preset !== "json" && codec.preset !== "sse"))
     ) {
       const isProto = codec.kind === "preset" && codec.preset === "protobuf";
-      stmts.push(go.def(go.id("marshalEvent"), isProto ? wsProtoMarshalExpr(eventType) : wsMarshalExpr(codec, eventType)));
-      stmts.push(go.def(go.id("unmarshalMessage"), isProto ? wsProtoUnmarshalExpr(msgType) : wsUnmarshalExpr(codec, msgType)));
+      stmts.push(
+        go.def(
+          go.id("marshalEvent"),
+          isProto ? wsProtoMarshalExpr(eventType) : wsMarshalExpr(codec, eventType),
+        ),
+      );
+      stmts.push(
+        go.def(
+          go.id("unmarshalMessage"),
+          isProto ? wsProtoUnmarshalExpr(msgType) : wsUnmarshalExpr(codec, msgType),
+        ),
+      );
     } else if (codec?.kind === "preset" || !codec) {
       const params1 = [go.field(["v"], toGoType(eventType))];
       const results1 = [go.field([], go.sliceType(go.id("byte"))), go.field([], go.id("error"))];
-      stmts.push(go.def(go.id("marshalEvent"),
-        go.funcLit(go.funcType(params1, results1),
-          go.block(go.return_(go.call(go.qual("json", "Marshal"), go.id("v")))),
+      stmts.push(
+        go.def(
+          go.id("marshalEvent"),
+          go.funcLit(
+            go.funcType(params1, results1),
+            go.block(go.return_(go.call(go.qual("json", "Marshal"), go.id("v")))),
+          ),
         ),
-      ));
-      const params2 = [go.field(["data"], go.sliceType(go.id("byte"))), go.field(["msg"], go.star(toGoType(msgType)))];
+      );
+      const params2 = [
+        go.field(["data"], go.sliceType(go.id("byte"))),
+        go.field(["msg"], go.star(toGoType(msgType))),
+      ];
       const results2 = [go.field([], go.id("error"))];
-      stmts.push(go.def(go.id("unmarshalMessage"),
-        go.funcLit(go.funcType(params2, results2),
-          go.block(go.return_(go.call(go.qual("json", "Unmarshal"), go.id("data"), go.id("msg")))),
+      stmts.push(
+        go.def(
+          go.id("unmarshalMessage"),
+          go.funcLit(
+            go.funcType(params2, results2),
+            go.block(
+              go.return_(go.call(go.qual("json", "Unmarshal"), go.id("data"), go.id("msg"))),
+            ),
+          ),
         ),
-      ));
+      );
     }
   }
 
@@ -994,24 +1397,54 @@ export function generateGinWSHandler(route: WSAst): GeneratedRegion {
   stmts.push(go.def(go.id("writeCh"), go.call(go.id("make"), makeChanType(eventType), go.int(8))));
 
   const usecaseArgs = route.usecaseCodec
-    ? [go.call(go.sel(go.sel(go.id("c"), "Request"), "Context")), go.id("readCh"), go.id("writeCh"), go.id("marshalEvent"), go.id("unmarshalMessage")]
-    : [go.call(go.sel(go.sel(go.id("c"), "Request"), "Context")), go.id("readCh"), go.id("writeCh")];
-  stmts.push(go.goStmt(go.call(go.sel(go.sel(go.id("h"), `${route.handlerName}Usecase`), "Execute"), ...usecaseArgs)));
+    ? [
+        go.call(go.sel(go.sel(go.id("c"), "Request"), "Context")),
+        go.id("readCh"),
+        go.id("writeCh"),
+        go.id("marshalEvent"),
+        go.id("unmarshalMessage"),
+      ]
+    : [
+        go.call(go.sel(go.sel(go.id("c"), "Request"), "Context")),
+        go.id("readCh"),
+        go.id("writeCh"),
+      ];
+  stmts.push(
+    go.goStmt(
+      go.call(go.sel(go.sel(go.id("h"), `${route.handlerName}Usecase`), "Execute"), ...usecaseArgs),
+    ),
+  );
 
   if (hasNegotiation) {
     const readLoop: go.Statement[] = [];
     readLoop.push(go.defer(go.call(go.id("close"), go.id("readCh"))));
-    readLoop.push(go.forStmt(undefined, undefined, undefined, go.block(
-      go.def([go.id("msg"), go.id("err")], go.call(go.id("readMessage"))),
-      go.ifStmt(go.neq(go.id("err"), go.id("nil")), go.block(go.branch("break"))),
-      { kind: "SendStmt", chan: go.id("readCh"), value: go.id("msg") },
-    )));
-    stmts.push(go.goStmt(go.call(
-      go.funcLit(go.funcType([], undefined), go.block(...readLoop)),
-    )));
-    stmts.push(go.rangeStmt(undefined, go.id("event"), ":=", go.id("writeCh"), go.block(
-      { kind: "IfStmt", init: go.def(go.id("err"), go.call(go.id("writeEvent"), go.id("event"))), cond: go.neq(go.id("err"), go.id("nil")), body: go.block(go.branch("break")) } as go.IfStmt,
-    )));
+    readLoop.push(
+      go.forStmt(
+        undefined,
+        undefined,
+        undefined,
+        go.block(
+          go.def([go.id("msg"), go.id("err")], go.call(go.id("readMessage"))),
+          go.ifStmt(go.neq(go.id("err"), go.id("nil")), go.block(go.branch("break"))),
+          { kind: "SendStmt", chan: go.id("readCh"), value: go.id("msg") },
+        ),
+      ),
+    );
+    stmts.push(go.goStmt(go.call(go.funcLit(go.funcType([], undefined), go.block(...readLoop)))));
+    stmts.push(
+      go.rangeStmt(
+        undefined,
+        go.id("event"),
+        ":=",
+        go.id("writeCh"),
+        go.block({
+          kind: "IfStmt",
+          init: go.def(go.id("err"), go.call(go.id("writeEvent"), go.id("event"))),
+          cond: go.neq(go.id("err"), go.id("nil")),
+          body: go.block(go.branch("break")),
+        } as go.IfStmt),
+      ),
+    );
   } else if (
     codec &&
     (codec.kind === "custom" ||
@@ -1025,31 +1458,66 @@ export function generateGinWSHandler(route: WSAst): GeneratedRegion {
 
     const readLoop: go.Statement[] = [];
     readLoop.push(go.defer(go.call(go.id("close"), go.id("readCh"))));
-    readLoop.push(go.forStmt(undefined, undefined, undefined, go.block(
-      go.def([go.id("msg"), go.id("err")], go.call(go.id("readMessage"))),
-      go.ifStmt(go.neq(go.id("err"), go.id("nil")), go.block(go.branch("break"))),
-      { kind: "SendStmt", chan: go.id("readCh"), value: go.id("msg") },
-    )));
-    stmts.push(go.goStmt(go.call(
-      go.funcLit(go.funcType([], undefined), go.block(...readLoop)),
-    )));
-    stmts.push(go.rangeStmt(undefined, go.id("event"), ":=", go.id("writeCh"), go.block(
-      { kind: "IfStmt", init: go.def(go.id("err"), go.call(go.id("writeEvent"), go.id("event"))), cond: go.neq(go.id("err"), go.id("nil")), body: go.block(go.branch("break")) } as go.IfStmt,
-    )));
+    readLoop.push(
+      go.forStmt(
+        undefined,
+        undefined,
+        undefined,
+        go.block(
+          go.def([go.id("msg"), go.id("err")], go.call(go.id("readMessage"))),
+          go.ifStmt(go.neq(go.id("err"), go.id("nil")), go.block(go.branch("break"))),
+          { kind: "SendStmt", chan: go.id("readCh"), value: go.id("msg") },
+        ),
+      ),
+    );
+    stmts.push(go.goStmt(go.call(go.funcLit(go.funcType([], undefined), go.block(...readLoop)))));
+    stmts.push(
+      go.rangeStmt(
+        undefined,
+        go.id("event"),
+        ":=",
+        go.id("writeCh"),
+        go.block({
+          kind: "IfStmt",
+          init: go.def(go.id("err"), go.call(go.id("writeEvent"), go.id("event"))),
+          cond: go.neq(go.id("err"), go.id("nil")),
+          body: go.block(go.branch("break")),
+        } as go.IfStmt),
+      ),
+    );
   } else {
     const readLoop: go.Statement[] = [];
     readLoop.push(go.defer(go.call(go.id("close"), go.id("readCh"))));
-    readLoop.push(go.forStmt(undefined, undefined, undefined, go.block(
-      go.declStmt(go.genDecl("var", go.valueSpec(["msg"], toGoType(msgType)))),
-      go.ifStmt(go.neq(go.call(go.sel(go.id("conn"), "ReadJSON"), go.addr(go.id("msg"))), go.id("nil")), go.block(go.branch("break"))),
-      { kind: "SendStmt", chan: go.id("readCh"), value: go.id("msg") },
-    )));
-    stmts.push(go.goStmt(go.call(
-      go.funcLit(go.funcType([], undefined), go.block(...readLoop)),
-    )));
-    stmts.push(go.rangeStmt(undefined, go.id("event"), ":=", go.id("writeCh"), go.block(
-      { kind: "IfStmt", init: go.def(go.id("err"), go.call(go.sel(go.id("conn"), "WriteJSON"), go.id("event"))), cond: go.neq(go.id("err"), go.id("nil")), body: go.block(go.branch("break")) } as go.IfStmt,
-    )));
+    readLoop.push(
+      go.forStmt(
+        undefined,
+        undefined,
+        undefined,
+        go.block(
+          go.declStmt(go.genDecl("var", go.valueSpec(["msg"], toGoType(msgType)))),
+          go.ifStmt(
+            go.neq(go.call(go.sel(go.id("conn"), "ReadJSON"), go.addr(go.id("msg"))), go.id("nil")),
+            go.block(go.branch("break")),
+          ),
+          { kind: "SendStmt", chan: go.id("readCh"), value: go.id("msg") },
+        ),
+      ),
+    );
+    stmts.push(go.goStmt(go.call(go.funcLit(go.funcType([], undefined), go.block(...readLoop)))));
+    stmts.push(
+      go.rangeStmt(
+        undefined,
+        go.id("event"),
+        ":=",
+        go.id("writeCh"),
+        go.block({
+          kind: "IfStmt",
+          init: go.def(go.id("err"), go.call(go.sel(go.id("conn"), "WriteJSON"), go.id("event"))),
+          cond: go.neq(go.id("err"), go.id("nil")),
+          body: go.block(go.branch("break")),
+        } as go.IfStmt),
+      ),
+    );
   }
 
   const methodDecl = go.method(

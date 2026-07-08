@@ -160,11 +160,18 @@ export function generateServer(
     const varName = lowerSvcVar(svc.name);
     const needsCfg = hasConfig && svc.env && svc.env.length > 0;
     const ctorArgs: go.Expression[] = needsCfg ? [go.id("cfg")] : [];
-    addStmt(go.def([go.id(varName), go.id("err")], [go.call(go.sel(go.id("service"), ctorName), ...ctorArgs)]));
-    addStmt(go.ifStmt(
-      go.binary(go.id("err"), "!=", go.id("nil")),
-      go.block(go.expr(go.call(go.id("panic"), go.id("err")))),
-    ));
+    addStmt(
+      go.def(
+        [go.id(varName), go.id("err")],
+        [go.call(go.sel(go.id("service"), ctorName), ...ctorArgs)],
+      ),
+    );
+    addStmt(
+      go.ifStmt(
+        go.binary(go.id("err"), "!=", go.id("nil")),
+        go.block(go.expr(go.call(go.id("panic"), go.id("err")))),
+      ),
+    );
     if (svc.close) {
       addStmt(go.defer(go.call(go.sel(go.id(varName), "Close"))));
     }
@@ -192,10 +199,11 @@ export function generateServer(
 
   // ── Middleware ──
   if (hasLogger) {
-    addStmt(go.expr(go.call(
-      go.sel(go.id("r"), "Use"),
-      go.call(go.qual("runtime", "RequestContextMiddleware")),
-    )));
+    addStmt(
+      go.expr(
+        go.call(go.sel(go.id("r"), "Use"), go.call(go.qual("runtime", "RequestContextMiddleware"))),
+      ),
+    );
     addRaw("");
   }
 
@@ -203,14 +211,22 @@ export function generateServer(
   if (ast.router.cors) {
     const c = ast.router.cors;
     addRaw(`\tr.Use(cors.New(cors.Config{`);
-    addRaw(`\t\tAllowOrigins:     []string{${c.allowOrigins.map((o) => renderEnvString(o, ast.env)).join(", ")}},`);
-    addRaw(`\t\tAllowMethods:     []string{${c.allowMethods.map((m) => renderEnvString(m, ast.env)).join(", ")}},`);
-    addRaw(`\t\tAllowHeaders:     []string{${c.allowHeaders.map((h) => renderEnvString(h, ast.env)).join(", ")}},`);
+    addRaw(
+      `\t\tAllowOrigins:     []string{${c.allowOrigins.map((o) => renderEnvString(o, ast.env)).join(", ")}},`,
+    );
+    addRaw(
+      `\t\tAllowMethods:     []string{${c.allowMethods.map((m) => renderEnvString(m, ast.env)).join(", ")}},`,
+    );
+    addRaw(
+      `\t\tAllowHeaders:     []string{${c.allowHeaders.map((h) => renderEnvString(h, ast.env)).join(", ")}},`,
+    );
     if (c.allowCredentials !== undefined) {
       addRaw(`\t\tAllowCredentials: ${c.allowCredentials},`);
     }
     if (c.exposeHeaders && c.exposeHeaders.length > 0) {
-      addRaw(`\t\tExposeHeaders:    []string{${c.exposeHeaders.map((h) => renderEnvString(h, ast.env)).join(", ")}},`);
+      addRaw(
+        `\t\tExposeHeaders:    []string{${c.exposeHeaders.map((h) => renderEnvString(h, ast.env)).join(", ")}},`,
+      );
     }
     if (c.maxAge !== undefined) {
       addRaw(`\t\tMaxAge:           ${c.maxAge},`);
@@ -243,14 +259,18 @@ export function generateServer(
   if (!hasConfig) {
     addRaw("");
     addStmt(go.def(go.id("addr"), go.call(go.qual("os", "Getenv"), go.str("PORT"))));
-    addStmt(go.ifStmt(
-      go.binary(go.id("addr"), "==", go.str("")),
-      go.block(go.assign(go.id("addr"), "=", go.str(":8080"))),
-    ));
-    addStmt(go.ifStmt(
-      go.not(go.call(go.qual("strings", "HasPrefix"), go.id("addr"), go.str(":"))),
-      go.block(go.assign(go.id("addr"), "=", go.binary(go.str(":"), "+", go.id("addr")))),
-    ));
+    addStmt(
+      go.ifStmt(
+        go.binary(go.id("addr"), "==", go.str("")),
+        go.block(go.assign(go.id("addr"), "=", go.str(":8080"))),
+      ),
+    );
+    addStmt(
+      go.ifStmt(
+        go.not(go.call(go.qual("strings", "HasPrefix"), go.id("addr"), go.str(":"))),
+        go.block(go.assign(go.id("addr"), "=", go.binary(go.str(":"), "+", go.id("addr")))),
+      ),
+    );
   }
 
   // ── HTTP Server ──
@@ -271,12 +291,16 @@ export function generateServer(
   // ── Signal handling ──
   addRaw("");
   addRaw(`\tquit := make(chan os.Signal, 1)`);
-  addStmt(go.expr(go.call(
-    go.qual("signal", "Notify"),
-    go.id("quit"),
-    go.qual("syscall", "SIGINT"),
-    go.qual("syscall", "SIGTERM"),
-  )));
+  addStmt(
+    go.expr(
+      go.call(
+        go.qual("signal", "Notify"),
+        go.id("quit"),
+        go.qual("syscall", "SIGINT"),
+        go.qual("syscall", "SIGTERM"),
+      ),
+    ),
+  );
   addStmt({
     kind: "ExprStmt",
     expr: { kind: "UnaryExpr", op: "<-", x: go.id("quit") },
@@ -285,7 +309,9 @@ export function generateServer(
   // ── Graceful shutdown ──
   addRaw("");
   const shutdownTimeout = ast.options.runtime?.shutdownTimeout ?? 5;
-  addRaw(`\tctx, cancel := context.WithTimeout(context.Background(), ${shutdownTimeout}*time.Second)`);
+  addRaw(
+    `\tctx, cancel := context.WithTimeout(context.Background(), ${shutdownTimeout}*time.Second)`,
+  );
   addStmt(go.defer(go.call(go.id("cancel"))));
   addStmt({
     kind: "IfStmt",

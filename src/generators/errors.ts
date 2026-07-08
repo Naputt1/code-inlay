@@ -100,23 +100,6 @@ export function generateStandardErrors(featuresDir?: string): GeneratedFilePatch
   ];
 }
 
-export function renderStandardErrorsLegacy(structs: ErrorStruct[]): string {
-  const parts: string[] = [`import "net/http"`, ``];
-
-  for (const s of structs) {
-    const fields = s.fields.map((f) => `\t${f.name} ${f.type} \`json:"${f.jsonName}"\``).join("\n");
-    parts.push(`type ${s.name} struct {\n${fields}\n}`);
-    parts.push(`func (e *${s.name}) Error() string { return e.Message }`);
-    parts.push(
-      `func (e *${s.name}) HTTPStatus() int { return ${httpStatusConsts[s.httpStatus] ?? s.httpStatus} }`,
-    );
-    parts.push(``);
-  }
-
-  if (parts[parts.length - 1] === "") parts.pop();
-  return parts.join("\n");
-}
-
 function renderStandardErrors(structs: ErrorStruct[]): string {
   return renderStandardErrorsAST(structs);
 }
@@ -218,30 +201,6 @@ function schemaToGoSimpleType(schema: SchemaLike): string {
     default:
       return "string";
   }
-}
-
-export function renderModuleErrorsLegacy(moduleName: string, structs: ErrorStruct[]): string {
-  const parts: string[] = [`import "net/http"`, ``];
-
-  for (const s of structs) {
-    if (s.fields.length === 0) {
-      parts.push(`type ${s.name} struct{}`);
-    } else {
-      const fields = s.fields
-        .map((f) => `\t${f.name} ${f.type} \`json:"${f.jsonName}"\``)
-        .join("\n");
-      parts.push(`type ${s.name} struct {\n${fields}\n}`);
-    }
-    parts.push(`func (e *${s.name}) Error() string { return "${s.name}" }`);
-    parts.push(
-      `func (e *${s.name}) HTTPStatus() int { return ${httpStatusConsts[s.httpStatus] ?? s.httpStatus} }`,
-    );
-    parts.push(``);
-  }
-
-  if (parts[parts.length - 1] === "") parts.pop();
-
-  return parts.join("\n");
 }
 
 function renderModuleErrors(moduleName: string, structs: ErrorStruct[]): string {

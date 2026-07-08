@@ -29,7 +29,7 @@ export function generateHandlerStructs(
   for (const [moduleName, fields] of moduleFields) {
     const typeName = `${pascalCase(moduleName)}Handler`;
 
-    const structFields = fields.map(f => {
+    const structFields = fields.map((f) => {
       const parts = f.split(" ");
       return go.field([parts[0]], toGoType(parts[1]));
     });

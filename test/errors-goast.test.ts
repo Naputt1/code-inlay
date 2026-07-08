@@ -1,13 +1,6 @@
 import { describe, it, expect } from "vitest";
-import {
-  renderStandardErrors,
-  renderModuleErrors,
-} from "../src/generators/errors-goast.js";
-import {
-  renderStandardErrorsLegacy,
-  renderModuleErrorsLegacy,
-  httpStatusConsts,
-} from "../src/generators/errors.js";
+import { renderStandardErrors, renderModuleErrors } from "../src/generators/errors-goast.js";
+import { httpStatusConsts } from "../src/generators/errors.js";
 
 describe("go-ast errors generation — standard errors", () => {
   it("1. single standard error — BadRequest", () => {
@@ -75,17 +68,15 @@ func (e *BadRequest) HTTPStatus() int {
       httpStatus: s.status,
     }));
     const result = renderStandardErrors(structs);
-    const legacy = renderStandardErrorsLegacy(structs);
 
-    // Same number of lines (struct + method lines expand in go-ast)
-    expect(result).toContain("import \"net/http\"");
+    expect(result).toContain('import "net/http"');
     expect(result).toContain("type BadRequest struct");
     expect(result).toContain("type GatewayTimeout struct");
 
     // Struct declarations themselves should be identical
     for (const s of allNames) {
       expect(result).toContain(`type ${s.name} struct {`);
-      expect(result).toContain("Message string `json:\"message\"`");
+      expect(result).toContain('Message string `json:"message"`');
       expect(result).toContain(`func (e *${s.name}) Error() string {`);
       expect(result).toContain("return e.Message");
       expect(result).toContain(`func (e *${s.name}) HTTPStatus() int {`);
@@ -109,9 +100,7 @@ func (e *BadRequest) HTTPStatus() int {
 
 describe("go-ast errors generation — module errors", () => {
   it("3. module error with no fields", () => {
-    const structs = [
-      { name: "NotFound", fields: [], httpStatus: 404 },
-    ];
+    const structs = [{ name: "NotFound", fields: [], httpStatus: 404 }];
     const result = renderModuleErrors("test", structs);
     const expected = `import "net/http"
 
@@ -135,7 +124,7 @@ func (e *NotFound) HTTPStatus() int {
     ];
     const result = renderModuleErrors("test", structs);
     expect(result).toContain("type ValidationError struct {");
-    expect(result).toContain("Field string `json:\"field\"`");
+    expect(result).toContain('Field string `json:"field"`');
     expect(result).toContain('return "ValidationError"');
     expect(result).toContain("return http.StatusUnprocessableEntity");
   });
@@ -153,8 +142,8 @@ func (e *NotFound) HTTPStatus() int {
     ];
     const result = renderModuleErrors("test", structs);
     expect(result).toContain("type ApiError struct {");
-    expect(result).toContain("Code int32 `json:\"code\"`");
-    expect(result).toContain("Message string `json:\"message\"`");
+    expect(result).toContain('Code int32 `json:"code"`');
+    expect(result).toContain('Message string `json:"message"`');
     expect(result).toContain('return "ApiError"');
     expect(result).toContain("return http.StatusBadRequest");
   });
@@ -174,10 +163,10 @@ func (e *NotFound) HTTPStatus() int {
     ];
     const result = renderModuleErrors("test", structs);
     expect(result).toContain("RichError struct {");
-    expect(result).toContain("Code int32 `json:\"code\"`");
-    expect(result).toContain("Tags []string `json:\"tags\"`");
-    expect(result).toContain("Meta map[string]string `json:\"meta\"`");
-    expect(result).toContain("Active bool `json:\"active\"`");
+    expect(result).toContain('Code int32 `json:"code"`');
+    expect(result).toContain('Tags []string `json:"tags"`');
+    expect(result).toContain('Meta map[string]string `json:"meta"`');
+    expect(result).toContain('Active bool `json:"active"`');
     expect(result).toContain("return http.StatusInternalServerError");
   });
 
@@ -207,48 +196,5 @@ func (e *CustomError) HTTPStatus() int {
 \treturn 299
 }`;
     expect(result).toBe(expected);
-  });
-});
-
-describe("go-ast errors — parity with legacy", () => {
-  it("9. standard error struct declarations match legacy exactly", () => {
-    const structs = [
-      {
-        name: "BadRequest",
-        fields: [{ name: "Message", type: "string", jsonName: "message" }],
-        httpStatus: 400,
-      },
-    ];
-    const newResult = renderStandardErrors(structs);
-    const legacyResult = renderStandardErrorsLegacy(structs);
-
-    // Extract struct decls from both
-    const newStructs = newResult.split("\n").filter((l) => l.startsWith("type "));
-    const legacyStructs = legacyResult.split("\n").filter((l) => l.startsWith("type "));
-    expect(newStructs).toEqual(legacyStructs);
-  });
-
-  it("10. module error struct declarations match legacy exactly", () => {
-    const structs = [
-      {
-        name: "ApiError",
-        fields: [
-          { name: "Code", type: "int32", jsonName: "code" },
-          { name: "Message", type: "string", jsonName: "message" },
-        ],
-        httpStatus: 400,
-      },
-      {
-        name: "EmptyError",
-        fields: [],
-        httpStatus: 404,
-      },
-    ];
-    const newResult = renderModuleErrors("test", structs);
-    const legacyResult = renderModuleErrorsLegacy("test", structs);
-
-    const newStructs = newResult.split("\n").filter((l) => l.startsWith("type "));
-    const legacyStructs = legacyResult.split("\n").filter((l) => l.startsWith("type "));
-    expect(newStructs).toEqual(legacyStructs);
   });
 });

@@ -5,7 +5,7 @@ import type { GoModuleInfo } from "../utils/env.js";
 export const configFilePath = "internal/config/env.go";
 
 function renderImportsRegion(imports: string[]): string {
-  const specs = imports.sort().map(i => go.importSpec(i.replace(/^"|"$/g, "")));
+  const specs = imports.sort().map((i) => go.importSpec(i.replace(/^"|"$/g, "")));
   const decl: go.GenDecl = { kind: "GenDecl", token: "import", specs, lparen: true };
   const sb = new go.StringBuilder();
   go.printDeclaration(sb, decl, 0);
@@ -76,15 +76,15 @@ function renderLoadContent(env: Record<string, EnvVarInfo>): string {
   for (const [key, info] of Object.entries(env)) {
     if (key === "PORT") {
       bodyStmts.push(
-        go.assign([go.sel(go.id("cfg"), "PORT")], "=", [go.call(go.sel(go.id("os"), "Getenv"), go.str("PORT"))]),
+        go.assign([go.sel(go.id("cfg"), "PORT")], "=", [
+          go.call(go.sel(go.id("os"), "Getenv"), go.str("PORT")),
+        ]),
       );
       if (info.default !== undefined) {
         bodyStmts.push({
           kind: "IfStmt",
           cond: go.binary(go.sel(go.id("cfg"), "PORT"), "==", go.str("")),
-          body: go.block(
-            go.assign([go.sel(go.id("cfg"), "PORT")], "=", [go.str(info.default)]),
-          ),
+          body: go.block(go.assign([go.sel(go.id("cfg"), "PORT")], "=", [go.str(info.default)])),
         });
       } else {
         bodyStmts.push({
@@ -97,9 +97,13 @@ function renderLoadContent(env: Record<string, EnvVarInfo>): string {
       }
       bodyStmts.push({
         kind: "IfStmt",
-        cond: go.not(go.call(go.qual("strings", "HasPrefix"), go.sel(go.id("cfg"), "PORT"), go.str(":"))),
+        cond: go.not(
+          go.call(go.qual("strings", "HasPrefix"), go.sel(go.id("cfg"), "PORT"), go.str(":")),
+        ),
         body: go.block(
-          go.assign([go.sel(go.id("cfg"), "PORT")], "=", [go.binary(go.str(":"), "+", go.sel(go.id("cfg"), "PORT"))]),
+          go.assign([go.sel(go.id("cfg"), "PORT")], "=", [
+            go.binary(go.str(":"), "+", go.sel(go.id("cfg"), "PORT")),
+          ]),
         ),
       });
       continue;
@@ -107,36 +111,45 @@ function renderLoadContent(env: Record<string, EnvVarInfo>): string {
 
     if (info.type === "string") {
       bodyStmts.push(
-        go.assign([go.sel(go.id("cfg"), key)], "=", [go.call(go.sel(go.id("os"), "Getenv"), go.str(key))]),
+        go.assign([go.sel(go.id("cfg"), key)], "=", [
+          go.call(go.sel(go.id("os"), "Getenv"), go.str(key)),
+        ]),
       );
       if (info.required) {
         bodyStmts.push({
           kind: "IfStmt",
           cond: go.binary(go.sel(go.id("cfg"), key), "==", go.str("")),
           body: go.block(
-            go.expr(go.call(go.sel(go.id("log"), "Fatal"), go.str(`${key} is required but not set`))),
+            go.expr(
+              go.call(go.sel(go.id("log"), "Fatal"), go.str(`${key} is required but not set`)),
+            ),
           ),
         });
       } else if (info.default !== undefined) {
         bodyStmts.push({
           kind: "IfStmt",
           cond: go.binary(go.sel(go.id("cfg"), key), "==", go.str("")),
-          body: go.block(
-            go.assign([go.sel(go.id("cfg"), key)], "=", [go.str(info.default)]),
-          ),
+          body: go.block(go.assign([go.sel(go.id("cfg"), key)], "=", [go.str(info.default)])),
         });
       }
     } else if (info.type === "number") {
       const defaultVal = info.default ?? "0";
-      bodyStmts.push(
-        go.assign([go.sel(go.id("cfg"), key)], "=", [go.int(defaultVal)]),
-      );
+      bodyStmts.push(go.assign([go.sel(go.id("cfg"), key)], "=", [go.int(defaultVal)]));
       const innerIf: go.IfStmt = {
         kind: "IfStmt",
-        init: go.def([go.id("n"), go.id("err")], go.call(go.sel(go.id("strconv"), "Atoi"), go.id("v"))),
+        init: go.def(
+          [go.id("n"), go.id("err")],
+          go.call(go.sel(go.id("strconv"), "Atoi"), go.id("v")),
+        ),
         cond: go.binary(go.id("err"), "!=", go.id("nil")),
         body: go.block(
-          go.expr(go.call(go.sel(go.id("log"), "Fatalf"), go.str(`${key}: invalid number %q`), go.id("v"))),
+          go.expr(
+            go.call(
+              go.sel(go.id("log"), "Fatalf"),
+              go.str(`${key}: invalid number %q`),
+              go.id("v"),
+            ),
+          ),
         ),
         elseStmt: go.block(go.assign([go.sel(go.id("cfg"), key)], "=", [go.id("n")])),
       };
@@ -146,7 +159,9 @@ function renderLoadContent(env: Record<string, EnvVarInfo>): string {
           init: go.def(go.id("v"), go.call(go.sel(go.id("os"), "Getenv"), go.str(key))),
           cond: go.binary(go.id("v"), "==", go.str("")),
           body: go.block(
-            go.expr(go.call(go.sel(go.id("log"), "Fatal"), go.str(`${key} is required but not set`))),
+            go.expr(
+              go.call(go.sel(go.id("log"), "Fatal"), go.str(`${key} is required but not set`)),
+            ),
           ),
           elseStmt: innerIf,
         });
@@ -160,15 +175,22 @@ function renderLoadContent(env: Record<string, EnvVarInfo>): string {
       }
     } else if (info.type === "boolean") {
       const defaultVal = info.default ?? "false";
-      bodyStmts.push(
-        go.assign([go.sel(go.id("cfg"), key)], "=", [go.id(defaultVal)]),
-      );
+      bodyStmts.push(go.assign([go.sel(go.id("cfg"), key)], "=", [go.id(defaultVal)]));
       const innerIf: go.IfStmt = {
         kind: "IfStmt",
-        init: go.def([go.id("b"), go.id("err")], go.call(go.sel(go.id("strconv"), "ParseBool"), go.id("v"))),
+        init: go.def(
+          [go.id("b"), go.id("err")],
+          go.call(go.sel(go.id("strconv"), "ParseBool"), go.id("v")),
+        ),
         cond: go.binary(go.id("err"), "!=", go.id("nil")),
         body: go.block(
-          go.expr(go.call(go.sel(go.id("log"), "Fatalf"), go.str(`${key}: invalid boolean %q`), go.id("v"))),
+          go.expr(
+            go.call(
+              go.sel(go.id("log"), "Fatalf"),
+              go.str(`${key}: invalid boolean %q`),
+              go.id("v"),
+            ),
+          ),
         ),
         elseStmt: go.block(go.assign([go.sel(go.id("cfg"), key)], "=", [go.id("b")])),
       };
@@ -178,7 +200,9 @@ function renderLoadContent(env: Record<string, EnvVarInfo>): string {
           init: go.def(go.id("v"), go.call(go.sel(go.id("os"), "Getenv"), go.str(key))),
           cond: go.binary(go.id("v"), "==", go.str("")),
           body: go.block(
-            go.expr(go.call(go.sel(go.id("log"), "Fatal"), go.str(`${key} is required but not set`))),
+            go.expr(
+              go.call(go.sel(go.id("log"), "Fatal"), go.str(`${key} is required but not set`)),
+            ),
           ),
           elseStmt: innerIf,
         });

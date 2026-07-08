@@ -127,9 +127,7 @@ describe("go-ast middleware generation", () => {
   });
 
   it("3. two middleware modules", () => {
-    compare(
-      makeAst([{ name: "Auth" }, { name: "RateLimit" }]),
-    );
+    compare(makeAst([{ name: "Auth" }, { name: "RateLimit" }]));
   });
 
   it("4. duplicate middleware names (deduplication)", () => {

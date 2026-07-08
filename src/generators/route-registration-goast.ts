@@ -1,12 +1,7 @@
 import * as go from "@schemago/go-ast";
 import type { AppAst, AppServiceDef, ArchitectureAst } from "../types/index.js";
 import type { GoModuleInfo } from "../utils/env.js";
-import {
-  featuresPath,
-  lowerIdent,
-  pascalCase,
-  serviceTypeName,
-} from "../utils/naming.js";
+import { featuresPath, lowerIdent, pascalCase, serviceTypeName } from "../utils/naming.js";
 
 function printStmt(stmt: go.Statement): string {
   const sb = new go.StringBuilder();
@@ -61,29 +56,33 @@ export function generateHandlerInitLines(
   const nilChecks: go.Statement[] = [];
   for (const svc of moduleServices) {
     const svcVar = `${lowerIdent(svc.name)}Svc`;
-    nilChecks.push(go.ifStmt(
-      go.binary(go.id(svcVar), "==", go.id("nil")),
-      go.block(
-        go.expr(go.call(go.id("panic"), go.str(`${svcVar} must not be nil`))),
+    nilChecks.push(
+      go.ifStmt(
+        go.binary(go.id(svcVar), "==", go.id("nil")),
+        go.block(go.expr(go.call(go.id("panic"), go.str(`${svcVar} must not be nil`)))),
       ),
-    ));
+    );
   }
   addSection(nilChecks);
 
   const repoStmts: go.Statement[] = [];
   if (hasRepo && dbProvider) {
-    repoStmts.push(go.def(
-      go.id(repoVarName),
-      go.call(
-        go.sel(go.id(modPkg), `New${pascalCase(modPkg)}Repository`),
-        go.call(go.sel(go.id(`${lowerIdent(dbProvider.name)}Svc`), dbProvider.dbAccessor!)),
+    repoStmts.push(
+      go.def(
+        go.id(repoVarName),
+        go.call(
+          go.sel(go.id(modPkg), `New${pascalCase(modPkg)}Repository`),
+          go.call(go.sel(go.id(`${lowerIdent(dbProvider.name)}Svc`), dbProvider.dbAccessor!)),
+        ),
       ),
-    ));
+    );
   } else if (moduleServices.length === 0 && hasRepo) {
-    repoStmts.push(go.def(
-      go.id(repoVarName),
-      go.call(go.sel(go.id(modPkg), `New${pascalCase(modPkg)}Repository`)),
-    ));
+    repoStmts.push(
+      go.def(
+        go.id(repoVarName),
+        go.call(go.sel(go.id(modPkg), `New${pascalCase(modPkg)}Repository`)),
+      ),
+    );
   }
   addSection(repoStmts);
 
@@ -117,13 +116,12 @@ export function generateHandlerInitLines(
   if (usecaseFields.length > 0) {
     const handlerType = `${pascalCase(modPkg)}Handler`;
     const handlerVar = `${lowerIdent(modPkg)}Handler`;
-    handlerStmts.push(go.def(
-      go.id(handlerVar),
-      go.addr(go.elt(
-        go.sel(go.id(modPkg), handlerType),
-        ...usecaseFields,
-      )),
-    ));
+    handlerStmts.push(
+      go.def(
+        go.id(handlerVar),
+        go.addr(go.elt(go.sel(go.id(modPkg), handlerType), ...usecaseFields)),
+      ),
+    );
   }
   addSection(handlerStmts);
 
@@ -187,7 +185,10 @@ export function generateRegisterModuleRoutes(
     const gMw = groupMwByPrefix.get(prefix);
     const gMwArgsStr =
       gMw && gMw.size > 0
-        ? [...gMw].sort().map((n) => `middleware.${n}`).join(", ")
+        ? [...gMw]
+            .sort()
+            .map((n) => `middleware.${n}`)
+            .join(", ")
         : "";
 
     const groupStmts: go.Statement[] = [];

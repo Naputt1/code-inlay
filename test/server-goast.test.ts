@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { compile, defineApp, defineModule, defineRoute, defineCors } from "../src/index.js";
-import { generateServer as generateServerNew } from "../src/srvgen/server-goast.js";
-import { generateServerLegacy } from "../src/srvgen/index.js";
+import { generateServer } from "../src/srvgen/server-goast.js";
 import type { AdapterPlugin, GoModuleInfo } from "../src/index.js";
 
 const moduleInfo: GoModuleInfo = {
@@ -16,23 +15,6 @@ const mockAdapter: AdapterPlugin = {
   generateMiddleware: () => [""] as any,
   generateServer: () => [""] as any,
 } as unknown as AdapterPlugin;
-
-async function compare(
-  ast: any,
-  architecture: any,
-  moduleInfo: GoModuleInfo,
-  adapter?: AdapterPlugin,
-) {
-  const old_ = generateServerLegacy(ast, architecture, moduleInfo, adapter);
-  const new_ = generateServerNew(ast, architecture, moduleInfo, adapter);
-  expect(new_.path).toBe(old_.path);
-  expect(new_.regions.length).toBe(old_.regions.length);
-  for (let i = 0; i < old_.regions.length; i++) {
-    expect(new_.regions[i].content).toBe(old_.regions[i].content);
-    expect(new_.regions[i].imports?.sort()).toEqual(old_.regions[i].imports?.sort());
-    expect(new_.regions[i].signature).toBe(old_.regions[i].signature);
-  }
-}
 
 async function buildBase() {
   const app = defineApp({
@@ -53,10 +35,12 @@ async function buildBase() {
   return compile({ app, dryRun: true });
 }
 
-describe("generateServer — go-ast vs legacy", () => {
+describe("generateServer — go-ast", () => {
   it("minimal (gin, no services, no config, no logger, no CORS)", async () => {
     const result = await buildBase();
-    await compare(result.ast!, result.architecture!, moduleInfo, mockAdapter);
+    const patch = generateServer(result.ast!, result.architecture!, moduleInfo, mockAdapter);
+    expect(patch.path).toBe("cmd/server/main.go");
+    expect(patch.regions.length).toBe(2);
   });
 
   it("with config", async () => {
@@ -65,7 +49,8 @@ describe("generateServer — go-ast vs legacy", () => {
       ...result.ast!,
       env: { PORT: { type: "string" as const, required: false } },
     };
-    await compare(ast, result.architecture!, moduleInfo, mockAdapter);
+    const patch = generateServer(ast, result.architecture!, moduleInfo, mockAdapter);
+    expect(patch.regions[1].content).toContain("config.Load()");
   });
 
   it("with services (single, with Close)", async () => {
@@ -74,7 +59,9 @@ describe("generateServer — go-ast vs legacy", () => {
       ...result.ast!,
       services: [{ name: "UserService", close: true, typeName: "*userSvc" }],
     };
-    await compare(ast, result.architecture!, moduleInfo, mockAdapter);
+    const patch = generateServer(ast, result.architecture!, moduleInfo, mockAdapter);
+    expect(patch.regions[1].content).toContain("UserService");
+    expect(patch.regions[1].content).toContain(".Close()");
   });
 
   it("with services (single, no Close)", async () => {
@@ -83,7 +70,9 @@ describe("generateServer — go-ast vs legacy", () => {
       ...result.ast!,
       services: [{ name: "UserService", typeName: "*userSvc" }],
     };
-    await compare(ast, result.architecture!, moduleInfo, mockAdapter);
+    const patch = generateServer(ast, result.architecture!, moduleInfo, mockAdapter);
+    expect(patch.regions[1].content).toContain("UserService");
+    expect(patch.regions[1].content).not.toContain(".Close()");
   });
 
   it("with services and config", async () => {
@@ -93,7 +82,8 @@ describe("generateServer — go-ast vs legacy", () => {
       env: { PORT: { type: "string" as const, required: false } },
       services: [{ name: "UserService", close: true, typeName: "*userSvc", env: ["PORT"] }],
     };
-    await compare(ast, result.architecture!, moduleInfo, mockAdapter);
+    const patch = generateServer(ast, result.architecture!, moduleInfo, mockAdapter);
+    expect(patch.regions[1].content).toContain("cfg");
   });
 
   it("with logger (json format)", async () => {
@@ -108,7 +98,8 @@ describe("generateServer — go-ast vs legacy", () => {
         },
       },
     };
-    await compare(ast, result.architecture!, moduleInfo, mockAdapter);
+    const patch = generateServer(ast, result.architecture!, moduleInfo, mockAdapter);
+    expect(patch.regions[1].content).toContain("NewLogger");
   });
 
   it("with logger (text format)", async () => {
@@ -119,11 +110,16 @@ describe("generateServer — go-ast vs legacy", () => {
         ...result.ast!.options,
         runtime: {
           enabled: true,
-          logger: { provider: "zerolog" as const, level: "debug" as const, format: "text" as const },
+          logger: {
+            provider: "zerolog" as const,
+            level: "debug" as const,
+            format: "text" as const,
+          },
         },
       },
     };
-    await compare(ast, result.architecture!, moduleInfo, mockAdapter);
+    const patch = generateServer(ast, result.architecture!, moduleInfo, mockAdapter);
+    expect(patch.regions[1].content).toContain("NewLogger");
   });
 
   it("with CORS (all fields)", async () => {
@@ -142,7 +138,8 @@ describe("generateServer — go-ast vs legacy", () => {
         }),
       },
     };
-    await compare(ast, result.architecture!, moduleInfo, mockAdapter);
+    const patch = generateServer(ast, result.architecture!, moduleInfo, mockAdapter);
+    expect(patch.regions[1].content).toContain("cors.New");
   });
 
   it("with CORS (no optional fields)", async () => {
@@ -158,7 +155,8 @@ describe("generateServer — go-ast vs legacy", () => {
         }),
       },
     };
-    await compare(ast, result.architecture!, moduleInfo, mockAdapter);
+    const patch = generateServer(ast, result.architecture!, moduleInfo, mockAdapter);
+    expect(patch.regions[1].content).toContain("cors.New");
   });
 
   it("with all options combined", async () => {
@@ -185,16 +183,21 @@ describe("generateServer — go-ast vs legacy", () => {
         },
       },
     };
-    await compare(ast, result.architecture!, moduleInfo, mockAdapter);
+    const patch = generateServer(ast, result.architecture!, moduleInfo, mockAdapter);
+    expect(patch.regions[1].content).toContain("/healthz");
+    expect(patch.regions[1].content).toContain("/readyz");
   });
 
   it("without config (inline PORT detection)", async () => {
     const result = await buildBase();
-    await compare(result.ast!, result.architecture!, moduleInfo, mockAdapter);
+    const patch = generateServer(result.ast!, result.architecture!, moduleInfo, mockAdapter);
+    expect(patch.regions[1].content).toContain(`os.Getenv("PORT")`);
   });
 
-  it("without adapter (no gin)", async () => {
+  it("without adapter still generates gin-based server", async () => {
     const result = await buildBase();
-    await compare(result.ast!, result.architecture!, moduleInfo, undefined);
+    const patch = generateServer(result.ast!, result.architecture!, moduleInfo, undefined);
+    expect(patch.path).toBe("cmd/server/main.go");
+    expect(patch.regions.length).toBe(2);
   });
 });

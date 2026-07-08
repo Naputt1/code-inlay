@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { generateRuntimeCode, generateRuntimeConfigCode } from "../src/runtime/index.js";
-import { generateLoggerCode, getLoggerGoModules } from "../src/runtime/loggers.js";
+import { generateLoggerCode, getLoggerGoModules } from "../src/runtime/loggers-goast.js";
 import type { AdapterRef, AppAst, RuntimeConfig } from "../src/index.js";
 
 function minimalAst(overrides?: Partial<AppAst>): AppAst {

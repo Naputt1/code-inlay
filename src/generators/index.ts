@@ -42,16 +42,20 @@ import {
 import { generateServer, serverFilePath } from "../srvgen/index.js";
 import { generateEnvConfigFile } from "../srvgen/config.js";
 import { batchEnrichGoRegions } from "../plugins/enrich.js";
-import { generateRepository } from "./repository.js";
-import { generateServiceFile } from "./service.js";
+import { generateRepository } from "./repository-goast.js";
+import { generateServiceFile } from "./service-goast.js";
 import { generateUsecaseInterface, generateUsecaseScaffold } from "./usecase.js";
 import { generateHandlerStructs } from "./handler.js";
-import { generateMiddlewareFiles } from "./middleware.js";
+import { generateMiddlewareFiles } from "./middleware-goast.js";
 import { generateStandardErrors, generateModuleErrors, collectModuleErrors } from "./errors.js";
 import { generateBindingErrorFunction, doesSchemaNeedFmt } from "./validation.js";
 import type { BindingErrorConfig } from "./validation.js";
 import type { ScaffoldPart } from "./types.js";
-import { generateHandlerInitLines, generateRegisterModuleRoutes, generateCombinedRegisterRoutes } from "./route-registration-goast.js";
+import {
+  generateHandlerInitLines,
+  generateRegisterModuleRoutes,
+  generateCombinedRegisterRoutes,
+} from "./route-registration-goast.js";
 
 export function generateCode(
   ast: AppAst,
@@ -475,8 +479,12 @@ export function generateCode(
     let handlerInitLines: string[] = [];
     if (mod) {
       const result = generateHandlerInitLines(
-        mod, moduleServices, architecture.routes,
-        moduleInfo, featuresDir, repositoryModules,
+        mod,
+        moduleServices,
+        architecture.routes,
+        moduleInfo,
+        featuresDir,
+        repositoryModules,
       );
       moduleImports = result.moduleImports;
       handlerInitLines = result.handlerInitLines;
@@ -488,12 +496,16 @@ export function generateCode(
       funcParams += `, ${lowerIdent(svc.name)}Svc service.${svcName}`;
     }
 
-    const mwImport = mwNames.size > 0 && moduleInfo
-      ? [`"${moduleInfo.modulePath}/internal/middleware"`]
-      : [];
+    const mwImport =
+      mwNames.size > 0 && moduleInfo ? [`"${moduleInfo.modulePath}/internal/middleware"`] : [];
     const allImports = [...mwImport, ...moduleImports];
     const body = generateRegisterModuleRoutes(
-      moduleName, allImports, handlerInitLines, funcParams, routeLines, groupMwByPrefix,
+      moduleName,
+      allImports,
+      handlerInitLines,
+      funcParams,
+      routeLines,
+      groupMwByPrefix,
     );
 
     add(routeFile, {
@@ -507,7 +519,10 @@ export function generateCode(
 
   if (routeLinesByFile.size > 0) {
     const combinedBody = generateCombinedRegisterRoutes(
-      moduleNamesInOrder, ast.services, moduleInfo, getModuleServices,
+      moduleNamesInOrder,
+      ast.services,
+      moduleInfo,
+      getModuleServices,
     );
     add("internal/http/routes.go", {
       id: "routes.register",

@@ -6,12 +6,9 @@ import type {
   RepositoryMethod,
   RouteAst,
 } from "../types/index.js";
-import { lowerIdent, pascalCase } from "../utils/naming.js";
+import { extractPathParams, lowerIdent, pascalCase } from "../utils/naming.js";
+import { extractEntityContext } from "../schema/index.js";
 import type { ScaffoldPart } from "./types.js";
-import {
-  inferRepositoryMethod,
-  generateDialectMethodPart,
-} from "./repository-legacy.js";
 
 function parseParams(params: string): go.Field[] {
   if (!params.trim()) return [];
@@ -27,17 +24,15 @@ function parseResults(results: string): go.Field[] {
   if (results === "error") {
     return [go.field([], go.id("error"))];
   }
-  const inner = results.startsWith("(") && results.endsWith(")")
-    ? results.slice(1, -1)
-    : results;
-  const parts = inner.split(", ").map((s) => s.trim()).filter(Boolean);
+  const inner = results.startsWith("(") && results.endsWith(")") ? results.slice(1, -1) : results;
+  const parts = inner
+    .split(", ")
+    .map((s) => s.trim())
+    .filter(Boolean);
   return parts.map((t) => go.field([], toGoType(t)));
 }
 
-function renderRepoInterface(
-  typeName: string,
-  methods: RepositoryMethod[],
-): string {
+function renderRepoInterface(typeName: string, methods: RepositoryMethod[]): string {
   if (methods.length === 0) {
     return [
       `type ${typeName}Repository interface {`,
@@ -45,9 +40,7 @@ function renderRepoInterface(
       `}`,
     ].join("\n");
   }
-  const body = methods
-    .map((m) => `\t${m.name}(${m.params}) ${m.results}`)
-    .join("\n");
+  const body = methods.map((m) => `\t${m.name}(${m.params}) ${m.results}`).join("\n");
   return [`type ${typeName}Repository interface {`, body, `}`].join("\n");
 }
 
@@ -185,4 +178,131 @@ export function generateRepository(
   }
 
   return parts;
+}
+
+export function inferRepositoryMethod(
+  route: RouteAst,
+  moduleName: string,
+): RepositoryMethod | null {
+  const handler = route.handlerName;
+  const pathParams = extractPathParams(route.path);
+  const hasID = pathParams.length > 0;
+  const baseEntity = pascalCase(moduleName);
+  const context = extractEntityContext(route.id);
+  const entityName = context ? `${baseEntity}${pascalCase(context)}` : baseEntity;
+
+  const verb = ["List", "Get", "Create", "New", "Update", "Edit", "Delete", "Remove", "Set"].find(
+    (v) => handler.startsWith(v),
+  );
+  if (!verb) return null;
+
+  const entityPart = handler.slice(verb.length);
+
+  switch (verb) {
+    case "List":
+      return {
+        name: context ? `FindAll${pascalCase(context)}` : "FindAll",
+        params: "ctx context.Context",
+        results: `([]${entityName}, error)`,
+        entityName,
+      };
+    case "Get":
+      if (!hasID) return null;
+      return {
+        name: context ? `Find${pascalCase(context)}ByID` : "FindByID",
+        params: `ctx context.Context, id ${baseEntity}ID`,
+        results: `(${entityName}, error)`,
+        entityName,
+      };
+    case "Create":
+    case "New":
+      return {
+        name: context ? `Create${pascalCase(context)}` : "Create",
+        params: `ctx context.Context, entity ${entityName}`,
+        results: `(${entityName}, error)`,
+        entityName,
+      };
+    case "Update":
+    case "Edit":
+      if (!hasID) return null;
+      return {
+        name: context ? `Update${pascalCase(context)}` : "Update",
+        params: `ctx context.Context, id ${baseEntity}ID, entity ${entityName}`,
+        results: `(${entityName}, error)`,
+        entityName,
+      };
+    case "Delete":
+    case "Remove":
+      if (!hasID) return null;
+      return {
+        name: context ? `Delete${pascalCase(context)}` : "Delete",
+        params: `ctx context.Context, id ${baseEntity}ID`,
+        results: "error",
+        entityName,
+      };
+    case "Set": {
+      let field = entityPart;
+      if (field.startsWith(baseEntity)) field = field.slice(baseEntity.length);
+      if (!field) field = entityPart;
+      return {
+        name: `Set${field}`,
+        params: hasID ? `ctx context.Context, id ${baseEntity}ID` : "ctx context.Context",
+        results: "error",
+        entityName,
+      };
+    }
+    default:
+      return null;
+  }
+}
+
+export function generateDialectMethodPart(
+  method: RepositoryMethod,
+  baseEntity: string,
+  implName: string,
+  dialect?: string,
+  extensions?: BackendExtension[],
+  extensionOptions?: Record<string, unknown>,
+): ScaffoldPart | null {
+  if (dialect && extensions) {
+    const ext = extensions.find((e) => e.name === dialect);
+    if (ext?.service?.generateDialectMethod) {
+      const ctx = { method, baseEntity, implName, options: extensionOptions ?? {} };
+      const content = ext.service.generateDialectMethod(ctx);
+      return {
+        kind: "method" as const,
+        symbolName: `${implName}.${method.name}`,
+        receiver: `*${implName}`,
+        content,
+        expectsUserCode: false,
+        isStub: true,
+      };
+    }
+  }
+  return generateDefaultStubPart(method, implName);
+}
+
+export function generateDefaultStubPart(method: RepositoryMethod, implName: string): ScaffoldPart {
+  const sigBase = `func (r *${implName}) ${method.name}(${method.params})`;
+  const sig = `${sigBase} ${method.results}`;
+  const content = `\t// TODO: implement ${method.name}\n\treturn ${getZeroValue(method.results)}`;
+  return {
+    kind: "method" as const,
+    symbolName: `${implName}.${method.name}`,
+    receiver: `*${implName}`,
+    signature: sig,
+    content,
+    expectsUserCode: false,
+    isStub: true,
+  };
+}
+
+function getZeroValue(results: string): string {
+  if (results === "error") return "nil";
+  if (results.startsWith("(") && results.endsWith(", error)")) {
+    const inner = results.slice(1, -", error)".length);
+    if (inner.includes("[]")) return "nil, nil";
+    return `${inner}{}, nil`;
+  }
+  return "nil, nil";
 }

@@ -102,12 +102,7 @@ export function generateBindingErrorFunction(config: BindingErrorConfig): string
       "ResolveBindingError",
       [go.field(["err"], go.id("error"))],
       [go.field([], go.id("int")), go.field([], go.id("any"))],
-      go.block(
-        go.return_(
-          go.id(statusConst),
-          go.id('gin.H{"error": err.Error()}'),
-        ),
-      ),
+      go.block(go.return_(go.id(statusConst), go.id('gin.H{"error": err.Error()}'))),
     );
     const sb = new go.StringBuilder();
     go.printDeclaration(sb, decl, 0);
@@ -121,7 +116,9 @@ export function generateBindingErrorFunction(config: BindingErrorConfig): string
     [go.field(["err"], go.id("error"))],
     [go.field([], go.id("int")), go.field([], go.id("any"))],
     go.block(
-      go.declStmt(go.genDecl("var", go.valueSpec(["ve"], go.qual("validator", "ValidationErrors")))),
+      go.declStmt(
+        go.genDecl("var", go.valueSpec(["ve"], go.qual("validator", "ValidationErrors"))),
+      ),
       go.ifStmt(
         go.call(go.sel(go.id("errors"), "As"), go.id("err"), go.addr(go.id("ve"))),
         go.block(go.return_(go.id(statusConst), bodyExpr)),

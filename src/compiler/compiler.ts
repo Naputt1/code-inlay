@@ -17,7 +17,7 @@ import { generateCode } from "../generators/index.js";
 import { formatFile, formatGoSnippet } from "../utils/format.js";
 import { checkGoEnvironment } from "../utils/env.js";
 import { generateRuntimeCode } from "../runtime/index.js";
-import { getLoggerGoModules } from "../runtime/loggers.js";
+import { getLoggerGoModules } from "../runtime/loggers-goast.js";
 import {
   computePluginManifestHash,
   createPluginRegistry,

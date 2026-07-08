@@ -129,9 +129,7 @@ function parseParams(paramsStr: string): go.Field[] {
     .filter((f): f is go.Field => f !== null);
 }
 
-function parseExecuteSig(
-  fullParams: string,
-): { params: go.Field[]; results: go.Field[] } {
+function parseExecuteSig(fullParams: string): { params: go.Field[]; results: go.Field[] } {
   const parenResults = fullParams.lastIndexOf(") (");
   if (parenResults !== -1) {
     let resultsStr = fullParams.slice(parenResults + 2);
@@ -160,10 +158,7 @@ function renderFuncDecl(decl: go.FuncDecl): string {
   return sb.toString().trimEnd();
 }
 
-export function generateUsecaseInterface(
-  route: RouteAst,
-  hasDomain?: boolean,
-): string {
+export function generateUsecaseInterface(route: RouteAst, hasDomain?: boolean): string {
   const respType = responseType(route);
   let executeParams: string;
   if (hasDomain) {
@@ -245,11 +240,7 @@ export function generateUsecaseScaffold(
   const ctorBodyLines =
     structFields.length === 0
       ? [`\treturn &${structName}{}`]
-      : [
-          `\treturn &${structName}{`,
-          assignFields.map((f) => `${f},`).join("\n"),
-          `\t}`,
-        ];
+      : [`\treturn &${structName}{`, assignFields.map((f) => `${f},`).join("\n"), `\t}`];
   parts.push({
     kind: "function",
     symbolName: `New${ifaceName}`,
@@ -261,10 +252,7 @@ export function generateUsecaseScaffold(
 
   let executeContent: string;
   let executeParamFields: go.Field[];
-  const results: go.Field[] = [
-    go.field([], toGoType(respType)),
-    go.field([], go.id("error")),
-  ];
+  const results: go.Field[] = [go.field([], toGoType(respType)), go.field([], go.id("error"))];
 
   if (hasDomain && repoType) {
     const domainParams = usecaseDomainInputParams(route, moduleName);
