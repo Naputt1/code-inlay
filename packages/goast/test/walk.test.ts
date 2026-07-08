@@ -176,11 +176,11 @@ describe("transform", () => {
       },
     }) as go.File;
 
-    const fields = find(result, "Field");
+    const fields = find(result, "Field") as go.Field[];
     expect(fields[0].type.kind).toBe("Ident");
     expect((fields[0].type as go.Ident).name).toBe("int");
 
-    const originalFields = find(f, "Field");
+    const originalFields = find(f, "Field") as go.Field[];
     expect(originalFields[0].type.kind).toBe("Ident");
     expect((originalFields[0].type as go.Ident).name).toBe("string");
   });
@@ -204,7 +204,7 @@ describe("transform", () => {
       },
     }) as go.File;
 
-    const fields = find(result, "Field");
+    const fields = find(result, "Field") as go.Field[];
     expect(fields).toHaveLength(1);
     expect(fields[0].names[0]).toBe("Name");
 
@@ -231,7 +231,7 @@ describe("transform", () => {
 
     const returns = find(result, "ReturnStmt");
     expect(returns).toHaveLength(1);
-    const idents = find(result, "Ident");
+    const idents = find(result, "Ident") as go.Ident[];
     const identNames = idents.map((i) => i.name);
     expect(identNames).toContain("replaced");
     expect(identNames).not.toContain("original");
@@ -414,13 +414,12 @@ describe("walk covers all node kinds", () => {
       "main",
       go.genDecl(
         "var",
-        go.valueSpec(
-          ["fn"],
+        go.valueSpec(["fn"], undefined, [
           go.funcLit(
             go.funcType([go.field(["x"], go.id("int"))], [go.field([], go.id("int"))]),
             go.block(go.return_(go.id("x"))),
           ),
-        ),
+        ]),
       ),
     );
     const visited: string[] = [];
@@ -440,7 +439,10 @@ describe("walk covers all node kinds", () => {
   it("CompositeLit visits elts", () => {
     const f = go.file(
       "main",
-      go.genDecl("var", go.valueSpec(["v"], go.elt(go.id("T"), go.kv("key", go.str("val"))))),
+      go.genDecl(
+        "var",
+        go.valueSpec(["v"], undefined, [go.elt(go.id("T"), go.kv("key", go.str("val")))]),
+      ),
     );
     const visited: string[] = [];
     walk(f, {

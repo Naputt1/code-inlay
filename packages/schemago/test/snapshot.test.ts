@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { dirname, join, resolve } from "node:path";
 import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync, existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { formatFile } from "../src/utils/format.js";
 import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
@@ -26,7 +27,8 @@ import {
   defineValidationError,
 } from "../src/index.js";
 
-const SNAPSHOT_DIR = resolve(process.cwd(), "sample-project/snapshot");
+const PROJECT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
+const SNAPSHOT_DIR = resolve(PROJECT_ROOT, "sample-project/snapshot");
 const CONFIG_FILE = "backend.config.ts";
 const UPDATE = process.env.UPDATE_SNAPSHOT === "true";
 

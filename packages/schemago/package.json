@@ -1,0 +1,45 @@
+{
+  "name": "@schemago/schemago",
+  "version": "0.0.1",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "packageManager": "pnpm@11.6.0",
+  "bin": {
+    "schemago": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup src/index.ts src/cli.ts --format esm --dts --clean --splitting false",
+    "postinstall": "cd tools/decl-parser && go build -o decl-parser . || true",
+    "test": "vitest run",
+    "coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "snapshot:update": "UPDATE_SNAPSHOT=true vitest run test/snapshot.test.ts"
+  },
+  "dependencies": {
+    "@schemago/goast": "workspace:*",
+    "semver": "^7.8.5",
+    "tsx": "^4.20.3",
+    "zod": "^3.25.67"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.3",
+    "@types/semver": "^7.7.1",
+    "@vitest/coverage-v8": "^3.2.6",
+    "@vitest/ui": "3.2.6",
+    "tsup": "^8.5.0",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}
