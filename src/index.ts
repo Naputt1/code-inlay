@@ -4,7 +4,7 @@ export * from "./dsl/index.js";
 export * from "./compiler/compiler.js";
 export * from "./schema/index.js";
 export * from "./architecture/index.js";
-export * from "./adapters/gin.js";
+export * from "./adapters/gin-goast.js";
 export * from "./utils/env.js";
 export * from "./srvgen/index.js";
 export * from "./cache/index.js";

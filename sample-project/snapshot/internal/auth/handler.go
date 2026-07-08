@@ -27,11 +27,15 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 	output, err := h.LoginUsecase.Execute(c.Request.Context(), input)
 	if err != nil {
-		var httpErr interface{ HTTPStatus() int }
+		var httpErr interface {
+			HTTPStatus() int
+		}
 		if errors.As(err, &httpErr) {
 			c.JSON(httpErr.HTTPStatus(), err)
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
 		}
 		return
 	}
@@ -42,11 +46,15 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	input := struct{}{}
 	output, err := h.LogoutUsecase.Execute(c.Request.Context(), input)
 	if err != nil {
-		var httpErr interface{ HTTPStatus() int }
+		var httpErr interface {
+			HTTPStatus() int
+		}
 		if errors.As(err, &httpErr) {
 			c.JSON(httpErr.HTTPStatus(), err)
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
 		}
 		return
 	}
@@ -62,11 +70,15 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	}
 	output, err := h.RegisterUsecase.Execute(c.Request.Context(), input)
 	if err != nil {
-		var httpErr interface{ HTTPStatus() int }
+		var httpErr interface {
+			HTTPStatus() int
+		}
 		if errors.As(err, &httpErr) {
 			c.JSON(httpErr.HTTPStatus(), err)
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
 		}
 		return
 	}
@@ -77,12 +89,11 @@ func (h *AuthHandler) StreamAuthEvents(c *gin.Context) {
 	c.Writer.Header().Set("Content-Type", "text/event-stream")
 	c.Writer.Header().Set("Cache-Control", "no-cache")
 	c.Writer.Header().Set("Connection", "keep-alive")
-
-	marshalEvent := func(v StreamAuthEventsAuthEvent) ([]byte, error) { return json.Marshal(v) }
-
+	marshalEvent := func(v StreamAuthEventsAuthEvent) ([]byte, error) {
+		return json.Marshal(v)
+	}
 	ch := make(chan StreamAuthEventsAuthEvent)
 	go h.StreamAuthEventsUsecase.Execute(c.Request.Context(), ch, marshalEvent)
-
 	c.Stream(func(w io.Writer) bool {
 		event, ok := <-ch
 		if !ok {

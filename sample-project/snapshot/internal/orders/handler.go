@@ -11,11 +11,11 @@ import (
 )
 
 type OrdersHandler struct {
-	CreateUsecase             CreateUsecase
-	ListUsecase               ListUsecase
-	GetUsecase                GetUsecase
-	CancelUsecase             CancelUsecase
-	TrackOrderUsecase         TrackOrderUsecase
+	CreateUsecase CreateUsecase
+	ListUsecase ListUsecase
+	GetUsecase GetUsecase
+	CancelUsecase CancelUsecase
+	TrackOrderUsecase TrackOrderUsecase
 	AdminListAllOrdersUsecase AdminListAllOrdersUsecase
 }
 
@@ -28,11 +28,15 @@ func (h *OrdersHandler) AdminListAllOrders(c *gin.Context) {
 	}
 	output, err := h.AdminListAllOrdersUsecase.Execute(c.Request.Context(), input)
 	if err != nil {
-		var httpErr interface{ HTTPStatus() int }
+		var httpErr interface {
+	HTTPStatus() int
+}
 		if errors.As(err, &httpErr) {
 			c.JSON(httpErr.HTTPStatus(), err)
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
 		}
 		return
 	}
@@ -49,11 +53,15 @@ func (h *OrdersHandler) Cancel(c *gin.Context) {
 	input.Id = c.Param("id")
 	output, err := h.CancelUsecase.Execute(c.Request.Context(), input)
 	if err != nil {
-		var httpErr interface{ HTTPStatus() int }
+		var httpErr interface {
+	HTTPStatus() int
+}
 		if errors.As(err, &httpErr) {
 			c.JSON(httpErr.HTTPStatus(), err)
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
 		}
 		return
 	}
@@ -73,11 +81,15 @@ func (h *OrdersHandler) Create(c *gin.Context) {
 	// @gen:end 9221510d
 	output, err := h.CreateUsecase.Execute(c.Request.Context(), entity)
 	if err != nil {
-		var httpErr interface{ HTTPStatus() int }
+		var httpErr interface {
+	HTTPStatus() int
+}
 		if errors.As(err, &httpErr) {
 			c.JSON(httpErr.HTTPStatus(), err)
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
 		}
 		return
 	}
@@ -88,11 +100,15 @@ func (h *OrdersHandler) Get(c *gin.Context) {
 	id := OrdersID(c.Param("id"))
 	output, err := h.GetUsecase.Execute(c.Request.Context(), id)
 	if err != nil {
-		var httpErr interface{ HTTPStatus() int }
+		var httpErr interface {
+	HTTPStatus() int
+}
 		if errors.As(err, &httpErr) {
 			c.JSON(httpErr.HTTPStatus(), err)
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
 		}
 		return
 	}
@@ -108,11 +124,15 @@ func (h *OrdersHandler) List(c *gin.Context) {
 	}
 	output, err := h.ListUsecase.Execute(c.Request.Context(), input)
 	if err != nil {
-		var httpErr interface{ HTTPStatus() int }
+		var httpErr interface {
+	HTTPStatus() int
+}
 		if errors.As(err, &httpErr) {
 			c.JSON(httpErr.HTTPStatus(), err)
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
 		}
 		return
 	}
@@ -121,23 +141,31 @@ func (h *OrdersHandler) List(c *gin.Context) {
 
 func (h *OrdersHandler) TrackOrder(c *gin.Context) {
 	upgrader := websocket.Upgrader{
-		Subprotocols: []string{"json", "protobuf"},
+		Subprotocols: []string{
+			: "json",
+			: "protobuf",
+		},
 	}
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		return
 	}
 	defer conn.Close()
-
 	subproto := conn.Subprotocol()
 	readMessage := func() (TrackOrderOrdersMessage, error) {
 		var msg TrackOrderOrdersMessage
 		err := conn.ReadJSON(&msg)
 		return msg, err
 	}
-	writeEvent := func(v TrackOrderOrdersEvent) error { return conn.WriteJSON(v) }
-	marshalEvent := func(v TrackOrderOrdersEvent) ([]byte, error) { return json.Marshal(v) }
-	unmarshalMessage := func(data []byte, msg *TrackOrderOrdersMessage) error { return json.Unmarshal(data, msg) }
+	writeEvent := func(v TrackOrderOrdersEvent) error {
+		return conn.WriteJSON(v)
+	}
+	marshalEvent := func(v TrackOrderOrdersEvent) ([]byte, error) {
+		return json.Marshal(v)
+	}
+	unmarshalMessage := func(data []byte, msg *TrackOrderOrdersMessage) error {
+		return json.Unmarshal(data, msg)
+	}
 	switch subproto {
 	case "protobuf":
 		readMessage = func() (TrackOrderOrdersMessage, error) {
@@ -151,18 +179,17 @@ func (h *OrdersHandler) TrackOrder(c *gin.Context) {
 		writeEvent = func(v TrackOrderOrdersEvent) error {
 			return conn.WriteMessage(websocket.BinaryMessage, TrackOrderOrdersEventToProtoBytes(v))
 		}
-		marshalEvent = func(v TrackOrderOrdersEvent) ([]byte, error) { return TrackOrderOrdersEventToProtoBytes(v), nil }
+		marshalEvent = func(v TrackOrderOrdersEvent) ([]byte, error) {
+			return TrackOrderOrdersEventToProtoBytes(v), nil
+		}
 		unmarshalMessage = func(data []byte, msg *TrackOrderOrdersMessage) error {
 			*msg = TrackOrderOrdersMessageFromProtoBytes(data)
 			return nil
 		}
 	}
-
 	readCh := make(chan TrackOrderOrdersMessage)
 	writeCh := make(chan TrackOrderOrdersEvent, 8)
-
 	go h.TrackOrderUsecase.Execute(c.Request.Context(), readCh, writeCh, marshalEvent, unmarshalMessage)
-
 	go func() {
 		defer close(readCh)
 		for {
@@ -173,8 +200,7 @@ func (h *OrdersHandler) TrackOrder(c *gin.Context) {
 			readCh <- msg
 		}
 	}()
-
-	for event := range writeCh {
+	for _, event := range writeCh {
 		if err := writeEvent(event); err != nil {
 			break
 		}

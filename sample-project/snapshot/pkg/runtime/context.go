@@ -18,7 +18,7 @@ type Logger interface {
 }
 
 // Middleware is a request pipeline function.
-type Middleware func(ctx Context, next func(Context) error) error
+type Middleware func(ctx Context, next func(ctx Context) error) error
 
 // Handler is a typed request handler.
 type Handler[Req, Res any] func(ctx Context, req Req) (Res, error)

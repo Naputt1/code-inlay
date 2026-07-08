@@ -7,5 +7,9 @@ type OrderShippedError struct {
 	ShippedAt string `json:"shippedAt"`
 }
 
-func (e *OrderShippedError) Error() string   { return "OrderShippedError" }
-func (e *OrderShippedError) HTTPStatus() int { return http.StatusConflict }
+func (e *OrderShippedError) Error() string {
+	return "OrderShippedError"
+}
+func (e *OrderShippedError) HTTPStatus() int {
+	return http.StatusConflict
+}

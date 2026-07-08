@@ -38,7 +38,7 @@ import {
   generateGinWSHandler,
   handlerImportsForCodec,
   resolveAdapters,
-} from "../adapters/gin.js";
+} from "../adapters/gin-goast.js";
 import { generateServer, serverFilePath } from "../srvgen/index.js";
 import { generateEnvConfigFile } from "../srvgen/config.js";
 import { batchEnrichGoRegions } from "../plugins/enrich.js";

@@ -13,11 +13,17 @@ type StatusError struct {
 	Status int    `json:"-"`
 }
 
-func (e *StatusError) Error() string { return e.Msg }
-
-func (e *StatusError) HTTPStatus() int { return e.Status }
+func (e *StatusError) Error() string {
+	return e.Msg
+}
+func (e *StatusError) HTTPStatus() int {
+	return e.Status
+}
 
 // NewStatusError creates a new StatusError.
 func NewStatusError(msg string, status int) *StatusError {
-	return &StatusError{Msg: msg, Status: status}
+	return &StatusError{
+		Msg:    msg,
+		Status: status,
+	}
 }
