@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { generateRuntimeCode, generateRuntimeConfigCode } from "../src/runtime/index.js";
+import { generateRuntimeCode, generateRuntimeConfigCode } from "../src/runtime/index-goast.js";
 import type { AppAst, RuntimeConfig } from "../src/index.js";
 
 function minimalAst(overrides?: Partial<AppAst>): AppAst {

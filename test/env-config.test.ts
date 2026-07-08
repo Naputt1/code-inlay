@@ -3,7 +3,7 @@ import { z } from "zod";
 import { defineApp, defineEnv, defineModule, defineRoute, compile, EnvRef } from "../src/index.js";
 import { parseEnvDefs } from "../src/compiler/ast.js";
 import { generateServer } from "../src/srvgen/index.js";
-import { generateEnvConfigFile } from "../src/srvgen/config.js";
+import { generateEnvConfigFile } from "../src/srvgen/config-goast.js";
 import type { AdapterPlugin, GoModuleInfo, EnvVarInfo } from "../src/index.js";
 
 describe("defineEnv", () => {

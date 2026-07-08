@@ -16,7 +16,7 @@ import { applyArchitecture } from "../architecture/index.js";
 import { generateCode } from "../generators/index.js";
 import { formatFile, formatGoSnippet } from "../utils/format.js";
 import { checkGoEnvironment } from "../utils/env.js";
-import { generateRuntimeCode } from "../runtime/index.js";
+import { generateRuntimeCode } from "../runtime/index-goast.js";
 import { getLoggerGoModules } from "../runtime/loggers-goast.js";
 import {
   computePluginManifestHash,

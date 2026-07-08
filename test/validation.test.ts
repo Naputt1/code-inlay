@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { validationZ } from "../src/schema/extras.js";
-import { doesSchemaNeedFmt } from "../src/generators/validation.js";
+import { doesSchemaNeedFmt } from "../src/generators/validation-goast.js";
 import {
   defineValidationError,
   compile,
