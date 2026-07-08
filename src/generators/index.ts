@@ -40,16 +40,17 @@ import {
   resolveAdapters,
 } from "../adapters/gin-goast.js";
 import { generateServer, serverFilePath } from "../srvgen/index.js";
-import { generateEnvConfigFile } from "../srvgen/config.js";
+import { generateEnvConfigFile } from "../srvgen/config-goast.js";
 import { batchEnrichGoRegions } from "../plugins/enrich.js";
 import { generateRepository } from "./repository-goast.js";
 import { generateServiceFile } from "./service-goast.js";
-import { generateUsecaseInterface, generateUsecaseScaffold } from "./usecase.js";
-import { generateHandlerStructs } from "./handler.js";
+import { generateUsecaseInterface, generateUsecaseScaffold } from "./usecase-goast.js";
+import { generateHandlerStructs } from "./handler-goast.js";
 import { generateMiddlewareFiles } from "./middleware-goast.js";
 import { generateStandardErrors, generateModuleErrors, collectModuleErrors } from "./errors.js";
-import { generateBindingErrorFunction, doesSchemaNeedFmt } from "./validation.js";
-import type { BindingErrorConfig } from "./validation.js";
+import { generateBindingErrorFunction } from "./validation.js";
+import { doesSchemaNeedFmt } from "./validation-goast.js";
+import type { BindingErrorConfig } from "./validation-goast.js";
 import type { ScaffoldPart } from "./types.js";
 import {
   generateHandlerInitLines,
