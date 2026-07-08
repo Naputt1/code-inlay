@@ -10,28 +10,6 @@ import { extractPathParams, lowerIdent, pascalCase } from "../utils/naming.js";
 import { extractEntityContext } from "../schema/index.js";
 import type { ScaffoldPart } from "./types.js";
 
-function parseParams(params: string): go.Field[] {
-  if (!params.trim()) return [];
-  return params.split(", ").map((p) => {
-    const lastSpace = p.lastIndexOf(" ");
-    const name = p.slice(0, lastSpace);
-    const typeStr = p.slice(lastSpace + 1);
-    return go.field([name], toGoType(typeStr));
-  });
-}
-
-function parseResults(results: string): go.Field[] {
-  if (results === "error") {
-    return [go.field([], go.id("error"))];
-  }
-  const inner = results.startsWith("(") && results.endsWith(")") ? results.slice(1, -1) : results;
-  const parts = inner
-    .split(", ")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  return parts.map((t) => go.field([], toGoType(t)));
-}
-
 function renderRepoInterface(typeName: string, methods: RepositoryMethod[]): string {
   if (methods.length === 0) {
     return [

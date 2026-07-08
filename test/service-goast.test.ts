@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect } from "vitest";
 import type { AppServiceDef, BackendExtension } from "../src/types/index.js";
 import { generateServiceFile } from "../src/generators/service-goast.js";

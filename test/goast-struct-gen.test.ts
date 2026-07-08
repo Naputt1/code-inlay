@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import type { GoStruct, GoField } from "../src/schema/index.js";
+import type { GoStruct } from "../src/schema/index.js";
 import { renderStructLegacy, renderEntityStructLegacy } from "../src/schema/index.js";
 import { renderStructAST, renderEntityStructAST } from "../src/schema/goast-render.js";
 

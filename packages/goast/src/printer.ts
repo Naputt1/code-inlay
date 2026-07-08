@@ -10,57 +10,15 @@ import type {
   GenDecl,
   Spec,
   ImportSpec,
-  TypeSpec,
-  ValueSpec,
   Type,
   Field,
   Expression,
   Statement,
-  Ident,
-  BasicLit,
-  StarExpr,
-  SelectorExpr,
-  CallExpr,
-  UnaryExpr,
-  BinaryExpr,
-  KeyValueExpr,
-  CompositeLit,
-  SliceLit,
-  FuncLit,
-  IndexExpr,
-  SliceExpr,
-  TypeAssertExpr,
-  ParenExpr,
-  BadExpr,
-  StructType,
-  InterfaceType,
   FuncType,
-  ArrayType,
-  SliceType,
-  MapType,
-  ChanType,
   BlockStmt,
-  ReturnStmt,
-  AssignStmt,
-  ExprStmt,
   IfStmt,
-  ForStmt,
-  RangeStmt,
-  GoStmt,
-  DeferStmt,
-  DeclStmt,
-  EmptyStmt,
-  LabeledStmt,
-  SendStmt,
-  IncDecStmt,
-  BranchStmt,
-  SwitchStmt,
-  TypeSwitchStmt,
-  SelectStmt,
   CaseClause,
   CommClause,
-  Tag,
-  AssignOp,
 } from "./nodes.js";
 
 // ─── Precedence levels (matching Go spec) ──────────────────
@@ -111,11 +69,6 @@ const SELECTOR_PREC = 7;
 export type PrintConfig = {
   indent?: string;
   tabWidth?: number;
-};
-
-const defaultConfig: PrintConfig = {
-  indent: "\t",
-  tabWidth: 1,
 };
 
 // ─── Main entry ────────────────────────────────────────────
@@ -888,7 +841,7 @@ function printFieldParams(sb: StringBuilder, fields: Field[]): void {
 
 // ─── FuncType ──────────────────────────────────────────────
 
-function printFuncType(sb: StringBuilder, ft: FuncType, depth: number): void {
+function printFuncType(sb: StringBuilder, ft: FuncType, _depth: number): void {
   sb.push("func");
   printFuncTypeSuffix(sb, ft);
 }

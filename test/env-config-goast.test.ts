@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, expect, it } from "vitest";
 import type { EnvVarInfo, GoModuleInfo } from "../src/index.js";
 import { generateEnvConfigFile as original } from "../src/srvgen/config-goast.js";

@@ -17,7 +17,6 @@ import {
   defineEnv,
   defineRuntime,
   defineCors,
-  HttpStatus,
 } from "../src/index.js";
 
 type Region = {
@@ -187,7 +186,7 @@ describe("gofmt validation", () => {
           `gofmt failures (${failures.length}/${result.generation.files.filter((f) => f.path.endsWith(".go")).length} files):\n${msg}${firstPreview}`,
         );
       }
-    } catch (e) {
+    } catch {
       // ignore cleanup errors
     } finally {
       rmSync(tmpDir, { recursive: true, force: true });

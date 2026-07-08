@@ -1,7 +1,7 @@
 import * as go from "@schemago/goast";
 import { toGoType } from "../utils/goast.js";
 import { pascalCase } from "../utils/naming.js";
-import type { ProtoMessage, ProtoEnum, ProtoField, FieldMapping } from "./proto.js";
+import type { ProtoMessage, ProtoEnum, FieldMapping } from "./proto.js";
 import {
   buildMappings,
   protoTypeToGoStruct,

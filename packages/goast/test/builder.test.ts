@@ -509,16 +509,11 @@ describe("printing with generics", () => {
     const spec = go.typeSpec("List", go.sliceType(go.id("T")), tp);
     const decl = go.genDecl("type", spec);
     const f = go.file("main", decl);
-    expect(go.printFile(f)).toBe(
-      `package main\n\ntype List[T any] []T\n`,
-    );
+    expect(go.printFile(f)).toBe(`package main\n\ntype List[T any] []T\n`);
   });
 
   it("function with generic parameters", () => {
-    const tp = [
-      go.field(["T"], go.id("any")),
-      go.field(["U"], go.id("any")),
-    ];
+    const tp = [go.field(["T"], go.id("any")), go.field(["U"], go.id("any"))];
     const params = [go.field(["input"], go.id("T"))];
     const results = [go.field([], go.id("U"))];
     const ft = go.funcType(params, results);
@@ -538,9 +533,7 @@ describe("printing with generics", () => {
     ft.typeParams = tp;
     const fn = go.funcDecl("Push", recv, ft, go.block());
     const f = go.file("main", fn);
-    expect(go.printFile(f)).toBe(
-      `package main\n\nfunc (s Stack[T]) Push[T any](v T) {\n}\n`,
-    );
+    expect(go.printFile(f)).toBe(`package main\n\nfunc (s Stack[T]) Push[T any](v T) {\n}\n`);
   });
 });
 

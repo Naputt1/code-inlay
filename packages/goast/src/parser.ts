@@ -6,8 +6,7 @@
 
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { resolve } from "node:path";
-import type { Declaration, ImportSpec, Tag, Type, Field } from "./nodes.js";
+import type { Declaration, ImportSpec } from "./nodes.js";
 
 // ─── JSON wire format from decl-parser ────────────────────
 

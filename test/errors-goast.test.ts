@@ -27,7 +27,6 @@ func (e *BadRequest) HTTPStatus() int {
   });
 
   it("2. all 29 standard errors", () => {
-    const httpStatusCodes = Object.keys(httpStatusConsts).map(Number);
     const allNames: { name: string; status: number }[] = [
       { name: "BadRequest", status: 400 },
       { name: "Unauthorized", status: 401 },

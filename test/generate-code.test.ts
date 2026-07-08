@@ -35,7 +35,9 @@ describe("generateCode", () => {
     const gen = generateCode(result.ast!, result.architecture!, result.diagnostics);
     const moduleRoutesFile = gen.files.find((f) => f.path === "internal/http/user_routes.go");
     expect(moduleRoutesFile).toBeDefined();
-    expect(moduleRoutesFile!.regions.some((r) => r.content.includes("registerUserRoutes"))).toBe(true);
+    expect(moduleRoutesFile!.regions.some((r) => r.content.includes("registerUserRoutes"))).toBe(
+      true,
+    );
   });
 
   it("architecture-based code generation creates usecase and handler files", async () => {

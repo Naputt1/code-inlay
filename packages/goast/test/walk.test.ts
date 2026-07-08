@@ -1,6 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect } from "vitest";
 import * as go from "../src/index.js";
-import type { Node } from "../src/nodes.js";
 import { walk, find, findFirst, transform } from "../src/walk.js";
 
 describe("walk", () => {
