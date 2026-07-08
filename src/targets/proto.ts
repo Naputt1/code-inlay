@@ -109,80 +109,9 @@ export function buildMappings(msg: ProtoMessage, allMessages: ProtoMessage[]): F
   });
 }
 
-function generateFromProtoFuncLegacy(msg: ProtoMessage, allMessages: ProtoMessage[]): string {
-  const mappings = buildMappings(msg, allMessages);
-  const lines: string[] = [];
-  lines.push(`func ${msg.name}FromProto(src *pb.${msg.name}) ${msg.name} {`);
-  if (mappings.length === 0) {
-    lines.push(`\treturn ${msg.name}{}`);
-    lines.push(`}`);
-    return lines.join("\n");
-  }
-  lines.push(`\treturn ${msg.name}{`);
-  for (const m of mappings) {
-    if (m.repeated && m.nested) {
-      const innerName = m.goType;
-      lines.push(`\t\t${m.goName}: func() []${innerName} {`);
-      lines.push(`\t\t\tif len(src.Get${m.goName}()) == 0 { return nil }`);
-      lines.push(`\t\t\tresult := make([]${innerName}, len(src.Get${m.goName}()))`);
-      lines.push(`\t\t\tfor i, v := range src.Get${m.goName}() {`);
-      lines.push(`\t\t\t\tresult[i] = ${protoTypeToGoStruct(m.protoFieldType)}FromProto(v)`);
-      lines.push(`\t\t\t}`);
-      lines.push(`\t\t\treturn result`);
-      lines.push(`\t\t}(),`);
-    } else if (m.repeated) {
-      lines.push(`\t\t${m.goName}: src.Get${m.goName}(),`);
-    } else if (m.nested) {
-      lines.push(
-        `\t\t${m.goName}: ${protoTypeToGoStruct(m.protoFieldType)}FromProto(src.Get${m.goName}()),`,
-      );
-    } else {
-      lines.push(`\t\t${m.goName}: src.Get${m.goName}(),`);
-    }
-  }
-  lines.push(`\t}`);
-  lines.push(`}`);
-  return lines.join("\n");
-}
-
 export function protoTypeToGoStruct(protoType: string): string {
   if (protoType.endsWith("Msg")) return protoType.slice(0, -3);
   return protoType;
-}
-
-function generateToProtoFuncLegacy(msg: ProtoMessage, allMessages: ProtoMessage[]): string {
-  const mappings = buildMappings(msg, allMessages);
-  const lines: string[] = [];
-  lines.push(`func ${msg.name}ToProto(src ${msg.name}) *pb.${msg.name} {`);
-  if (mappings.length === 0) {
-    lines.push(`\treturn &pb.${msg.name}{}`);
-    lines.push(`}`);
-    return lines.join("\n");
-  }
-  lines.push(`\treturn &pb.${msg.name}{`);
-  for (const m of mappings) {
-    if (m.repeated && m.nested) {
-      lines.push(`\t\t${m.goName}: func() []*pb.${m.protoFieldType} {`);
-      lines.push(`\t\t\tif len(src.${m.goName}) == 0 { return nil }`);
-      lines.push(`\t\t\tresult := make([]*pb.${m.protoFieldType}, len(src.${m.goName}))`);
-      lines.push(`\t\t\tfor i, v := range src.${m.goName} {`);
-      lines.push(`\t\t\t\tresult[i] = ${protoTypeToGoStruct(m.protoFieldType)}ToProto(v)`);
-      lines.push(`\t\t\t}`);
-      lines.push(`\t\t\treturn result`);
-      lines.push(`\t\t}(),`);
-    } else if (m.repeated) {
-      lines.push(`\t\t${m.goName}: src.${m.goName},`);
-    } else if (m.nested) {
-      lines.push(
-        `\t\t${m.goName}: ${protoTypeToGoStruct(m.protoFieldType)}ToProto(src.${m.goName}),`,
-      );
-    } else {
-      lines.push(`\t\t${m.goName}: src.${m.goName},`);
-    }
-  }
-  lines.push(`\t}`);
-  lines.push(`}`);
-  return lines.join("\n");
 }
 
 function schemaToProtoType(
@@ -358,98 +287,6 @@ function readGoModulePath(cwd: string): string | undefined {
 
 export function snakeToCamel(s: string): string {
   return s.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
-}
-
-function generateStubPbGoContentLegacy(
-  packageName: string,
-  messages: ProtoMessage[],
-  _enums: ProtoEnum[],
-): string {
-  const parts: string[] = [`package ${packageName}`, ``];
-
-  for (const msg of messages) {
-    if (msg.fields.length === 0) {
-      parts.push(`type ${msg.name} struct{}`);
-      parts.push(``);
-      continue;
-    }
-    parts.push(`type ${msg.name} struct {`);
-    for (const f of msg.fields) {
-      const goType = isProtoScalar(f.protoType)
-        ? protoScalarToGo[f.protoType]
-        : f.protoType.endsWith("Enum")
-          ? "string"
-          : f.protoType;
-      const goName = pascalCase(f.name);
-      const jsonName = snakeToCamel(f.name);
-      if (f.repeated) {
-        parts.push(`\t${goName} []${goType} \`json:"${jsonName}"\``);
-      } else {
-        parts.push(`\t${goName} ${goType} \`json:"${jsonName}"\``);
-      }
-    }
-    parts.push(`}`);
-    parts.push(``);
-  }
-
-  // Get* accessor methods matching protoc conventions
-  for (const msg of messages) {
-    for (const f of msg.fields) {
-      const goType = isProtoScalar(f.protoType)
-        ? protoScalarToGo[f.protoType]
-        : f.protoType.endsWith("Enum")
-          ? "string"
-          : f.protoType;
-      const goName = pascalCase(f.name);
-      const recv = `m *${msg.name}`;
-      if (f.repeated) {
-        parts.push(`func (${recv}) Get${goName}() []${goType} {`);
-        parts.push(`\tif m != nil { return m.${goName} }`);
-        parts.push(`\treturn nil`);
-        parts.push(`}`);
-      } else if (goType === "string") {
-        parts.push(`func (${recv}) Get${goName}() ${goType} {`);
-        parts.push(`\tif m != nil { return m.${goName} }`);
-        parts.push(`\treturn ""`);
-        parts.push(`}`);
-      } else if (goType === "bool") {
-        parts.push(`func (${recv}) Get${goName}() ${goType} {`);
-        parts.push(`\tif m != nil { return m.${goName} }`);
-        parts.push(`\treturn false`);
-        parts.push(`}`);
-      } else {
-        parts.push(`func (${recv}) Get${goName}() ${goType} {`);
-        parts.push(`\tif m != nil { return m.${goName} }`);
-        parts.push(`\treturn 0`);
-        parts.push(`}`);
-      }
-      parts.push(``);
-    }
-  }
-
-  return parts.join("\n");
-}
-
-function generateFromProtoBytesFuncLegacy(msg: ProtoMessage): string {
-  const lines: string[] = [];
-  lines.push(`func ${msg.name}FromProtoBytes(data []byte) ${msg.name} {`);
-  lines.push(`\tvar src pb.${msg.name}`);
-  lines.push(`\tif err := json.Unmarshal(data, &src); err != nil {`);
-  lines.push(`\t\treturn ${msg.name}{}`);
-  lines.push(`\t}`);
-  lines.push(`\treturn ${msg.name}FromProto(&src)`);
-  lines.push(`}`);
-  return lines.join("\n");
-}
-
-function generateToProtoBytesFuncLegacy(msg: ProtoMessage): string {
-  const lines: string[] = [];
-  lines.push(`func ${msg.name}ToProtoBytes(src ${msg.name}) []byte {`);
-  lines.push(`\tdst := ${msg.name}ToProto(src)`);
-  lines.push(`\tdata, _ := json.Marshal(dst)`);
-  lines.push(`\treturn data`);
-  lines.push(`}`);
-  return lines.join("\n");
 }
 
 function runProtoc(
@@ -640,12 +477,4 @@ export {
   generateToProtoFunc,
   generateFromProtoBytesFunc,
   generateToProtoBytesFunc,
-};
-
-export {
-  generateStubPbGoContentLegacy,
-  generateFromProtoFuncLegacy,
-  generateToProtoFuncLegacy,
-  generateFromProtoBytesFuncLegacy,
-  generateToProtoBytesFuncLegacy,
 };

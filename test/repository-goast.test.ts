@@ -1,9 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { AppServiceDef, BackendExtension, RouteAst } from "../src/types/index.js";
-import {
-  generateRepository,
-  generateRepositoryLegacy,
-} from "../src/generators/repository.js";
+import { generateRepository } from "../src/generators/repository.js";
 
 function mockRoute(overrides: Partial<RouteAst> = {}): RouteAst {
   return {
@@ -26,33 +23,11 @@ function mockRoute(overrides: Partial<RouteAst> = {}): RouteAst {
   } as RouteAst;
 }
 
-function compare(
-  routes: RouteAst[],
-  moduleName: string,
-  dbProvider?: AppServiceDef,
-  extensions: BackendExtension[] = [],
-) {
-  const old_ = generateRepositoryLegacy(routes, moduleName, dbProvider, extensions);
-  const new_ = generateRepository(routes, moduleName, dbProvider, extensions);
-  expect(new_.length).toBe(old_.length);
-  for (let i = 0; i < old_.length; i++) {
-    expect(new_[i].kind).toBe(old_[i].kind);
-    expect(new_[i].symbolName).toBe(old_[i].symbolName);
-    expect(new_[i].content).toBe(old_[i].content);
-    if (new_[i].signature !== undefined || old_[i].signature !== undefined) {
-      expect(new_[i].signature).toBe(old_[i].signature);
-    }
-    expect(new_[i].expectsUserCode).toBe(old_[i].expectsUserCode);
-    expect(new_[i].isStub).toBe(old_[i].isStub);
-    if (new_[i].receiver !== undefined || old_[i].receiver !== undefined) {
-      expect(new_[i].receiver).toBe(old_[i].receiver);
-    }
-  }
-}
-
 describe("go-ast repository generation", () => {
   it("1. empty repo — no routes, no db", () => {
-    compare([], "user");
+    const result = generateRepository([], "user", undefined, []);
+    expect(result.length).toBeGreaterThan(0);
+    expect(result[0].kind).toBe("interface");
   });
 
   it("2. empty repo — no routes, with db", () => {
@@ -62,7 +37,8 @@ describe("go-ast repository generation", () => {
       dbType: "*gorm.DB",
       dbTypePkg: "gorm.io/gorm",
     };
-    compare([], "user", dbProvider);
+    const result = generateRepository([], "user", dbProvider, []);
+    expect(result.length).toBe(4);
   });
 
   it("3. with db provider and List method", () => {
@@ -73,7 +49,12 @@ describe("go-ast repository generation", () => {
       dbTypePkg: "gorm.io/gorm",
     };
     const routes = [mockRoute()];
-    compare(routes, "user", dbProvider);
+    const result = generateRepository(routes, "user", dbProvider, []);
+    expect(result.length).toBe(5);
+    expect(result[0].kind).toBe("imports");
+    expect(result[1].kind).toBe("interface");
+    expect(result[2].kind).toBe("struct");
+    expect(result[3].kind).toBe("function");
   });
 
   it("4. with Get method (has path params)", () => {
@@ -91,7 +72,9 @@ describe("go-ast repository generation", () => {
         handlerName: "GetUser",
       }),
     ];
-    compare(routes, "user", dbProvider);
+    const result = generateRepository(routes, "user", dbProvider, []);
+    expect(result.length).toBe(5);
+    expect(result[4].symbolName).toContain("FindByID");
   });
 
   it("5. with multiple methods", () => {
@@ -116,7 +99,8 @@ describe("go-ast repository generation", () => {
         handlerName: "CreateUser",
       }),
     ];
-    compare(routes, "user", dbProvider);
+    const result = generateRepository(routes, "user", dbProvider, []);
+    expect(result.filter((p) => p.kind === "method").length).toBe(3);
   });
 
   it("6. with dialect extension", () => {
@@ -145,12 +129,9 @@ describe("go-ast repository generation", () => {
       },
     };
     const routes = [mockRoute()];
-    const old_ = generateRepositoryLegacy(routes, "user", dbProvider, [ext]);
-    const new_ = generateRepository(routes, "user", dbProvider, [ext]);
-    expect(new_.length).toBe(old_.length);
-    expect(new_.length).toBe(5); // imports, interface, struct, ctor, method
-    expect(new_[4].content).toBe("// extension generated dialect method");
-    expect(new_[4].content).toBe(old_[4].content);
+    const result = generateRepository(routes, "user", dbProvider, [ext]);
+    expect(result.length).toBe(5);
+    expect(result[4].content).toBe("// extension generated dialect method");
   });
 
   it("7. with dbTypePkg — verify imports", () => {
@@ -161,20 +142,16 @@ describe("go-ast repository generation", () => {
       dbTypePkg: "gorm.io/gorm",
     };
     const routes = [mockRoute()];
-    const old_ = generateRepositoryLegacy(routes, "user", dbProvider, []);
-    const new_ = generateRepository(routes, "user", dbProvider, []);
-    expect(new_[0].content).toBe(old_[0].content);
-    expect(new_[0].content).toContain("gorm.io/gorm");
+    const result = generateRepository(routes, "user", dbProvider, []);
+    expect(result[0].content).toContain("gorm.io/gorm");
   });
 
   it("8. no db provider but with methods — only interface returned", () => {
     const routes = [mockRoute()];
-    const old_ = generateRepositoryLegacy(routes, "user", undefined, []);
-    const new_ = generateRepository(routes, "user", undefined, []);
-    expect(new_.length).toBe(1);
-    expect(new_[0].kind).toBe("interface");
-    expect(new_[0].symbolName).toBe("UserRepository");
-    expect(new_[0].content).toBe(old_[0].content);
+    const result = generateRepository(routes, "user", undefined, []);
+    expect(result.length).toBe(1);
+    expect(result[0].kind).toBe("interface");
+    expect(result[0].symbolName).toBe("UserRepository");
   });
 
   it("9. Set method without path param", () => {
@@ -192,7 +169,9 @@ describe("go-ast repository generation", () => {
         handlerName: "SetActivate",
       }),
     ];
-    compare(routes, "user", dbProvider);
+    const result = generateRepository(routes, "user", dbProvider, []);
+    expect(result.length).toBe(5);
+    expect(result[4].symbolName).toContain("SetActivate");
   });
 
   it("10. Delete method", () => {
@@ -209,7 +188,9 @@ describe("go-ast repository generation", () => {
         handlerName: "DeleteUser",
       }),
     ];
-    compare(routes, "user", dbProvider);
+    const result = generateRepository(routes, "user", dbProvider, []);
+    expect(result.length).toBe(5);
+    expect(result[4].symbolName).toContain("Delete");
   });
 
   it("11. different module name — pet", () => {
@@ -224,6 +205,7 @@ describe("go-ast repository generation", () => {
         handlerName: "ListPets",
       }),
     ];
-    compare(routes, "pet", dbProvider);
+    const result = generateRepository(routes, "pet", dbProvider, []);
+    expect(result[1].symbolName).toBe("PetRepository");
   });
 });

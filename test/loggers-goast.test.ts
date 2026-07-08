@@ -202,7 +202,10 @@ describe("generateLoggerCode (go-ast)", () => {
       const c = contentFor({ provider: "zerolog" });
       expect(c).toContain("func toZerologFields(keysAndValues ...any) map[string]any");
       const lines = c.split("\n");
-      const hasMake = lines.some(l => l.includes("make(") && l.includes("map[string]any") && l.includes("len(keysAndValues)/2"));
+      const hasMake = lines.some(
+        (l) =>
+          l.includes("make(") && l.includes("map[string]any") && l.includes("len(keysAndValues)/2"),
+      );
       expect(hasMake).toBe(true);
       expect(c).toContain("for i := 0; i < len(keysAndValues)-1; i += 2");
       expect(c).toContain("if key, ok := keysAndValues[i].(string); ok");

@@ -61,7 +61,7 @@ describe("go-ast validation — output contains expected Go constructs", () => {
     expect(result).toContain("func() any {");
     expect(result).toContain("items := make([]any, 0, len(ve))");
     expect(result).toContain("for _, fe := range ve {");
-    expect(result).toContain("items = append(items, \"\")");
+    expect(result).toContain('items = append(items, "")');
     expect(result).toContain("return items");
     expect(result).toContain("}()");
   });
@@ -167,7 +167,9 @@ describe("go-ast validation — output contains expected Go constructs", () => {
         err: validationZ.optional(validationZ.field()),
       }),
     });
-    expect(result).toContain("func() any { if v := fe.Field(); v != \"\" { return v }; return nil }()");
+    expect(result).toContain(
+      'func() any { if v := fe.Field(); v != "" { return v }; return nil }()',
+    );
   });
 
   it("14. nullable validation type uses closure", () => {
@@ -177,6 +179,8 @@ describe("go-ast validation — output contains expected Go constructs", () => {
         err: validationZ.nullable(validationZ.value()),
       }),
     });
-    expect(result).toContain('func() any { if v := fmt.Sprintf("%v", fe.Value()); v != "" { return v }; return nil }()');
+    expect(result).toContain(
+      'func() any { if v := fmt.Sprintf("%v", fe.Value()); v != "" { return v }; return nil }()',
+    );
   });
 });

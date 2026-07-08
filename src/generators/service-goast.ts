@@ -5,7 +5,7 @@ import { serviceConstructorName, serviceImplName, serviceTypeName } from "../uti
 import type { ScaffoldPart } from "./types.js";
 
 function renderImports(imports: string[]): string {
-  const specs = imports.map(i => go.importSpec(i));
+  const specs = imports.map((i) => go.importSpec(i));
   const decl: go.GenDecl = { kind: "GenDecl", token: "import", specs, lparen: true };
   const sb = new go.StringBuilder();
   go.printDeclaration(sb, decl, 0);
@@ -27,14 +27,10 @@ function renderInterfaceContent(
 
   const methods: go.Field[] = [];
   if (dbAccessor && dbType) {
-    methods.push(
-      go.field([dbAccessor], go.funcType([], [go.field([], toGoType(dbType))])),
-    );
+    methods.push(go.field([dbAccessor], go.funcType([], [go.field([], toGoType(dbType))])));
   }
   if (close) {
-    methods.push(
-      go.field(["Close"], go.funcType([], [go.field([], go.id("error"))])),
-    );
+    methods.push(go.field(["Close"], go.funcType([], [go.field([], go.id("error"))])));
   }
 
   if (methods.length === 0) {
@@ -65,18 +61,9 @@ function renderStructContent(implName: string, needsConfig: boolean): string {
   return sb.toString().trimEnd();
 }
 
-function constructorSignature(
-  ctorName: string,
-  needsConfig: boolean,
-  implName: string,
-): string {
-  const params = needsConfig
-    ? [go.field(["cfg"], go.qual("config", "Config"))]
-    : [];
-  const results = [
-    go.field([], go.star(go.id(implName))),
-    go.field([], go.id("error")),
-  ];
+function constructorSignature(ctorName: string, needsConfig: boolean, implName: string): string {
+  const params = needsConfig ? [go.field(["cfg"], go.qual("config", "Config"))] : [];
+  const results = [go.field([], go.star(go.id(implName))), go.field([], go.id("error"))];
   const fn = go.function_(ctorName, params, results);
   const sb = new go.StringBuilder();
   go.printDeclaration(sb, fn, 0);
@@ -89,12 +76,7 @@ function methodSignature(
   params: go.Field[],
   results: go.Field[],
 ): string {
-  const m = go.method(
-    go.field(["s"], go.star(go.id(receiverType))),
-    name,
-    params,
-    results,
-  );
+  const m = go.method(go.field(["s"], go.star(go.id(receiverType))), name, params, results);
   const sb = new go.StringBuilder();
   go.printDeclaration(sb, m, 0);
   return sb.toString().trimEnd();
@@ -178,12 +160,7 @@ export function generateServiceFile(
 
   if (svc.dbAccessor && svc.dbType) {
     const accessorName = svc.dbAccessor;
-    const sig = methodSignature(
-      implName,
-      accessorName,
-      [],
-      [go.field([], toGoType(svc.dbType))],
-    );
+    const sig = methodSignature(implName, accessorName, [], [go.field([], toGoType(svc.dbType))]);
     parts.push({
       kind: "method" as const,
       symbolName: `${implName}.${accessorName}`,
@@ -196,12 +173,7 @@ export function generateServiceFile(
   }
 
   if (svc.close) {
-    const sig = methodSignature(
-      implName,
-      "Close",
-      [],
-      [go.field([], go.id("error"))],
-    );
+    const sig = methodSignature(implName, "Close", [], [go.field([], go.id("error"))]);
     parts.push({
       kind: "method" as const,
       symbolName: `${implName}.Close`,

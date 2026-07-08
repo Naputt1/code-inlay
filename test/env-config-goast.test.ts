@@ -112,7 +112,12 @@ describe("generateEnvConfigFile go-ast matches original", () => {
     testMatch({
       HOST: { type: "string", default: "0.0.0.0", required: false, description: "Bind address" },
       PORT: { type: "string", default: "8080", required: false, description: "Listen port" },
-      DEBUG: { type: "boolean", default: "false", required: false, description: "Enable debug mode" },
+      DEBUG: {
+        type: "boolean",
+        default: "false",
+        required: false,
+        description: "Enable debug mode",
+      },
     });
   });
 

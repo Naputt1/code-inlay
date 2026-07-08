@@ -18,10 +18,14 @@ function buildRouteLit(route: RouteLikeAst): go.CompositeLit {
 
   if (route.kind === "Route") {
     if (route.query || route.body) {
-      kvs.push(go.kv("Input", go.str(`${pascalCase(route.id)}${pascalCase(route.moduleName)}Request`)));
+      kvs.push(
+        go.kv("Input", go.str(`${pascalCase(route.id)}${pascalCase(route.moduleName)}Request`)),
+      );
     }
     if (route.response) {
-      kvs.push(go.kv("Response", go.str(`${pascalCase(route.id)}${pascalCase(route.moduleName)}Response`)));
+      kvs.push(
+        go.kv("Response", go.str(`${pascalCase(route.id)}${pascalCase(route.moduleName)}Response`)),
+      );
     }
   }
 
@@ -29,8 +33,7 @@ function buildRouteLit(route: RouteLikeAst): go.CompositeLit {
 }
 
 export function generateRegistryGo(ast: AppAst, _moduleInfos?: Map<string, string[]>): string {
-  const version =
-    (ast.options.targetOptions?.["metadata"]?.version as string) ?? "1.0.0";
+  const version = (ast.options.targetOptions?.["metadata"]?.version as string) ?? "1.0.0";
   const generatedAt = new Date().toISOString();
 
   const routeInfoFields = [
@@ -53,11 +56,7 @@ export function generateRegistryGo(ast: AppAst, _moduleInfos?: Map<string, strin
       incomplete: true,
     };
     moduleElts.push(
-      go.elt(
-        go.id("ModuleInfo"),
-        go.kv("Name", go.str(module.name)),
-        go.kv("Routes", routeSlice),
-      ),
+      go.elt(go.id("ModuleInfo"), go.kv("Name", go.str(module.name)), go.kv("Routes", routeSlice)),
     );
   }
 
@@ -181,10 +180,7 @@ export function generateSchemaReflection(route: RouteAst | RouteLikeAst): string
     );
   }
   if (route.response) {
-    writeMethod(
-      `${pascalCase(route.id)}${pascalCase(route.moduleName)}Response`,
-      route.response,
-    );
+    writeMethod(`${pascalCase(route.id)}${pascalCase(route.moduleName)}Response`, route.response);
   }
 
   return sb.toString();

@@ -125,9 +125,7 @@ describe("gofmt validation", () => {
         defineModule({
           name: "payment",
           services: ["paymentsvc"],
-          routes: [
-            defineRoute({ method: "POST", path: "/payments", handler: "ProcessPayment" }),
-          ],
+          routes: [defineRoute({ method: "POST", path: "/payments", handler: "ProcessPayment" })],
         }),
       ],
       runtime: defineRuntime({
@@ -170,7 +168,11 @@ describe("gofmt validation", () => {
         if (gofmt.status !== 0) {
           const lines = content.split("\n");
           const preview = lines.slice(0, Math.min(6, lines.length)).join("\n");
-          failures.push({ path: file.path, stderr: gofmt.stderr?.trim() || "gofmt failed", preview });
+          failures.push({
+            path: file.path,
+            stderr: gofmt.stderr?.trim() || "gofmt failed",
+            preview,
+          });
         }
       }
 
@@ -178,8 +180,12 @@ describe("gofmt validation", () => {
         const msg = failures
           .map((f) => `  ${f.path}:\n    stderr: ${f.stderr.replace(/\n/g, "\n    ")}`)
           .join("\n");
-        const firstPreview = failures[0].preview ? `\n  first file content:\n    ${failures[0].preview.replace(/\n/g, "\n    ")}` : "";
-        expect.fail(`gofmt failures (${failures.length}/${result.generation.files.filter(f => f.path.endsWith('.go')).length} files):\n${msg}${firstPreview}`);
+        const firstPreview = failures[0].preview
+          ? `\n  first file content:\n    ${failures[0].preview.replace(/\n/g, "\n    ")}`
+          : "";
+        expect.fail(
+          `gofmt failures (${failures.length}/${result.generation.files.filter((f) => f.path.endsWith(".go")).length} files):\n${msg}${firstPreview}`,
+        );
       }
     } catch (e) {
       // ignore cleanup errors

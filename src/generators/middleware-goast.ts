@@ -2,9 +2,7 @@ import type { AppAst, GeneratedFilePatch } from "../types/index.js";
 import { snakeCase } from "../utils/naming.js";
 import * as go from "@schemago/go-ast";
 
-export function collectAllMiddlewareInfo(
-  ast: AppAst,
-): Array<{ name: string; handler?: string }> {
+export function collectAllMiddlewareInfo(ast: AppAst): Array<{ name: string; handler?: string }> {
   const seen = new Set<string>();
   const result: Array<{ name: string; handler?: string }> = [];
   for (const mod of ast.modules) {
@@ -45,11 +43,7 @@ export function generateMiddlewareFiles(ast: AppAst): GeneratedFilePatch[] {
     const sig = sigSb.toString().split("\n")[0].replace(" {", "");
 
     const bodySb = new go.StringBuilder();
-    go.printStatement(
-      bodySb,
-      go.expr(go.call(go.sel(go.id("c"), "Next"))),
-      1,
-    );
+    go.printStatement(bodySb, go.expr(go.call(go.sel(go.id("c"), "Next"))), 1);
 
     return {
       path: `internal/middleware/${fileName}.go`,

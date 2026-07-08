@@ -12,44 +12,91 @@ function printDecl(decl: go.Declaration): string {
 function generateRuntimeTypes(): GeneratedFilePatch {
   const importDecl = go.genDecl("import", go.importSpec("context"));
 
-  const contextSpec = go.typeSpec("Context", go.interfaceType(
-    go.embedded(go.qual("context", "Context")),
-    go.field(["Logger"], go.funcType([], [go.field([], go.id("Logger"))])),
-    go.field(["RequestID"], go.funcType([], [go.field([], go.id("string"))])),
-    go.field(["Param"], go.funcType([go.field(["name"], go.id("string"))], [go.field([], go.id("string"))])),
-  ));
+  const contextSpec = go.typeSpec(
+    "Context",
+    go.interfaceType(
+      go.embedded(go.qual("context", "Context")),
+      go.field(["Logger"], go.funcType([], [go.field([], go.id("Logger"))])),
+      go.field(["RequestID"], go.funcType([], [go.field([], go.id("string"))])),
+      go.field(
+        ["Param"],
+        go.funcType([go.field(["name"], go.id("string"))], [go.field([], go.id("string"))]),
+      ),
+    ),
+  );
   contextSpec.doc = go.lineComment("Context carries request-scoped values, tracing, and logging.");
   const contextType = go.genDecl("type", contextSpec);
 
-  const loggerSpec = go.typeSpec("Logger", go.interfaceType(
-    go.field(["Info"], go.funcType(
-      [go.field(["msg"], go.id("string")), { kind: "Field", names: ["keysAndValues"], type: go.sliceType(go.id("any")), variadic: true } as go.Field],
-    )),
-    go.field(["Error"], go.funcType(
-      [go.field(["msg"], go.id("string")), { kind: "Field", names: ["keysAndValues"], type: go.sliceType(go.id("any")), variadic: true } as go.Field],
-    )),
-    go.field(["With"], go.funcType(
-      [{ kind: "Field", names: ["keysAndValues"], type: go.sliceType(go.id("any")), variadic: true } as go.Field],
-      [go.field([], go.id("Logger"))],
-    )),
-  ));
+  const loggerSpec = go.typeSpec(
+    "Logger",
+    go.interfaceType(
+      go.field(
+        ["Info"],
+        go.funcType([
+          go.field(["msg"], go.id("string")),
+          {
+            kind: "Field",
+            names: ["keysAndValues"],
+            type: go.sliceType(go.id("any")),
+            variadic: true,
+          } as go.Field,
+        ]),
+      ),
+      go.field(
+        ["Error"],
+        go.funcType([
+          go.field(["msg"], go.id("string")),
+          {
+            kind: "Field",
+            names: ["keysAndValues"],
+            type: go.sliceType(go.id("any")),
+            variadic: true,
+          } as go.Field,
+        ]),
+      ),
+      go.field(
+        ["With"],
+        go.funcType(
+          [
+            {
+              kind: "Field",
+              names: ["keysAndValues"],
+              type: go.sliceType(go.id("any")),
+              variadic: true,
+            } as go.Field,
+          ],
+          [go.field([], go.id("Logger"))],
+        ),
+      ),
+    ),
+  );
   loggerSpec.doc = go.lineComment("Logger is a structured logging interface.");
   const loggerType = go.genDecl("type", loggerSpec);
 
-  const middlewareSpec = go.typeSpec("Middleware", go.funcType(
-    [go.field(["ctx"], go.id("Context")), go.field(["next"], go.funcType(
-      [go.field(["ctx"], go.id("Context"))],
+  const middlewareSpec = go.typeSpec(
+    "Middleware",
+    go.funcType(
+      [
+        go.field(["ctx"], go.id("Context")),
+        go.field(
+          ["next"],
+          go.funcType([go.field(["ctx"], go.id("Context"))], [go.field([], go.id("error"))]),
+        ),
+      ],
       [go.field([], go.id("error"))],
-    ))],
-    [go.field([], go.id("error"))],
-  ));
+    ),
+  );
   middlewareSpec.doc = go.lineComment("Middleware is a request pipeline function.");
   const middlewareType = go.genDecl("type", middlewareSpec);
 
-  const handlerSpec = go.typeSpec("Handler", go.funcType(
-    [go.field(["ctx"], go.id("Context")), go.field(["req"], go.id("Req"))],
-    [go.field([], go.id("Res")), go.field([], go.id("error"))],
-  ), [go.field(["Req", "Res"], go.id("any"))]);
+  const handlerSpec = go.typeSpec(
+    "Handler",
+    go.funcType(
+      [go.field(["ctx"], go.id("Context")), go.field(["req"], go.id("Req"))],
+      [go.field([], go.id("Res")), go.field([], go.id("error"))],
+    ),
+    [go.field(["Req", "Res"], go.id("any"))],
+  );
   handlerSpec.doc = go.lineComment("Handler is a typed request handler.");
   const handlerType = go.genDecl("type", handlerSpec);
 
@@ -70,28 +117,38 @@ function generateRuntimeTypes(): GeneratedFilePatch {
 
   return {
     path: "pkg/runtime/context.go",
-    regions: [{
-      id: "runtime.context.types",
-      stableHash: `runtime:context:types:${contentHash(content)}`,
-      owner: "runtime",
-      language: "go",
-      content,
-    }],
+    regions: [
+      {
+        id: "runtime.context.types",
+        stableHash: `runtime:context:types:${contentHash(content)}`,
+        owner: "runtime",
+        language: "go",
+        content,
+      },
+    ],
   };
 }
 
 function generateHTTPError(): GeneratedFilePatch {
-  const httpErrorSpec = go.typeSpec("HTTPError", go.interfaceType(
-    go.embedded(go.id("error")),
-    go.field(["HTTPStatus"], go.funcType([], [go.field([], go.id("int"))])),
-  ));
-  httpErrorSpec.doc = go.lineComment("HTTPError is an error that carries an HTTP status code.\n// Return this from a usecase to control the HTTP response status.");
+  const httpErrorSpec = go.typeSpec(
+    "HTTPError",
+    go.interfaceType(
+      go.embedded(go.id("error")),
+      go.field(["HTTPStatus"], go.funcType([], [go.field([], go.id("int"))])),
+    ),
+  );
+  httpErrorSpec.doc = go.lineComment(
+    "HTTPError is an error that carries an HTTP status code.\n// Return this from a usecase to control the HTTP response status.",
+  );
   const httpErrorType = go.genDecl("type", httpErrorSpec);
 
-  const statusErrorSpec = go.typeSpec("StatusError", go.structType(
-    go.field(["Msg"], go.id("string"), go.tag({ json: "error" })),
-    go.field(["Status"], go.id("int"), go.tag({ json: "-" })),
-  ));
+  const statusErrorSpec = go.typeSpec(
+    "StatusError",
+    go.structType(
+      go.field(["Msg"], go.id("string"), go.tag({ json: "error" })),
+      go.field(["Status"], go.id("int"), go.tag({ json: "-" })),
+    ),
+  );
   statusErrorSpec.doc = go.lineComment("StatusError is a simple implementation of HTTPError.");
   const statusErrorType = go.genDecl("type", statusErrorSpec);
 
@@ -111,13 +168,21 @@ function generateHTTPError(): GeneratedFilePatch {
     go.block(go.return_(go.sel(go.id("e"), "Status"))),
   );
 
-  const newStatusErrorFn = go.function_("NewStatusError",
+  const newStatusErrorFn = go.function_(
+    "NewStatusError",
     [go.field(["msg"], go.id("string")), go.field(["status"], go.id("int"))],
     [go.field([], go.star(go.id("StatusError")))],
-    go.block(go.return_(go.addr(go.elt(go.id("StatusError"),
-      go.kv("Msg", go.id("msg")),
-      go.kv("Status", go.id("status")),
-    )))),
+    go.block(
+      go.return_(
+        go.addr(
+          go.elt(
+            go.id("StatusError"),
+            go.kv("Msg", go.id("msg")),
+            go.kv("Status", go.id("status")),
+          ),
+        ),
+      ),
+    ),
   );
   newStatusErrorFn.doc = go.lineComment("NewStatusError creates a new StatusError.");
 
@@ -137,13 +202,15 @@ function generateHTTPError(): GeneratedFilePatch {
 
   return {
     path: "pkg/runtime/errors.go",
-    regions: [{
-      id: "runtime.errors.types",
-      stableHash: `runtime:errors:types:${contentHash(content)}`,
-      owner: "runtime",
-      language: "go",
-      content,
-    }],
+    regions: [
+      {
+        id: "runtime.errors.types",
+        stableHash: `runtime:errors:types:${contentHash(content)}`,
+        owner: "runtime",
+        language: "go",
+        content,
+      },
+    ],
   };
 }
 
@@ -154,9 +221,7 @@ function generateRuntimeContext(
 
   const importDecl = go.genDecl("import", go.importSpec("context"));
 
-  const structFields: go.Field[] = [
-    go.embedded(go.qual("context", "Context")),
-  ];
+  const structFields: go.Field[] = [go.embedded(go.qual("context", "Context"))];
   if (hasNewLogger) {
     structFields.push(go.field(["logger"], go.id("Logger")));
   }
@@ -173,7 +238,8 @@ function generateRuntimeContext(
     newContextKVs.push(go.kv("logger", go.id("logger")));
   }
 
-  const newContextFn = go.function_("NewContext",
+  const newContextFn = go.function_(
+    "NewContext",
     newContextParams,
     [go.field([], go.id("Context"))],
     go.block(go.return_(go.addr(go.elt(go.id("runtimeContext"), ...newContextKVs)))),
@@ -224,20 +290,25 @@ function generateRuntimeContext(
 
   const content = sb.toString();
 
-  return [{
-    path: "pkg/runtime/runtime_context.go",
-    regions: [{
-      id: "runtime.context.impl",
-      stableHash: `runtime:context:impl:${contentHash(content)}`,
-      owner: "runtime",
-      language: "go",
-      content,
-    }],
-  }];
+  return [
+    {
+      path: "pkg/runtime/runtime_context.go",
+      regions: [
+        {
+          id: "runtime.context.impl",
+          stableHash: `runtime:context:impl:${contentHash(content)}`,
+          owner: "runtime",
+          language: "go",
+          content,
+        },
+      ],
+    },
+  ];
 }
 
 function generateRequestContextMiddleware(): GeneratedFilePatch {
-  const importDecl = go.genDecl("import",
+  const importDecl = go.genDecl(
+    "import",
     go.importSpec("context"),
     go.importSpec("crypto/rand"),
     go.importSpec("encoding/hex"),
@@ -252,30 +323,58 @@ function generateRequestContextMiddleware(): GeneratedFilePatch {
       go.def(go.id("reqID"), go.call(go.id("generateRequestID"))),
 
       go.def(go.id("ctx"), go.call(go.sel(go.sel(go.id("c"), "Request"), "Context"))),
-      go.assign([go.id("ctx")], "=", [go.call(go.qual("context", "WithValue"), go.id("ctx"), go.id("ctxKeyRequestID"), go.id("reqID"))]),
-      go.assign([go.id("ctx")], "=", [go.call(go.qual("context", "WithValue"), go.id("ctx"), go.id("ctxKeyRoute"), go.call(go.sel(go.id("c"), "FullPath")))]),
-      go.assign([go.id("ctx")], "=", [go.call(go.qual("context", "WithValue"), go.id("ctx"), go.id("ctxKeyMethod"), go.sel(go.sel(go.id("c"), "Request"), "Method"))]),
-      go.assign([go.sel(go.id("c"), "Request")], "=", [go.call(go.sel(go.sel(go.id("c"), "Request"), "WithContext"), go.id("ctx"))]),
+      go.assign([go.id("ctx")], "=", [
+        go.call(
+          go.qual("context", "WithValue"),
+          go.id("ctx"),
+          go.id("ctxKeyRequestID"),
+          go.id("reqID"),
+        ),
+      ]),
+      go.assign([go.id("ctx")], "=", [
+        go.call(
+          go.qual("context", "WithValue"),
+          go.id("ctx"),
+          go.id("ctxKeyRoute"),
+          go.call(go.sel(go.id("c"), "FullPath")),
+        ),
+      ]),
+      go.assign([go.id("ctx")], "=", [
+        go.call(
+          go.qual("context", "WithValue"),
+          go.id("ctx"),
+          go.id("ctxKeyMethod"),
+          go.sel(go.sel(go.id("c"), "Request"), "Method"),
+        ),
+      ]),
+      go.assign([go.sel(go.id("c"), "Request")], "=", [
+        go.call(go.sel(go.sel(go.id("c"), "Request"), "WithContext"), go.id("ctx")),
+      ]),
 
       go.expr(go.call(go.sel(go.id("c"), "Next"))),
 
-      go.expr(go.call(
-        go.sel(go.call(go.id("CtxLogger"), go.id("ctx")), "Info"),
-        go.str("request completed"),
-        go.str("status"),
-        go.call(go.sel(go.sel(go.id("c"), "Writer"), "Status")),
-        go.str("duration_ms"),
-        go.call(go.sel(go.call(go.qual("time", "Since"), go.id("start")), "Milliseconds")),
-      )),
+      go.expr(
+        go.call(
+          go.sel(go.call(go.id("CtxLogger"), go.id("ctx")), "Info"),
+          go.str("request completed"),
+          go.str("status"),
+          go.call(go.sel(go.sel(go.id("c"), "Writer"), "Status")),
+          go.str("duration_ms"),
+          go.call(go.sel(go.call(go.qual("time", "Since"), go.id("start")), "Milliseconds")),
+        ),
+      ),
     ),
   );
 
-  const reqCtxMiddleware = go.function_("RequestContextMiddleware",
+  const reqCtxMiddleware = go.function_(
+    "RequestContextMiddleware",
     [],
     [go.field([], go.qual("gin", "HandlerFunc"))],
     go.block(go.return_(innerFuncLit)),
   );
-  reqCtxMiddleware.doc = go.lineComment("RequestContextMiddleware enriches the request context with request_id, route, and method.\n// It also logs an access log entry with duration and status when the request completes.");
+  reqCtxMiddleware.doc = go.lineComment(
+    "RequestContextMiddleware enriches the request context with request_id, route, and method.\n// It also logs an access log entry with duration and status when the request completes.",
+  );
 
   const genReqIDStr = `func generateRequestID() string {
 \tb := make([]byte, 8)
@@ -296,22 +395,21 @@ function generateRequestContextMiddleware(): GeneratedFilePatch {
 
   return {
     path: "pkg/runtime/request_context.go",
-    regions: [{
-      id: "runtime.request_context.middleware",
-      stableHash: `runtime:request_context:middleware`,
-      owner: "runtime",
-      language: "go",
-      content,
-    }],
+    regions: [
+      {
+        id: "runtime.request_context.middleware",
+        stableHash: `runtime:request_context:middleware`,
+        owner: "runtime",
+        language: "go",
+        content,
+      },
+    ],
   };
 }
 
 function generateMiddlewareChain(): GeneratedFilePatch {
   const chainFuncLit = go.funcLit(
-    go.funcType(
-      [go.field(["ctx"], go.id("Context"))],
-      [go.field([], go.id("error"))],
-    ),
+    go.funcType([go.field(["ctx"], go.id("Context"))], [go.field([], go.id("error"))]),
     go.block(go.return_(go.call(go.id("next"), go.id("ctx")))),
   );
 
@@ -324,13 +422,13 @@ function generateMiddlewareChain(): GeneratedFilePatch {
       go.block(
         go.def(go.id("m"), go.index(go.id("middleware"), go.id("i"))),
         go.def(go.id("current"), go.id("chain")),
-        go.def(go.id("chain"), go.funcLit(
-          go.funcType(
-            [go.field(["ctx"], go.id("Context"))],
-            [go.field([], go.id("error"))],
+        go.def(
+          go.id("chain"),
+          go.funcLit(
+            go.funcType([go.field(["ctx"], go.id("Context"))], [go.field([], go.id("error"))]),
+            go.block(go.return_(go.call(go.id("m"), go.id("ctx"), go.id("current")))),
           ),
-          go.block(go.return_(go.call(go.id("m"), go.id("ctx"), go.id("current")))),
-        )),
+        ),
       ),
     ),
     go.return_(go.call(go.id("chain"), go.id("ctx"))),
@@ -338,17 +436,28 @@ function generateMiddlewareChain(): GeneratedFilePatch {
 
   const outerFuncLit = go.funcLit(
     go.funcType(
-      [go.field(["ctx"], go.id("Context")), go.field(["next"], go.funcType(
-        [go.field(["ctx"], go.id("Context"))],
-        [go.field([], go.id("error"))],
-      ))],
+      [
+        go.field(["ctx"], go.id("Context")),
+        go.field(
+          ["next"],
+          go.funcType([go.field(["ctx"], go.id("Context"))], [go.field([], go.id("error"))]),
+        ),
+      ],
       [go.field([], go.id("error"))],
     ),
     innerBody,
   );
 
-  const chainMw = go.function_("ChainMiddleware",
-    [{ kind: "Field", names: ["middleware"], type: go.sliceType(go.id("Middleware")), variadic: true } as go.Field],
+  const chainMw = go.function_(
+    "ChainMiddleware",
+    [
+      {
+        kind: "Field",
+        names: ["middleware"],
+        type: go.sliceType(go.id("Middleware")),
+        variadic: true,
+      } as go.Field,
+    ],
     [go.field([], go.id("Middleware"))],
     go.block(go.return_(outerFuncLit)),
   );
@@ -363,13 +472,15 @@ function generateMiddlewareChain(): GeneratedFilePatch {
 
   return {
     path: "pkg/runtime/middleware.go",
-    regions: [{
-      id: "runtime.middleware.chain",
-      stableHash: "runtime:middleware:chain",
-      owner: "runtime",
-      language: "go",
-      content,
-    }],
+    regions: [
+      {
+        id: "runtime.middleware.chain",
+        stableHash: "runtime:middleware:chain",
+        owner: "runtime",
+        language: "go",
+        content,
+      },
+    ],
   };
 }
 

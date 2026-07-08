@@ -24,10 +24,7 @@ function makeRouteAst(overrides: Partial<RouteAst> & { kind?: "Route" }): RouteA
   } as RouteAst;
 }
 
-function makeModuleAst(
-  name: string,
-  routes: RouteLikeAst[],
-): ModuleAst {
+function makeModuleAst(name: string, routes: RouteLikeAst[]): ModuleAst {
   return {
     kind: "Module",
     id: name,

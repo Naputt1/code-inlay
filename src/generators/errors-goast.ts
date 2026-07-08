@@ -55,10 +55,9 @@ function renderModuleErrorMethod(name: string): string {
 function renderHTTPStatusMethod(name: string, httpStatus: number): string {
   const recv = go.field(["e"], go.star(go.id(name)));
   const statusStr = httpStatusConsts[httpStatus];
-  const expr: go.Expression =
-    statusStr?.startsWith("http.")
-      ? go.qual("http", statusStr.slice(5))
-      : go.int(httpStatus);
+  const expr: go.Expression = statusStr?.startsWith("http.")
+    ? go.qual("http", statusStr.slice(5))
+    : go.int(httpStatus);
   const decl = go.method(
     recv,
     "HTTPStatus",
@@ -85,10 +84,7 @@ export function renderStandardErrors(structs: ErrorStruct[]): string {
   return parts.join("\n");
 }
 
-export function renderModuleErrors(
-  _moduleName: string,
-  structs: ErrorStruct[],
-): string {
+export function renderModuleErrors(_moduleName: string, structs: ErrorStruct[]): string {
   const parts: string[] = [renderImport(), ""];
 
   for (const s of structs) {
