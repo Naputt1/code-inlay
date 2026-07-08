@@ -1,4 +1,4 @@
-import { serviceConstructorName } from "../utils/naming.js";
+import { serviceConstructorName, lowerSvcVar } from "../utils/naming.js";
 import type {
   AppAst,
   ArchitectureAst,
@@ -87,6 +87,7 @@ export function generateServer(
 
   const routeArgs = ["api"];
   const mainBody: string[] = [];
+  const svcVars: Array<{ name: string; varName: string }> = [];
 
   if (hasConfig) {
     mainBody.push(`\tcfg := config.Load()`);
@@ -102,7 +103,14 @@ export function generateServer(
     const ctorName = serviceConstructorName(svc.name);
     const varName = lowerSvcVar(svc.name);
     const needsCfg = hasConfig && svc.env && svc.env.length > 0;
-    const ctorArgs = needsCfg ? "cfg" : "";
+    const ctorArgsParts: string[] = [];
+    if (svc.mainConstructorArgs) {
+      ctorArgsParts.push(svc.mainConstructorArgs);
+    }
+    if (needsCfg) {
+      ctorArgsParts.push("cfg");
+    }
+    const ctorArgs = ctorArgsParts.join(", ");
     mainBody.push(`\t${varName}, err := service.${ctorName}(${ctorArgs})`);
     mainBody.push(`\tif err != nil {`);
     mainBody.push(`\t\tpanic(err)`);
@@ -110,7 +118,16 @@ export function generateServer(
     if (svc.close) {
       mainBody.push(`\tdefer ${varName}.Close()`);
     }
+    svcVars.push({ name: svc.name, varName });
     routeArgs.push(varName);
+  }
+
+  for (const svc of ast.services) {
+    if (svc.startup) {
+      const varName = lowerSvcVar(svc.name);
+      mainBody.push(``);
+      mainBody.push(svc.startup);
+    }
   }
 
   if (adapter?.name === "gin") {
@@ -167,14 +184,28 @@ export function generateServer(
   const livenessPath = hc?.livenessPath ?? "/healthz";
   const readinessPath = hc?.readinessPath ?? "/readyz";
 
+  const servicesWithHealthCheck = ast.services.filter((s) => s.healthCheck);
+
   if (hcEnabled) {
     mainBody.push(``);
-    mainBody.push(`\tr.GET("${livenessPath}", func(c *gin.Context) {`);
-    mainBody.push(`\t\tc.JSON(http.StatusOK, gin.H{"status": "ok"})`);
-    mainBody.push(`\t})`);
-    mainBody.push(`\tr.GET("${readinessPath}", func(c *gin.Context) {`);
-    mainBody.push(`\t\tc.JSON(http.StatusOK, gin.H{"status": "ready"})`);
-    mainBody.push(`\t})`);
+    if (servicesWithHealthCheck.length > 0) {
+      mainBody.push(`\tr.GET("${livenessPath}", func(c *gin.Context) {`);
+      mainBody.push(`\t\tc.JSON(http.StatusOK, gin.H{"status": "ok"})`);
+      mainBody.push(`\t})`);
+      mainBody.push(`\tr.GET("${readinessPath}", func(c *gin.Context) {`);
+      for (const svc of servicesWithHealthCheck) {
+        mainBody.push(svc.healthCheck!);
+      }
+      mainBody.push(`\t\tc.JSON(http.StatusOK, gin.H{"status": "ready"})`);
+      mainBody.push(`\t})`);
+    } else {
+      mainBody.push(`\tr.GET("${livenessPath}", func(c *gin.Context) {`);
+      mainBody.push(`\t\tc.JSON(http.StatusOK, gin.H{"status": "ok"})`);
+      mainBody.push(`\t})`);
+      mainBody.push(`\tr.GET("${readinessPath}", func(c *gin.Context) {`);
+      mainBody.push(`\t\tc.JSON(http.StatusOK, gin.H{"status": "ready"})`);
+      mainBody.push(`\t})`);
+    }
   }
 
   mainBody.push(`\tapi := r.Group("${ast.router.prefix}")`);
@@ -242,10 +273,6 @@ export function generateServer(
       },
     ],
   };
-}
-
-function lowerSvcVar(name: string): string {
-  return name.charAt(0).toLowerCase() + name.slice(1) + "Svc";
 }
 
 function generateLoggerInit(loggerConfig: NonNullable<RuntimeConfig["logger"]>): string[] {

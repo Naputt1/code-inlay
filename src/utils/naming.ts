@@ -163,6 +163,10 @@ export function serviceRegionId(name: string): string {
   return `service.${name}`;
 }
 
+export function lowerSvcVar(name: string): string {
+  return name.charAt(0).toLowerCase() + name.slice(1) + "Svc";
+}
+
 export function fileForUsecaseGroup(
   moduleName: string,
   groupKey: string,

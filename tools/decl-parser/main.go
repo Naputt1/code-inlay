@@ -70,10 +70,34 @@ func main() {
 					start := fset.Position(d.Pos())
 					end := fset.Position(d.End())
 					sig := sourceBetween(source, d.Pos(), d.End(), fset)
+					bodyStart := 0
+					bodyEnd := 0
+					var body string
+					if st, ok := s.Type.(*ast.StructType); ok && st.Fields != nil && st.Fields.List != nil {
+						bodyStart = fset.Position(st.Fields.Opening).Line
+						bodyEnd = fset.Position(st.Fields.Closing).Line
+						bodyOff := fset.Position(st.Fields.Opening).Offset + 1
+						bodyEndOff := fset.Position(st.Fields.Closing).Offset
+						if bodyOff >= 0 && bodyEndOff <= len(source) && bodyOff < bodyEndOff {
+							body = string(source[bodyOff:bodyEndOff])
+						}
+					}
+					if it, ok := s.Type.(*ast.InterfaceType); ok && it.Methods != nil && it.Methods.List != nil {
+						bodyStart = fset.Position(it.Methods.Opening).Line
+						bodyEnd = fset.Position(it.Methods.Closing).Line
+						bodyOff := fset.Position(it.Methods.Opening).Offset + 1
+						bodyEndOff := fset.Position(it.Methods.Closing).Offset
+						if bodyOff >= 0 && bodyEndOff <= len(source) && bodyOff < bodyEndOff {
+							body = string(source[bodyOff:bodyEndOff])
+						}
+					}
 					decls = append(decls, Declaration{
 						Kind:       typeKind(s),
 						SymbolName: s.Name.Name,
 						Signature:  sig,
+						Body:       body,
+						BodyStart:  bodyStart,
+						BodyEnd:    bodyEnd,
 						StartLine:  start.Line,
 						EndLine:    end.Line,
 					})

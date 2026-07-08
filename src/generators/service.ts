@@ -40,8 +40,13 @@ export function generateServiceFile(
   if (svc.dbTypePkg) {
     importsList.push(svc.dbTypePkg);
   }
+  if (svc.extraImports) {
+    for (const imp of svc.extraImports) {
+      importsList.push(imp);
+    }
+  }
   if (needsConfig && modulePath) {
-    importsList.push(`"${modulePath}/internal/config"`);
+    importsList.push(`${modulePath}/internal/config`);
   }
 
   const ifaceLines: string[] = [];
@@ -57,6 +62,11 @@ export function generateServiceFile(
   if (svc.dbAccessor && svc.dbType) {
     ifaceLines.push(`\t${svc.dbAccessor}() ${svc.dbType}`);
   }
+  if (svc.interfaceMethods) {
+    for (const m of svc.interfaceMethods) {
+      ifaceLines.push(`\t${m.name}${m.signature}`);
+    }
+  }
   if (svc.close) {
     ifaceLines.push(`\tClose() error`);
   }
@@ -70,26 +80,58 @@ export function generateServiceFile(
   });
 
   const structFields: string[] = [];
+  if (svc.dbType && !svc.structFields) {
+    structFields.push(`\tdb ${svc.dbType}`);
+  }
+  if (svc.structFields) {
+    for (const f of svc.structFields) {
+      structFields.push(`\t${f.name} ${f.goType}`);
+    }
+  }
   if (needsConfig) {
     structFields.push(`\tcfg config.Config`);
   }
+  const structContent =
+    structFields.length === 0
+      ? `type ${implName} struct {\n}`
+      : `type ${implName} struct {\n${structFields.join("\n")}\n}`;
   parts.push({
     kind: "struct" as const,
     symbolName: implName,
-    content: `type ${implName} struct {\n${structFields.join("\n")}\n}`,
-    expectsUserCode: false,
+    content: structContent,
+    expectsUserCode: true,
     isStub: false,
   });
 
-  const ctorParams = needsConfig ? "cfg config.Config" : "";
-  const ctorArg = needsConfig ? "cfg: cfg" : "";
+  const ctorParamParts: string[] = [];
+  if (svc.ctor?.params) {
+    ctorParamParts.push(svc.ctor.params);
+  }
+  if (needsConfig) {
+    ctorParamParts.push("cfg config.Config");
+  }
+  const ctorParams = ctorParamParts.join(", ");
+
+  const ctorFieldParts: string[] = [];
+  if (svc.ctor?.fieldInit) {
+    ctorFieldParts.push(svc.ctor.fieldInit);
+  }
+  if (needsConfig) {
+    ctorFieldParts.push("cfg: cfg");
+  }
+  const ctorArg = ctorFieldParts.join(", ");
+
+  const ctorBody = svc.ctor?.body
+    ? svc.ctor.body
+    : `\treturn &${implName}{${ctorArg}}, nil`;
+
   const ctorSig = `func ${ctorName}(${ctorParams}) (*${implName}, error)`;
   parts.push({
     kind: "function" as const,
     symbolName: ctorName,
     signature: ctorSig,
-    content: `\treturn &${implName}{${ctorArg}}, nil`,
-    expectsUserCode: false,
+    content: ctorBody,
+    expectsUserCode: true,
     isStub: false,
   });
 
@@ -116,6 +158,20 @@ export function generateServiceFile(
       expectsUserCode: false,
       isStub: false,
     });
+  }
+
+  if (svc.implementationMethods) {
+    for (const m of svc.implementationMethods) {
+      parts.push({
+        kind: "method" as const,
+        symbolName: m.name,
+        receiver: `*${implName}`,
+        signature: m.signature,
+        content: m.body,
+        expectsUserCode: false,
+        isStub: false,
+      });
+    }
   }
 
   return parts;

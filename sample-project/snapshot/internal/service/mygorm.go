@@ -10,6 +10,7 @@ type MygormService interface {
 }
 
 type mygormServiceImpl struct {
+	db *gorm.DB
 }
 
 func NewMygormService() (*mygormServiceImpl, error) {
