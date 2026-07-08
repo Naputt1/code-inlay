@@ -61,6 +61,25 @@ internal/http/routes.go  # Route registration
 - **Watch mode** with live code regeneration
 - **Region-based editing** — safe incremental code generation
 
+## Project Structure
+
+This is a pnpm monorepo:
+
+- **`@schemago/goast`** (`packages/goast/`) — Pure TypeScript Go AST library. Builds and prints Go AST nodes with zero external deps. Used by all generators.
+- **`@schemago/schemago`** (`packages/schemago/`) — The CLI tool and code generation DSL. Consumes `@schemago/goast` for all Go code output. No string templates.
+
+## Development
+
+```sh
+pnpm install          # install dependencies + build decl-parser
+pnpm build            # turbo builds goast → schemago
+pnpm test             # run all tests across both packages
+pnpm check            # lint + format + typecheck
+pnpm changeset        # create a changeset for a new release
+```
+
+`turbo.json` handles the build order automatically: `@schemago/goast` builds first, then `@schemago/schemago`.
+
 ## CLI
 
 | Command    | Description                       |
