@@ -200,7 +200,7 @@ func (h *OrdersHandler) TrackOrder(c *gin.Context) {
 			readCh <- msg
 		}
 	}()
-	for _, event := range writeCh {
+	for event := range writeCh {
 		if err := writeEvent(event); err != nil {
 			break
 		}
