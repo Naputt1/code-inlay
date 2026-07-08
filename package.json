@@ -20,7 +20,7 @@
     }
   },
   "scripts": {
-    "build": "tsup src/index.ts src/cli.ts --format esm --dts --clean --splitting false",
+    "build": "pnpm --filter @schemago/go-ast build && tsup src/index.ts src/cli.ts --format esm --dts --clean --splitting false",
     "postinstall": "cd tools/decl-parser && go build -o decl-parser . || true",
     "check": "pnpm run lint && pnpm run format && pnpm run typecheck",
     "lint": "eslint .",
