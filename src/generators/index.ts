@@ -51,6 +51,7 @@ import { generateStandardErrors, generateModuleErrors, collectModuleErrors } fro
 import { generateBindingErrorFunction, doesSchemaNeedFmt } from "./validation.js";
 import type { BindingErrorConfig } from "./validation.js";
 import type { ScaffoldPart } from "./types.js";
+import { generateHandlerInitLines, generateRegisterModuleRoutes, generateCombinedRegisterRoutes } from "./route-registration-goast.js";
 
 export function generateCode(
   ast: AppAst,
@@ -467,81 +468,18 @@ export function generateCode(
     const moduleName = routeFile.replace(/^.*internal\/http\/(.+)_routes\.go$/, "$1");
     moduleNamesInOrder.push(moduleName);
 
-    const moduleImports: string[] = [];
-    const handlerInitLines: string[] = [];
     const mod = ast.modules.find((m) => m.name === moduleName);
     const moduleServices = getModuleServices(moduleName);
 
+    let moduleImports: string[] = [];
+    let handlerInitLines: string[] = [];
     if (mod) {
-      const modPkg = mod.name;
-      const handlerType = `${pascalCase(modPkg)}Handler`;
-      const handlerVar = `${lowerIdent(modPkg)}Handler`;
-      const layerKinds = new Set(
-        architecture.routes
-          .filter((r) => r.route.moduleName === modPkg)
-          .flatMap((r) => r.layers.map((l) => l.kind)),
+      const result = generateHandlerInitLines(
+        mod, moduleServices, architecture.routes,
+        moduleInfo, featuresDir, repositoryModules,
       );
-
-      if (layerKinds.has("handler") || layerKinds.has("usecase")) {
-        if (moduleInfo) {
-          moduleImports.push(
-            `"${moduleInfo.modulePath}/${featuresPath(`internal/${modPkg}`, featuresDir)}"`,
-          );
-        }
-        if (moduleServices.length > 0 && moduleInfo) {
-          moduleImports.push(`"${moduleInfo.modulePath}/internal/service"`);
-        }
-        const usecaseFields: string[] = [];
-        const dbProvider = moduleServices.find((s) => s.dbAccessor);
-        const hasRepo = repositoryModules.has(modPkg);
-        const svcsForUsecase =
-          hasRepo && dbProvider ? moduleServices.filter((s) => s !== dbProvider) : moduleServices;
-        const repoVarName = `${lowerIdent(modPkg)}Repo`;
-        for (const svc of moduleServices) {
-          const svcVar = `${lowerIdent(svc.name)}Svc`;
-          handlerInitLines.push(`\tif ${svcVar} == nil {`);
-          handlerInitLines.push(`\t\tpanic("${svcVar} must not be nil")`);
-          handlerInitLines.push(`\t}`);
-        }
-        if (moduleServices.length > 0) handlerInitLines.push(``);
-        if (hasRepo && dbProvider) {
-          handlerInitLines.push(
-            `\t${repoVarName} := ${modPkg}.New${pascalCase(modPkg)}Repository(${lowerIdent(dbProvider.name)}Svc.${dbProvider.dbAccessor}())`,
-          );
-          handlerInitLines.push(``);
-        } else if (moduleServices.length === 0 && hasRepo) {
-          handlerInitLines.push(
-            `\t${repoVarName} := ${modPkg}.New${pascalCase(modPkg)}Repository()`,
-          );
-          handlerInitLines.push(``);
-        }
-        for (const expansion of architecture.routes) {
-          if (expansion.route.moduleName !== modPkg) continue;
-          if (expansion.route.kind !== "Route") continue;
-          const layers = new Set(expansion.layers.map((l) => l.kind));
-          if (!layers.has("handler") && !layers.has("usecase")) continue;
-          const handlerName = expansion.route.handlerName;
-          if (moduleServices.length > 0) {
-            const repoArg = hasRepo
-              ? dbProvider
-                ? `${repoVarName}, `
-                : "nil /*repo TODO*/, "
-              : "";
-            const svcArgs = svcsForUsecase.map((s) => `${lowerIdent(s.name)}Svc`).join(", ");
-            usecaseFields.push(
-              `\t\t${handlerName}Usecase: ${modPkg}.New${handlerName}Usecase(${repoArg}${svcArgs}),`,
-            );
-          } else {
-            const repoArg = hasRepo ? `${repoVarName}, ` : "";
-            usecaseFields.push(
-              `\t\t${handlerName}Usecase: ${modPkg}.New${handlerName}Usecase(${repoArg}),`,
-            );
-          }
-        }
-        handlerInitLines.push(`\t${handlerVar} := &${modPkg}.${handlerType}{`);
-        handlerInitLines.push(...usecaseFields);
-        handlerInitLines.push(`\t}`);
-      }
+      moduleImports = result.moduleImports;
+      handlerInitLines = result.handlerInitLines;
     }
 
     let funcParams = `api *gin.RouterGroup`;
@@ -550,82 +488,13 @@ export function generateCode(
       funcParams += `, ${lowerIdent(svc.name)}Svc service.${svcName}`;
     }
 
-    const body: string[] = [];
-    body.push(`import (`);
-    body.push(`\t"github.com/gin-gonic/gin"`);
-    if (mwNames.size > 0 && moduleInfo) {
-      body.push(`\t"${moduleInfo.modulePath}/internal/middleware"`);
-    }
-    for (const imp of moduleImports.sort()) {
-      body.push(`\t${imp}`);
-    }
-    body.push(`)`);
-    body.push(``);
-    const funcName = `register${pascalCase(moduleName)}Routes`;
-    body.push(`func ${funcName}(${funcParams}) {`);
-    body.push(...handlerInitLines);
-    body.push(``);
-    const groups = new Map<string, typeof routeLines>();
-    const ungrouped: typeof routeLines = [];
-    for (const rl of routeLines) {
-      if (rl.group) {
-        const g = groups.get(rl.group) ?? [];
-        g.push(rl);
-        groups.set(rl.group, g);
-      } else {
-        ungrouped.push(rl);
-      }
-    }
-
-    const groupVar = (prefix: string) => {
-      const cleaned = prefix.replace(/^\/+/, "").replace(/\/+/g, "_");
-      return cleaned || "root";
-    };
-
-    const stripPath = (full: string, prefix: string) => {
-      if (!prefix) return full;
-      const base = full.startsWith(prefix) ? full.slice(prefix.length) : full;
-      return base || "";
-    };
-
-    for (const rl of ungrouped) {
-      body.push(`\t${rl.content}`);
-    }
-    if (ungrouped.length > 0 && groups.size > 0) {
-      body.push(``);
-    }
-    for (const [prefix, lines] of groups) {
-      const gv = groupVar(prefix);
-      const gMw = groupMwByPrefix.get(prefix);
-      const gMwArgs =
-        gMw && gMw.size > 0
-          ? [...gMw]
-              .sort()
-              .map((n) => `middleware.${n}`)
-              .join(", ")
-          : "";
-      const groupDecl = gMwArgs
-        ? `${gv} := api.Group("${prefix}", ${gMwArgs})`
-        : `${gv} := api.Group("${prefix}")`;
-      body.push(`\t${groupDecl}`);
-      body.push(`\t{`);
-      for (const rl of lines) {
-        const lineWithGv = rl.content.replace(/^api\./, `${gv}.`);
-        const pathMatch = lineWithGv.match(/^(\w+)\.(\w+)\((".*?")/);
-        if (pathMatch) {
-          const oldPath = pathMatch[3].slice(1, -1);
-          const newPath = stripPath(oldPath, prefix);
-          const fixed = lineWithGv.replace(pathMatch[3], JSON.stringify(newPath));
-          body.push(`\t\t${fixed}`);
-        } else {
-          body.push(`\t\t${lineWithGv}`);
-        }
-      }
-      body.push(`\t}`);
-      body.push(``);
-    }
-    if (body[body.length - 1] === "") body.pop();
-    body.push(`}`);
+    const mwImport = mwNames.size > 0 && moduleInfo
+      ? [`"${moduleInfo.modulePath}/internal/middleware"`]
+      : [];
+    const allImports = [...mwImport, ...moduleImports];
+    const body = generateRegisterModuleRoutes(
+      moduleName, allImports, handlerInitLines, funcParams, routeLines, groupMwByPrefix,
+    );
 
     add(routeFile, {
       id: `routes.register.${moduleName}`,
@@ -637,36 +506,9 @@ export function generateCode(
   }
 
   if (routeLinesByFile.size > 0) {
-    const serviceImports = new Set<string>();
-    const combinedParams: string[] = [`api *gin.RouterGroup`];
-    for (const svc of ast.services) {
-      const svcName = serviceTypeName(svc.name);
-      const svcArg = `${lowerIdent(svc.name)}Svc service.${svcName}`;
-      combinedParams.push(svcArg);
-      if (moduleInfo) {
-        serviceImports.add(`"${moduleInfo.modulePath}/internal/service"`);
-      }
-    }
-
-    const combinedBody: string[] = [];
-    combinedBody.push(`import (`);
-    combinedBody.push(`\t"github.com/gin-gonic/gin"`);
-    for (const imp of [...serviceImports].sort()) {
-      combinedBody.push(`\t${imp}`);
-    }
-    combinedBody.push(`)`);
-    combinedBody.push(``);
-    combinedBody.push(`func RegisterRoutes(${combinedParams.join(", ")}) {`);
-    for (const modName of moduleNamesInOrder) {
-      const funcName = `register${pascalCase(modName)}Routes`;
-      const callArgs = [`api`];
-      const modServices = getModuleServices(modName);
-      for (const s of modServices) {
-        callArgs.push(`${lowerIdent(s.name)}Svc`);
-      }
-      combinedBody.push(`\t${funcName}(${callArgs.join(", ")})`);
-    }
-    combinedBody.push(`}`);
+    const combinedBody = generateCombinedRegisterRoutes(
+      moduleNamesInOrder, ast.services, moduleInfo, getModuleServices,
+    );
     add("internal/http/routes.go", {
       id: "routes.register",
       stableHash: `internal/http/routes.go:register`,
