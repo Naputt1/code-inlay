@@ -726,7 +726,12 @@ function printGenDecl(sb: StringBuilder, decl: GenDecl, depth: number): void {
 
   const multi = decl.lparen || decl.specs.length > 1;
 
-  if (!multi && decl.specs.length === 1 && decl.specs[0].kind !== "ImportSpec" && decl.specs[0].doc) {
+  if (
+    !multi &&
+    decl.specs.length === 1 &&
+    decl.specs[0].kind !== "ImportSpec" &&
+    decl.specs[0].doc
+  ) {
     printCommentGroup(sb, decl.specs[0].doc, depth);
   }
 
