@@ -1,5 +1,5 @@
 {
-  "name": "@schemago/go-ast",
+  "name": "@schemago/goast",
   "version": "0.1.0",
 
   "type": "module",

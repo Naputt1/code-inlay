@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────
-// @schemago/go-ast — Printer: AST → formatted Go source string
+// @schemago/goast — Printer: AST → formatted Go source string
 // ─────────────────────────────────────────────────────────────
 
 import type {

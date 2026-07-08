@@ -33,7 +33,7 @@ function testMatch(env: Record<string, EnvVarInfo>) {
   }
 }
 
-describe("generateEnvConfigFile go-ast matches original", () => {
+describe("generateEnvConfigFile goast matches original", () => {
   it("empty env returns null", () => {
     testMatch({});
   });

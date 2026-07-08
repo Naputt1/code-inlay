@@ -15,7 +15,7 @@ function compareEntity(struct: GoStruct) {
   expect(new_).toBe(old_);
 }
 
-describe("go-ast struct generation", () => {
+describe("goast struct generation", () => {
   it("1. basic struct with string field", () => {
     const s: GoStruct = {
       name: "User",

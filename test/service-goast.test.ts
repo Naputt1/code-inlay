@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import type { AppServiceDef, BackendExtension } from "../src/types/index.js";
 import { generateServiceFile } from "../src/generators/service-goast.js";
 
-describe("go-ast service generation", () => {
+describe("goast service generation", () => {
   const svcBase = (overrides: Partial<AppServiceDef>): AppServiceDef => ({
     name: "my",
     typeName: "MyService",

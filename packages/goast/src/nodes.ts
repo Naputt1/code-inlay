@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────
-// @schemago/go-ast — Go AST node types (mirrors go/ast)
+// @schemago/goast — Go AST node types (mirrors go/ast)
 // All nodes use discriminated unions on the `kind` field.
 // ─────────────────────────────────────────────────────────────
 

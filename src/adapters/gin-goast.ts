@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
-import * as go from "@schemago/go-ast";
-import { toGoType } from "../utils/go-ast.js";
+import * as go from "@schemago/goast";
+import { toGoType } from "../utils/goast.js";
 import type {
   AdapterPlugin,
   AdapterTarget,

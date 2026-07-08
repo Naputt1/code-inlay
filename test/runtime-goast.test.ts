@@ -32,7 +32,7 @@ function minimalAst(overrides?: Partial<AppAst>): AppAst {
   };
 }
 
-describe("generateRuntimeCode (go-ast)", () => {
+describe("generateRuntimeCode (goast)", () => {
   it("returns empty array when runtime is disabled", () => {
     const ast = minimalAst();
     const config: RuntimeConfig = { enabled: false };
@@ -123,7 +123,7 @@ describe("generateRuntimeCode (go-ast)", () => {
   });
 });
 
-describe("generateRuntimeConfigCode (go-ast)", () => {
+describe("generateRuntimeConfigCode (goast)", () => {
   it("generates wire inject code when di is wire", () => {
     const code = generateRuntimeConfigCode({ enabled: true, di: "wire" });
     expect(code).toContain("wireinject");

@@ -1,4 +1,4 @@
-import * as go from "@schemago/go-ast";
+import * as go from "@schemago/goast";
 import type { SchemaLike } from "../types/index.js";
 import { typeName } from "../schema/extras.js";
 import { validationTypeToGoExpr, isValidationType } from "../schema/extras.js";

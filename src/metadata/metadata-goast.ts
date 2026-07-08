@@ -1,4 +1,4 @@
-import * as go from "@schemago/go-ast";
+import * as go from "@schemago/goast";
 import type { AppAst, RouteAst, RouteLikeAst } from "../types/index.js";
 import { pascalCase } from "../utils/naming.js";
 

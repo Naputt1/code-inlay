@@ -1,5 +1,5 @@
 import type { LoggerConfig, GeneratedFilePatch } from "../types/index.js";
-import * as go from "@schemago/go-ast";
+import * as go from "@schemago/goast";
 
 const loggerImplId = "runtime.logger.impl";
 const loggerFilePath = "pkg/runtime/logger.go";

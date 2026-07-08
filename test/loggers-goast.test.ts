@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import * as go from "@schemago/go-ast";
+import * as go from "@schemago/goast";
 import { generateLoggerCode, getLoggerGoModules } from "../src/runtime/loggers-goast.js";
 import type { LoggerConfig } from "../src/types/index.js";
 
@@ -7,7 +7,7 @@ function contentFor(cfg: LoggerConfig): string {
   return generateLoggerCode(cfg)[0].regions[0].content;
 }
 
-describe("generateLoggerCode (go-ast)", () => {
+describe("generateLoggerCode (goast)", () => {
   it("generates runtime/logger.go patch", () => {
     const patches = generateLoggerCode({ provider: "slog", level: "info", format: "json" });
     expect(patches).toHaveLength(1);
@@ -256,7 +256,7 @@ describe("generateLoggerCode (go-ast)", () => {
   });
 });
 
-describe("getLoggerGoModules (go-ast)", () => {
+describe("getLoggerGoModules (goast)", () => {
   it("returns no modules for slog", () => {
     expect(getLoggerGoModules({ provider: "slog" })).toEqual([]);
   });

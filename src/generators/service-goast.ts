@@ -1,5 +1,5 @@
-import * as go from "@schemago/go-ast";
-import { toGoType } from "../utils/go-ast.js";
+import * as go from "@schemago/goast";
+import { toGoType } from "../utils/goast.js";
 import type { AppServiceDef, BackendExtension } from "../types/index.js";
 import { serviceConstructorName, serviceImplName, serviceTypeName } from "../utils/naming.js";
 import type { ScaffoldPart } from "./types.js";

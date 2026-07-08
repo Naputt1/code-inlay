@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────
-// @schemago/go-ast — Go source → AST parser
+// @schemago/goast — Go source → AST parser
 // Currently bridges to Go's `go/parser` via the decl-parser binary.
 // Future: pure TypeScript parser.
 // ─────────────────────────────────────────────────────────────

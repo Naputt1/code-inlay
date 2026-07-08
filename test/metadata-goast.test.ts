@@ -60,7 +60,7 @@ function makeAppAst(modules: ModuleAst[], version?: string): AppAst {
   } as unknown as AppAst;
 }
 
-describe("generateRegistryGo (go-ast)", () => {
+describe("generateRegistryGo (goast)", () => {
   it("generates struct types and registry declaration", () => {
     const route = makeRouteAst({
       id: "get-user",
@@ -249,7 +249,7 @@ describe("generateRegistryGo (go-ast)", () => {
   });
 });
 
-describe("generateSchemaReflection (go-ast)", () => {
+describe("generateSchemaReflection (goast)", () => {
   it("returns empty string for non-Route kinds", () => {
     const wsRoute = {
       kind: "WS" as const,

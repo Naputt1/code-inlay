@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────
-// @schemago/go-ast — Fluent Go AST construction helpers
+// @schemago/goast — Fluent Go AST construction helpers
 // ─────────────────────────────────────────────────────────────
 
 import type {

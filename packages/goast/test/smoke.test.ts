@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import * as go from "../src/index.js";
 
-describe("@schemago/go-ast", () => {
+describe("@schemago/goast", () => {
   it("builds a simple struct and prints it", () => {
     const f = go.file(
       "entity",

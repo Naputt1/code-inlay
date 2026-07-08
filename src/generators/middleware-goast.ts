@@ -1,6 +1,6 @@
 import type { AppAst, GeneratedFilePatch } from "../types/index.js";
 import { snakeCase } from "../utils/naming.js";
-import * as go from "@schemago/go-ast";
+import * as go from "@schemago/goast";
 
 export function collectAllMiddlewareInfo(ast: AppAst): Array<{ name: string; handler?: string }> {
   const seen = new Set<string>();
