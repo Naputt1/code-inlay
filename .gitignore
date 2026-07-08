@@ -9,3 +9,4 @@ sample-project/*
 coverage/
 .turbo
 tools/decl-parser/decl-parser
+packages/schemago/tools/decl-parser/decl-parser
