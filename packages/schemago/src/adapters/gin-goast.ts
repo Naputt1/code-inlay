@@ -1433,8 +1433,8 @@ export function generateGinWSHandler(route: WSAst): GeneratedRegion {
     stmts.push(go.goStmt(go.call(go.funcLit(go.funcType([], undefined), go.block(...readLoop)))));
     stmts.push(
       go.rangeStmt(
-        undefined,
         go.id("event"),
+        undefined,
         ":=",
         go.id("writeCh"),
         go.block({
@@ -1473,8 +1473,8 @@ export function generateGinWSHandler(route: WSAst): GeneratedRegion {
     stmts.push(go.goStmt(go.call(go.funcLit(go.funcType([], undefined), go.block(...readLoop)))));
     stmts.push(
       go.rangeStmt(
-        undefined,
         go.id("event"),
+        undefined,
         ":=",
         go.id("writeCh"),
         go.block({
@@ -1506,8 +1506,8 @@ export function generateGinWSHandler(route: WSAst): GeneratedRegion {
     stmts.push(go.goStmt(go.call(go.funcLit(go.funcType([], undefined), go.block(...readLoop)))));
     stmts.push(
       go.rangeStmt(
-        undefined,
         go.id("event"),
+        undefined,
         ":=",
         go.id("writeCh"),
         go.block({
