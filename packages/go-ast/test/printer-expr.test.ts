@@ -214,7 +214,7 @@ describe("printExpr — FuncLit", () => {
           go.block(go.return_(go.id("x"))),
         ),
       ),
-    ).toBe("func(x int) int {\n\treturn x\n}\n");
+    ).toBe("func(x int) int {\n\treturn x\n}");
   });
 });
 

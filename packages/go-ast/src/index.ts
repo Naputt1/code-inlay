@@ -53,6 +53,7 @@ export type {
   KeyValueExpr,
   // Statements
   Statement,
+  CommentStmt,
   DeclStmt,
   EmptyStmt,
   LabeledStmt,
@@ -149,6 +150,7 @@ export {
   tag,
   // Comments
   comment,
+  commentStmt,
   commentGroup,
   lineComment,
 } from "./builder.js";

@@ -189,6 +189,7 @@ export function printExpr(
       for (let i = 0; i < expr.args.length; i++) {
         if (i > 0) sb.push(", ");
         printExpr(sb, expr.args[i], 0, outerDepth);
+        if (expr.ellipsis && i === expr.args.length - 1) sb.push("...");
       }
       sb.push(")");
       break;
@@ -265,7 +266,6 @@ export function printExpr(
       printFuncType(sb, expr.type, 0);
       sb.push(" ");
       printBlock(sb, expr.body, outerDepth);
-      sb.push("\n");
       break;
     default:
       sb.push("/* unhandled expr */");
@@ -276,6 +276,10 @@ export function printStatement(sb: StringBuilder, stmt: Statement, depth: number
   const indent = getIndent(depth);
 
   switch (stmt.kind) {
+    case "CommentStmt":
+      sb.push(indent);
+      sb.push(`//${stmt.text}\n`);
+      break;
     case "ExprStmt":
       sb.push(indent);
       printExpr(sb, stmt.expr, 0, depth);
@@ -388,6 +392,7 @@ export function printStatement(sb: StringBuilder, stmt: Statement, depth: number
       for (let i = 0; i < stmt.call.args.length; i++) {
         if (i > 0) sb.push(", ");
         printExpr(sb, stmt.call.args[i], 0, depth);
+        if (stmt.call.ellipsis && i === stmt.call.args.length - 1) sb.push("...");
       }
       sb.push(")\n");
       break;
@@ -399,6 +404,7 @@ export function printStatement(sb: StringBuilder, stmt: Statement, depth: number
       for (let i = 0; i < stmt.call.args.length; i++) {
         if (i > 0) sb.push(", ");
         printExpr(sb, stmt.call.args[i], 0, depth);
+        if (stmt.call.ellipsis && i === stmt.call.args.length - 1) sb.push("...");
       }
       sb.push(")\n");
       break;
@@ -639,7 +645,7 @@ export function printType(sb: StringBuilder, type: Type): void {
       if (type.methods.length > 0) {
         sb.push("\n");
         for (const m of type.methods) {
-          printFieldDecl(sb, m, 1);
+          printFieldDecl(sb, m, 1, true);
         }
       }
       sb.push("}");
@@ -706,6 +712,10 @@ function printGenDecl(sb: StringBuilder, decl: GenDecl, depth: number): void {
 
   const multi = decl.lparen || decl.specs.length > 1;
 
+  if (!multi && decl.specs.length === 1 && decl.specs[0].kind !== "ImportSpec" && decl.specs[0].doc) {
+    printCommentGroup(sb, decl.specs[0].doc, depth);
+  }
+
   sb.push(indent);
   sb.push(decl.token);
   if (multi) {
@@ -717,15 +727,23 @@ function printGenDecl(sb: StringBuilder, decl: GenDecl, depth: number): void {
     sb.push(`${indent})`);
   } else if (decl.specs.length === 1) {
     sb.push(" ");
-    printSpec(sb, decl.specs[0], 0);
+    printSpecNoDoc(sb, decl.specs[0], 0);
   }
   sb.push("\n");
 }
 
 function printSpec(sb: StringBuilder, spec: Spec, depth: number): void {
-  const indent = getIndent(depth);
   const doc: CommentGroup | undefined = spec.kind === "ImportSpec" ? spec.comment : spec.doc;
   if (doc) printCommentGroup(sb, doc, depth);
+  printSpecBody(sb, spec, depth);
+}
+
+function printSpecNoDoc(sb: StringBuilder, spec: Spec, depth: number): void {
+  printSpecBody(sb, spec, depth);
+}
+
+function printSpecBody(sb: StringBuilder, spec: Spec, depth: number): void {
+  const indent = getIndent(depth);
   switch (spec.kind) {
     case "ImportSpec":
       sb.push(indent);
@@ -796,18 +814,19 @@ function printImports(sb: StringBuilder, imports: ImportSpec[]): void {
 
 // ─── Fields ────────────────────────────────────────────────
 
-function printFieldDecl(sb: StringBuilder, f: Field, depth: number): void {
+function printFieldDecl(sb: StringBuilder, f: Field, depth: number, isInterface = false): void {
   const indent = getIndent(depth);
   sb.push(indent);
   if (f.embedded || f.names.length === 0) {
     printType(sb, f.type);
   } else {
-    for (let i = 0; i < f.names.length; i++) {
-      if (i > 0) sb.push(", ");
-      sb.push(f.names[i]);
+    sb.push(f.names.join(", "));
+    if (isInterface && f.type.kind === "FuncType") {
+      printFuncTypeSuffix(sb, f.type as FuncType);
+    } else {
+      sb.push(" ");
+      printType(sb, f.type);
     }
-    sb.push(" ");
-    printType(sb, f.type);
   }
   if (f.tag) {
     sb.push(" ");
@@ -829,7 +848,12 @@ function printFieldParams(sb: StringBuilder, fields: Field[]): void {
       }
       sb.push(" ");
     }
-    printType(sb, f.type);
+    if (f.variadic && f.type.kind === "SliceType") {
+      sb.push("...");
+      printType(sb, f.type.elt);
+    } else {
+      printType(sb, f.type);
+    }
   }
 }
 
