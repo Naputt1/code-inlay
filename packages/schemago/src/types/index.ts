@@ -162,6 +162,9 @@ export type ServiceDefinition = {
   name: string;
   close?: boolean;
   env?: string[];
+  structFields?: { name: string; goType: string }[];
+  extraImports?: string[];
+  interfaceMethods?: { name: string; signature: string }[];
 };
 
 export type ServiceFileCtx<TOptions> = {
@@ -171,6 +174,16 @@ export type ServiceFileCtx<TOptions> = {
   implName: string;
   ctorName: string;
   close?: boolean;
+};
+
+export type ServiceMainCtx<TOptions> = {
+  name: string;
+  options: TOptions;
+  typeName: string;
+  implName: string;
+  ctorName: string;
+  close?: boolean;
+  varName: string;
 };
 
 export type DialectMethodCtx<TOptions> = {
@@ -191,6 +204,19 @@ export type BackendExtension = {
     goModules?: string[] | ((options: Record<string, unknown>) => string[]);
     generateFile?: (ctx: ServiceFileCtx<Record<string, unknown>>) => string;
     generateDialectMethod?: (ctx: DialectMethodCtx<Record<string, unknown>>) => string;
+    structFields?: (ctx: ServiceFileCtx<Record<string, unknown>>) => { name: string; goType: string }[];
+    extraImports?: (ctx: ServiceFileCtx<Record<string, unknown>>) => string[];
+    interfaceMethods?: (ctx: ServiceFileCtx<Record<string, unknown>>) => { name: string; signature: string }[];
+    implementationMethods?: (ctx: ServiceFileCtx<Record<string, unknown>>) => { name: string; signature: string; body: string }[];
+    ctor?: {
+      params?: (ctx: ServiceFileCtx<Record<string, unknown>>) => string;
+      fieldInit?: (ctx: ServiceFileCtx<Record<string, unknown>>) => string;
+      body?: (ctx: ServiceFileCtx<Record<string, unknown>>) => string;
+    };
+    mainConstructorArgs?: (ctx: ServiceMainCtx<Record<string, unknown>>) => string;
+    startup?: (ctx: ServiceMainCtx<Record<string, unknown>>) => string;
+    healthCheck?: (ctx: ServiceMainCtx<Record<string, unknown>>) => string;
+    extraFiles?: (ctx: ServiceFileCtx<Record<string, unknown>>) => Record<string, string>;
   };
 };
 
@@ -392,6 +418,19 @@ export type AppServiceDef = {
   dbAccessor?: string;
   dbType?: string;
   dbTypePkg?: string;
+  structFields?: { name: string; goType: string }[];
+  extraImports?: string[];
+  interfaceMethods?: { name: string; signature: string }[];
+  implementationMethods?: { name: string; signature: string; body: string }[];
+  ctor?: {
+    params?: string;
+    fieldInit?: string;
+    body?: string;
+  };
+  mainConstructorArgs?: string;
+  startup?: string;
+  healthCheck?: string;
+  extraFiles?: Record<string, string>;
 };
 
 export type AppAst = AstNodeBase<"App"> & {

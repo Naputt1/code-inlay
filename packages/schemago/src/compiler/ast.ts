@@ -24,7 +24,7 @@ import type {
   ServiceDefinition,
   ServiceExtensionResult,
 } from "../types/index.js";
-import { joinPath, serviceTypeName } from "../utils/naming.js";
+import { joinPath, serviceTypeName, serviceImplName, serviceConstructorName, lowerSvcVar } from "../utils/naming.js";
 import { stableHash } from "../utils/hash.js";
 import { hasEntityPlaceholder } from "../schema/extras.js";
 
@@ -109,16 +109,43 @@ export function buildAst(app: AppDefinition, diagnostics: Diagnostic[]): AppAst 
   ): AppAst["services"][number] => {
     if (s.kind === "ServiceExtensionResult") {
       const ext = extMap.get(s.extension);
+      const typeName = serviceTypeName(s.name);
+      const implName = serviceImplName(s.name);
+      const ctorName = serviceConstructorName(s.name);
+      const fileCtx = {
+        name: s.name,
+        options: s.options,
+        typeName,
+        implName,
+        ctorName,
+        close: s.close,
+      };
+      const mainCtx = { ...fileCtx, varName: lowerSvcVar(s.name) };
       return {
         name: s.name,
         close: s.close,
-        typeName: serviceTypeName(s.name),
+        typeName,
         extension: s.extension,
         extensionOptions: s.options,
         provides: ext?.service?.provides,
         dbAccessor: ext?.service?.dbAccessor,
         dbType: ext?.service?.dbType,
         dbTypePkg: ext?.service?.dbTypePkg,
+        structFields: ext?.service?.structFields?.(fileCtx),
+        extraImports: ext?.service?.extraImports?.(fileCtx),
+        interfaceMethods: ext?.service?.interfaceMethods?.(fileCtx),
+        implementationMethods: ext?.service?.implementationMethods?.(fileCtx),
+        ctor: ext?.service?.ctor
+          ? {
+              params: ext.service.ctor.params?.(fileCtx),
+              fieldInit: ext.service.ctor.fieldInit?.(fileCtx),
+              body: ext.service.ctor.body?.(fileCtx),
+            }
+          : undefined,
+        mainConstructorArgs: ext?.service?.mainConstructorArgs?.(mainCtx),
+        startup: ext?.service?.startup?.(mainCtx),
+        healthCheck: ext?.service?.healthCheck?.(mainCtx),
+        extraFiles: ext?.service?.extraFiles?.(fileCtx),
       };
     }
     return {
@@ -126,6 +153,9 @@ export function buildAst(app: AppDefinition, diagnostics: Diagnostic[]): AppAst 
       close: s.close,
       typeName: serviceTypeName(s.name),
       env: s.env,
+      structFields: s.structFields,
+      extraImports: s.extraImports,
+      interfaceMethods: s.interfaceMethods,
     };
   };
 

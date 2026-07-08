@@ -155,17 +155,29 @@ export function generateServer(
   }
 
   // ── Service init ──
+  const svcVars: Array<{ name: string; varName: string }> = [];
   for (const svc of ast.services) {
     const ctorName = serviceConstructorName(svc.name);
     const varName = lowerSvcVar(svc.name);
     const needsCfg = hasConfig && svc.env && svc.env.length > 0;
-    const ctorArgs: go.Expression[] = needsCfg ? [go.id("cfg")] : [];
-    addStmt(
-      go.def(
-        [go.id(varName), go.id("err")],
-        [go.call(go.sel(go.id("service"), ctorName), ...ctorArgs)],
-      ),
-    );
+    if (svc.mainConstructorArgs || needsCfg) {
+      const ctorArgsParts: string[] = [];
+      if (svc.mainConstructorArgs) {
+        ctorArgsParts.push(svc.mainConstructorArgs);
+      }
+      if (needsCfg) {
+        ctorArgsParts.push("cfg");
+      }
+      const ctorArgs = ctorArgsParts.join(", ");
+      addRaw(`\t${varName}, err := service.${ctorName}(${ctorArgs})`);
+    } else {
+      addStmt(
+        go.def(
+          [go.id(varName), go.id("err")],
+          [go.call(go.sel(go.id("service"), ctorName))],
+        ),
+      );
+    }
     addStmt(
       go.ifStmt(
         go.binary(go.id("err"), "!=", go.id("nil")),
@@ -175,7 +187,16 @@ export function generateServer(
     if (svc.close) {
       addStmt(go.defer(go.call(go.sel(go.id(varName), "Close"))));
     }
+    svcVars.push({ name: svc.name, varName });
     routeArgs.push(varName);
+  }
+
+  // ── Service startup hooks ──
+  for (const svc of ast.services) {
+    if (svc.startup) {
+      addRaw("");
+      addRaw(svc.startup);
+    }
   }
 
   // ── Validator (gin only) ──
@@ -241,14 +262,28 @@ export function generateServer(
   const livenessPath = hc?.livenessPath ?? "/healthz";
   const readinessPath = hc?.readinessPath ?? "/readyz";
 
+  const servicesWithHealthCheck = ast.services.filter((s) => s.healthCheck);
+
   if (hcEnabled) {
     addRaw("");
-    addRaw(`\tr.GET("${livenessPath}", func(c *gin.Context) {`);
-    addRaw(`\t\tc.JSON(http.StatusOK, gin.H{"status": "ok"})`);
-    addRaw(`\t})`);
-    addRaw(`\tr.GET("${readinessPath}", func(c *gin.Context) {`);
-    addRaw(`\t\tc.JSON(http.StatusOK, gin.H{"status": "ready"})`);
-    addRaw(`\t})`);
+    if (servicesWithHealthCheck.length > 0) {
+      addRaw(`\tr.GET("${livenessPath}", func(c *gin.Context) {`);
+      addRaw(`\t\tc.JSON(http.StatusOK, gin.H{"status": "ok"})`);
+      addRaw(`\t})`);
+      addRaw(`\tr.GET("${readinessPath}", func(c *gin.Context) {`);
+      for (const svc of servicesWithHealthCheck) {
+        addRaw(svc.healthCheck!);
+      }
+      addRaw(`\t\tc.JSON(http.StatusOK, gin.H{"status": "ready"})`);
+      addRaw(`\t})`);
+    } else {
+      addRaw(`\tr.GET("${livenessPath}", func(c *gin.Context) {`);
+      addRaw(`\t\tc.JSON(http.StatusOK, gin.H{"status": "ok"})`);
+      addRaw(`\t})`);
+      addRaw(`\tr.GET("${readinessPath}", func(c *gin.Context) {`);
+      addRaw(`\t\tc.JSON(http.StatusOK, gin.H{"status": "ready"})`);
+      addRaw(`\t})`);
+    }
   }
 
   // ── Route registration ──
