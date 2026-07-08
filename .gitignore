@@ -7,4 +7,5 @@ test-project/
 sample-project/*
 !sample-project/snapshot/
 coverage/
+.turbo
 tools/decl-parser/decl-parser
