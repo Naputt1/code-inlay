@@ -71,18 +71,23 @@ func NewLogger(cfg LoggerConfig) Logger {
 	default:
 		level = slog.LevelInfo
 	}
-	handler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: level, AddSource: true})
-	return &slogLogger{logger: slog.New(handler)}
+	handler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level:     level,
+		AddSource: true,
+	})
+	return &slogLogger{
+		logger: slog.New(handler),
+	}
 }
 
 func (l *slogLogger) Info(msg string, keysAndValues ...any) {
 	l.logger.Info(msg, keysAndValues...)
 }
-
 func (l *slogLogger) Error(msg string, keysAndValues ...any) {
 	l.logger.Error(msg, keysAndValues...)
 }
-
 func (l *slogLogger) With(keysAndValues ...any) Logger {
-	return &slogLogger{logger: l.logger.With(keysAndValues...)}
+	return &slogLogger{
+		logger: l.logger.With(keysAndValues...),
+	}
 }

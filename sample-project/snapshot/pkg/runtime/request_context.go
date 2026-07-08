@@ -15,19 +15,13 @@ func RequestContextMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
 		reqID := generateRequestID()
-
 		ctx := c.Request.Context()
 		ctx = context.WithValue(ctx, ctxKeyRequestID, reqID)
 		ctx = context.WithValue(ctx, ctxKeyRoute, c.FullPath())
 		ctx = context.WithValue(ctx, ctxKeyMethod, c.Request.Method)
 		c.Request = c.Request.WithContext(ctx)
-
 		c.Next()
-
-		CtxLogger(ctx).Info("request completed",
-			"status", c.Writer.Status(),
-			"duration_ms", time.Since(start).Milliseconds(),
-		)
+		CtxLogger(ctx).Info("request completed", "status", c.Writer.Status(), "duration_ms", time.Since(start).Milliseconds())
 	}
 }
 

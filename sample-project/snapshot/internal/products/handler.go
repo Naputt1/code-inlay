@@ -29,11 +29,15 @@ func (h *ProductsHandler) Create(c *gin.Context) {
 	// @gen:end f5ea9736
 	output, err := h.CreateUsecase.Execute(c.Request.Context(), entity)
 	if err != nil {
-		var httpErr interface{ HTTPStatus() int }
+		var httpErr interface {
+			HTTPStatus() int
+		}
 		if errors.As(err, &httpErr) {
 			c.JSON(httpErr.HTTPStatus(), err)
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
 		}
 		return
 	}
@@ -44,11 +48,15 @@ func (h *ProductsHandler) Get(c *gin.Context) {
 	id := ProductsID(c.Param("id"))
 	output, err := h.GetUsecase.Execute(c.Request.Context(), id)
 	if err != nil {
-		var httpErr interface{ HTTPStatus() int }
+		var httpErr interface {
+			HTTPStatus() int
+		}
 		if errors.As(err, &httpErr) {
 			c.JSON(httpErr.HTTPStatus(), err)
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
 		}
 		return
 	}
@@ -64,11 +72,15 @@ func (h *ProductsHandler) List(c *gin.Context) {
 	}
 	output, err := h.ListUsecase.Execute(c.Request.Context(), input)
 	if err != nil {
-		var httpErr interface{ HTTPStatus() int }
+		var httpErr interface {
+			HTTPStatus() int
+		}
 		if errors.As(err, &httpErr) {
 			c.JSON(httpErr.HTTPStatus(), err)
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
 		}
 		return
 	}
@@ -86,7 +98,9 @@ func (h *ProductsHandler) Remove(c *gin.Context) {
 	id := ProductsID(c.Param("id"))
 	output, err := h.RemoveUsecase.Execute(c.Request.Context(), id)
 	if err != nil {
-		var httpErr interface{ HTTPStatus() int }
+		var httpErr interface {
+			HTTPStatus() int
+		}
 		if errors.As(err, &httpErr) {
 			c.Status(httpErr.HTTPStatus())
 		} else {
@@ -112,11 +126,15 @@ func (h *ProductsHandler) Update(c *gin.Context) {
 	// @gen:end 250be001
 	output, err := h.UpdateUsecase.Execute(c.Request.Context(), id, entity)
 	if err != nil {
-		var httpErr interface{ HTTPStatus() int }
+		var httpErr interface {
+			HTTPStatus() int
+		}
 		if errors.As(err, &httpErr) {
 			c.JSON(httpErr.HTTPStatus(), err)
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
 		}
 		return
 	}

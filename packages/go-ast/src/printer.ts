@@ -163,7 +163,21 @@ export function printExpr(
       sb.push(expr.name);
       break;
     case "BasicLit":
-      sb.push(expr.value);
+      if (expr.token === "string" && expr.value.startsWith('"') && expr.value.endsWith('"')) {
+        const inner = expr.value.slice(1, -1);
+        let escaped = "";
+        for (const ch of inner) {
+          if (ch === "\n") escaped += "\\n";
+          else if (ch === "\r") escaped += "\\r";
+          else if (ch === "\t") escaped += "\\t";
+          else if (ch === "\\") escaped += "\\\\";
+          else if (ch === '"') escaped += '\\"';
+          else escaped += ch;
+        }
+        sb.push('"' + escaped + '"');
+      } else {
+        sb.push(expr.value);
+      }
       break;
     case "ParenExpr":
       sb.push("(");

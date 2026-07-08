@@ -17,7 +17,7 @@ import type {
   ValidatorPlugin,
 } from "../types/index.js";
 import { architectureRegistry } from "../architecture/index.js";
-import { adapterRegistry } from "../adapters/gin.js";
+import { adapterRegistry } from "../adapters/gin-goast.js";
 import { builtinTargets } from "../targets/index.js";
 import { stableHash } from "../utils/hash.js";
 

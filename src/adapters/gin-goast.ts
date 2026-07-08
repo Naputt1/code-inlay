@@ -463,14 +463,14 @@ function sseMarshalExpr(codec: ResolvedCodecSingle, eventType: string): go.Expre
     return go.funcLit(
       go.funcType(params, results),
       go.block(
-        go.expr(go.call(go.qual("json", "Marshal"), go.id("v"))),
+        go.return_(go.call(go.qual("json", "Marshal"), go.id("v"))),
       ),
     );
   }
   return go.funcLit(
     go.funcType(params, results),
     go.block(
-      go.expr(go.call(go.id(codec.marshal), go.id("v"))),
+      go.return_(go.call(go.id(codec.marshal), go.id("v"))),
     ),
   );
 }
@@ -597,7 +597,7 @@ export function generateGinSSEHandler(route: SSEAst): GeneratedRegion {
     const results = [go.field([], go.sliceType(go.id("byte"))), go.field([], go.id("error"))];
     stmts.push(go.def(go.id("marshalEvent"),
       go.funcLit(go.funcType(params, results),
-        go.block(go.expr(go.call(go.qual("json", "Marshal"), go.id("v")))),
+        go.block(go.return_(go.call(go.qual("json", "Marshal"), go.id("v")))),
       ),
     ));
   }
@@ -656,12 +656,12 @@ function wsMarshalExpr(codec: ResolvedCodecSingle, eventType: string): go.Expres
   if (codec.kind === "preset") {
     return go.funcLit(
       go.funcType(params, results),
-      go.block(go.expr(go.call(go.qual("json", "Marshal"), go.id("v")))),
+      go.block(go.return_(go.call(go.qual("json", "Marshal"), go.id("v")))),
     );
   }
   return go.funcLit(
     go.funcType(params, results),
-    go.block(go.expr(go.call(go.id(codec.marshal), go.id("v")))),
+    go.block(go.return_(go.call(go.id(codec.marshal), go.id("v")))),
   );
 }
 
@@ -682,13 +682,13 @@ function wsUnmarshalExpr(codec: ResolvedCodecSingle, msgType: string): go.Expres
   if (codec.kind === "preset") {
     return go.funcLit(
       go.funcType(params, results),
-      go.block(go.expr(go.call(go.qual("json", "Unmarshal"), go.id("data"), go.id("msg")))),
+      go.block(go.return_(go.call(go.qual("json", "Unmarshal"), go.id("data"), go.id("msg")))),
     );
   }
   const unmarshalFn = codec.unmarshal ?? codec.marshal;
   return go.funcLit(
     go.funcType(params, results),
-    go.block(go.expr(go.call(go.id(unmarshalFn), go.id("data"), go.id("msg")))),
+    go.block(go.return_(go.call(go.id(unmarshalFn), go.id("data"), go.id("msg")))),
   );
 }
 
@@ -710,7 +710,7 @@ function wsReadExpr(codec: ResolvedCodecSingle, msgType: string): go.Expression 
       go.funcType([], [go.field([], toGoType(msgType)), go.field([], go.id("error"))]),
       go.block(
         go.declStmt(go.genDecl("var", go.valueSpec(["msg"], toGoType(msgType)))),
-        go.expr(go.call(go.sel(go.id("conn"), "ReadJSON"), go.addr(go.id("msg")))),
+        go.def(go.id("err"), go.call(go.sel(go.id("conn"), "ReadJSON"), go.addr(go.id("msg")))),
         go.return_(go.id("msg"), go.id("err")),
       ),
     );
@@ -750,7 +750,7 @@ function wsWriteExpr(codec: ResolvedCodecSingle, eventType: string): go.Expressi
     return go.funcLit(
       go.funcType([go.field(["v"], toGoType(eventType))], [go.field([], go.id("error"))]),
       go.block(
-        go.expr(go.call(go.sel(go.id("conn"), "WriteJSON"), go.id("v"))),
+        go.return_(go.call(go.sel(go.id("conn"), "WriteJSON"), go.id("v"))),
       ),
     );
   }
@@ -759,7 +759,7 @@ function wsWriteExpr(codec: ResolvedCodecSingle, eventType: string): go.Expressi
     go.block(
       go.def([go.id("data"), go.id("err")], go.call(go.id(codec.marshal), go.id("v"))),
       go.ifStmt(go.neq(go.id("err"), go.id("nil")), go.block(go.return_(go.id("err")))),
-      go.expr(go.call(go.sel(go.id("conn"), "WriteMessage"), go.qual("websocket", "TextMessage"), go.id("data"))),
+      go.return_(go.call(go.sel(go.id("conn"), "WriteMessage"), go.qual("websocket", "TextMessage"), go.id("data"))),
     ),
   );
 }
@@ -977,14 +977,14 @@ export function generateGinWSHandler(route: WSAst): GeneratedRegion {
       const results1 = [go.field([], go.sliceType(go.id("byte"))), go.field([], go.id("error"))];
       stmts.push(go.def(go.id("marshalEvent"),
         go.funcLit(go.funcType(params1, results1),
-          go.block(go.expr(go.call(go.qual("json", "Marshal"), go.id("v")))),
+          go.block(go.return_(go.call(go.qual("json", "Marshal"), go.id("v")))),
         ),
       ));
       const params2 = [go.field(["data"], go.sliceType(go.id("byte"))), go.field(["msg"], go.star(toGoType(msgType)))];
       const results2 = [go.field([], go.id("error"))];
       stmts.push(go.def(go.id("unmarshalMessage"),
         go.funcLit(go.funcType(params2, results2),
-          go.block(go.expr(go.call(go.qual("json", "Unmarshal"), go.id("data"), go.id("msg")))),
+          go.block(go.return_(go.call(go.qual("json", "Unmarshal"), go.id("data"), go.id("msg")))),
         ),
       ));
     }
