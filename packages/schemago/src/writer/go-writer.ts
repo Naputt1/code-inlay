@@ -374,7 +374,7 @@ function buildBody(region: GeneratedRegion, fileText: string): string {
 
   const existingBody = extractExistingBody(fileText, region);
 
-  if (region.kind === 'struct') {
+  if (region.kind === "struct") {
     body = extractStructInnerBody(body, region.symbolName);
   }
 
@@ -412,7 +412,7 @@ function extractStructInnerBody(fullDecl: string, symbolName?: string): string {
   const m = fullDecl.match(re);
   if (!m) return fullDecl;
   let inner = fullDecl.slice(m[0].length);
-  if (inner.endsWith('}')) inner = inner.slice(0, -1);
+  if (inner.endsWith("}")) inner = inner.slice(0, -1);
   return inner.trim();
 }
 

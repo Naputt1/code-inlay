@@ -24,7 +24,13 @@ import type {
   ServiceDefinition,
   ServiceExtensionResult,
 } from "../types/index.js";
-import { joinPath, serviceTypeName, serviceImplName, serviceConstructorName, lowerSvcVar } from "../utils/naming.js";
+import {
+  joinPath,
+  serviceTypeName,
+  serviceImplName,
+  serviceConstructorName,
+  lowerSvcVar,
+} from "../utils/naming.js";
 import { stableHash } from "../utils/hash.js";
 import { hasEntityPlaceholder } from "../schema/extras.js";
 

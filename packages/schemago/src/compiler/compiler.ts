@@ -163,7 +163,12 @@ export async function compile(options: CompileOptions): Promise<CompileResult> {
   }
 
   const mergedFiles = new Map<string, GeneratedFilePatch>();
-  for (const file of [...generation.files, ...targetPatches, ...runtimePatches, ...extraFilePatches]) {
+  for (const file of [
+    ...generation.files,
+    ...targetPatches,
+    ...runtimePatches,
+    ...extraFilePatches,
+  ]) {
     const existing = mergedFiles.get(file.path);
     if (existing) {
       existing.regions.push(...file.regions);

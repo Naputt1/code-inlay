@@ -204,10 +204,16 @@ export type BackendExtension = {
     goModules?: string[] | ((options: Record<string, unknown>) => string[]);
     generateFile?: (ctx: ServiceFileCtx<Record<string, unknown>>) => string;
     generateDialectMethod?: (ctx: DialectMethodCtx<Record<string, unknown>>) => string;
-    structFields?: (ctx: ServiceFileCtx<Record<string, unknown>>) => { name: string; goType: string }[];
+    structFields?: (
+      ctx: ServiceFileCtx<Record<string, unknown>>,
+    ) => { name: string; goType: string }[];
     extraImports?: (ctx: ServiceFileCtx<Record<string, unknown>>) => string[];
-    interfaceMethods?: (ctx: ServiceFileCtx<Record<string, unknown>>) => { name: string; signature: string }[];
-    implementationMethods?: (ctx: ServiceFileCtx<Record<string, unknown>>) => { name: string; signature: string; body: string }[];
+    interfaceMethods?: (
+      ctx: ServiceFileCtx<Record<string, unknown>>,
+    ) => { name: string; signature: string }[];
+    implementationMethods?: (
+      ctx: ServiceFileCtx<Record<string, unknown>>,
+    ) => { name: string; signature: string; body: string }[];
     ctor?: {
       params?: (ctx: ServiceFileCtx<Record<string, unknown>>) => string;
       fieldInit?: (ctx: ServiceFileCtx<Record<string, unknown>>) => string;
