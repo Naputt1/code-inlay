@@ -142,8 +142,28 @@ export async function compile(options: CompileOptions): Promise<CompileResult> {
 
   const runtimePatches = generateRuntimeCode(ast, ast.options.runtime ?? { enabled: false });
 
+  const extraFilePatches: GeneratedFilePatch[] = [];
+  for (const svc of ast.services) {
+    if (svc.extraFiles) {
+      for (const [filePath, content] of Object.entries(svc.extraFiles)) {
+        extraFilePatches.push({
+          path: filePath,
+          regions: [
+            {
+              id: `extra.${svc.name}.${filePath}`,
+              stableHash: `extra:${svc.name}:${filePath}`,
+              owner: svc.extension ?? "schemago",
+              language: "go",
+              content,
+            },
+          ],
+        });
+      }
+    }
+  }
+
   const mergedFiles = new Map<string, GeneratedFilePatch>();
-  for (const file of [...generation.files, ...targetPatches, ...runtimePatches]) {
+  for (const file of [...generation.files, ...targetPatches, ...runtimePatches, ...extraFilePatches]) {
     const existing = mergedFiles.get(file.path);
     if (existing) {
       existing.regions.push(...file.regions);

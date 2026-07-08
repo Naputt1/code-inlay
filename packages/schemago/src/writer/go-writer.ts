@@ -170,9 +170,13 @@ export function injectGoFile(
 
   const genByName = new Map(existingGen.map((e) => [e.decl.symbolName, e]));
   const userNames = new Set(userDecls.map((d) => d.symbolName));
+  const emittedGen = new Set<string>();
+  const emittedUser = new Set<string>();
 
   if (isOutOfOrder) {
     for (const decl of userDecls) {
+      if (emittedUser.has(decl.symbolName)) continue;
+      emittedUser.add(decl.symbolName);
       const start = decl.startLine - 1;
       const end = decl.endLine;
       for (let i = start; i < end && i < lines.length; i++) {
@@ -190,12 +194,17 @@ export function injectGoFile(
 
       const genEntry = genByName.get(decl.symbolName);
       if (genEntry) {
-        appendGenerated(newLines, genEntry.region, fileText);
+        if (!emittedGen.has(decl.symbolName)) {
+          emittedGen.add(decl.symbolName);
+          appendGenerated(newLines, genEntry.region, fileText);
+        }
         continue;
       }
 
       if (userNames.has(decl.symbolName) || orphanSymbols.includes(decl.symbolName)) {
         if (orphanSymbols.includes(decl.symbolName)) continue;
+        if (emittedUser.has(decl.symbolName)) continue;
+        emittedUser.add(decl.symbolName);
         const start = decl.startLine - 1;
         const end = decl.endLine;
         for (let i = start; i < end && i < lines.length; i++) {
@@ -206,7 +215,7 @@ export function injectGoFile(
       }
     }
 
-    const placedNames = new Set([...genByName.keys(), ...userNames]);
+    const placedNames = new Set([...emittedGen, ...userNames]);
     for (const region of symbolRegions) {
       if (region.symbolName && !placedNames.has(region.symbolName)) {
         newLines.push("");
@@ -365,19 +374,28 @@ function buildBody(region: GeneratedRegion, fileText: string): string {
 
   const existingBody = extractExistingBody(fileText, region);
 
-  if (region.isStub && existingBody !== null) {
-    return region.content;
+  if (region.kind === 'struct') {
+    body = extractStructInnerBody(body, region.symbolName);
   }
 
-  if (region.expectsUserCode && !region.isStub && body.trim()) {
+  if (region.isStub && existingBody !== null) {
+    return body;
+  }
+
+  if (region.expectsUserCode && !region.isStub && (body.trim() || existingBody !== null)) {
     const sh = shortHash(region.id);
     const hasStart = body.includes(`// @gen:start ${sh}`);
     const hasEnd = body.includes(`// @gen:end ${sh}`);
+    const existingHasMarkers = existingBody ? existingBody.includes(`// @gen:start ${sh}`) : false;
     if (existingBody !== null) {
-      if (hasStart || hasEnd) {
+      if (hasStart || hasEnd || existingHasMarkers) {
         body = applyInnerMarkers(region, existingBody, body);
+      } else if (existingBody.trim()) {
+        const nl = fileText.includes("\r\n") ? "\r\n" : "\n";
+        body = `${existingBody}${nl}\t// @gen:start ${sh}${nl}\t// @gen:end ${sh}`;
       } else {
-        body = region.content;
+        const nl = fileText.includes("\r\n") ? "\r\n" : "\n";
+        body = `${body}${nl}\t// @gen:start ${sh}${nl}\t// @gen:end ${sh}`;
       }
     } else if (hasStart && !hasEnd) {
       const nl = fileText.includes("\r\n") ? "\r\n" : "\n";
@@ -386,6 +404,16 @@ function buildBody(region: GeneratedRegion, fileText: string): string {
   }
 
   return body;
+}
+
+function extractStructInnerBody(fullDecl: string, symbolName?: string): string {
+  if (!symbolName) return fullDecl;
+  const re = new RegExp(`^type\\s+${escapeRegex(symbolName)}\\s+struct\\s*\\{`);
+  const m = fullDecl.match(re);
+  if (!m) return fullDecl;
+  let inner = fullDecl.slice(m[0].length);
+  if (inner.endsWith('}')) inner = inner.slice(0, -1);
+  return inner.trim();
 }
 
 function extractExistingBody(fileText: string, region: GeneratedRegion): string | null {
@@ -437,17 +465,29 @@ export function applyInnerMarkers(
   const pairCount = Math.min(newMP.starts.length, newMP.ends.length);
 
   if (pairCount === 0) {
-    const endIdx = existingBody.search(new RegExp(`// @gen:end ${escapeRegex(sh)}\\b`));
-    if (endIdx >= 0) {
-      const afterEndLine = existingBody.indexOf(nl, endIdx);
+    const existingEndIdx = existingBody.search(new RegExp(`// @gen:end ${escapeRegex(sh)}\\b`));
+    const existingStartIdx = existingBody.search(new RegExp(`// @gen:start ${escapeRegex(sh)}\\b`));
+
+    // Existing has complete marker pair: keep existing body as-is
+    if (existingStartIdx >= 0 && existingEndIdx >= 0 && existingEndIdx > existingStartIdx) {
+      return existingBody;
+    }
+    if (existingEndIdx >= 0) {
+      const afterEndLine = existingBody.indexOf(nl, existingEndIdx);
       const afterEnd = afterEndLine >= 0 ? existingBody.slice(afterEndLine + nl.length) : "";
       return `${newGeneratedBody}${nl}${afterEnd}`;
     }
-    const startIdx = existingBody.search(new RegExp(`// @gen:start ${escapeRegex(sh)}\\b`));
-    if (startIdx >= 0) {
-      const beforeStartLine = existingBody.lastIndexOf(nl, startIdx);
+    if (existingStartIdx >= 0) {
+      const beforeStartLine = existingBody.lastIndexOf(nl, existingStartIdx);
       const beforeStart = beforeStartLine >= 0 ? existingBody.slice(0, beforeStartLine) : "";
       return `${beforeStart}${nl}\t// @gen:start ${sh}${nl}${newGeneratedBody}`;
+    }
+    // Generated has markers but existing doesn't: keep existing, append markers
+    if (newMP.starts.length > 0 && newMP.ends.length > 0) {
+      const existing = existingBody.trim();
+      return existing
+        ? `${existing}${nl}\t// @gen:start ${sh}${nl}\t// @gen:end ${sh}`
+        : `\t// @gen:start ${sh}${nl}\t// @gen:end ${sh}`;
     }
     return newGeneratedBody;
   }
@@ -523,6 +563,14 @@ function buildDeclarationText(region: GeneratedRegion, body: string): string {
       return `${region.signature} {${nl}${cleanBody}${nl}}`;
     }
   }
+  if (region.kind === "struct") {
+    const nl = body.includes("\r\n") ? "\r\n" : "\n";
+    const cleaned = body.replace(/^\n+/, "").replace(/\n+$/, "");
+    if (!cleaned.trim()) {
+      return `type ${region.symbolName} struct {${nl}}`;
+    }
+    return `type ${region.symbolName} struct {${nl}${cleaned}${nl}}`;
+  }
   return region.content;
 }
 
@@ -558,7 +606,6 @@ function extractImportsFromContent(content: string): string[] {
 }
 
 export function mergeImports(text: string, patch: GeneratedFilePatch, fileText: string): string {
-  process.stderr.write(`[mergeImports] ${patch.path} regions=${patch.regions.length}\n`);
   const plannedSpecs: string[] = [];
   const seenPaths = new Set<string>();
 
@@ -589,15 +636,36 @@ export function mergeImports(text: string, patch: GeneratedFilePatch, fileText: 
     }
   }
 
-  if (plannedSpecs.length === 0) return text;
-
   const importLineRe = /^(\w+\s+)?"([^"]+)"/;
   const importBlockRe = /^([ \t]*)import\s*\(([\s\S]*?)\)[ \t]*$/m;
   const singleImportRe = /^[ \t]*import\s+"([^"]+)"[ \t]*$/m;
 
-  // Check if text already has an import block — if so, merge into it
   const textBlockMatch = text.match(importBlockRe);
   const fileBlockMatch = fileText.match(importBlockRe);
+
+  // If no planned imports, copy/preserve imports from fileText
+  if (plannedSpecs.length === 0) {
+    const pkgIdx = text.search(/^package\s+\w+\s*$/m);
+    if (pkgIdx < 0) return text;
+    const lineEnd = text.indexOf("\n", pkgIdx);
+    const insertAt = lineEnd >= 0 ? lineEnd + 1 : text.length;
+
+    if (fileBlockMatch && (!textBlockMatch || fileBlockMatch[0] !== textBlockMatch[0])) {
+      const fullBlock = fileBlockMatch[0];
+      if (textBlockMatch) {
+        return text.replace(importBlockRe, fullBlock);
+      }
+      return text.slice(0, insertAt) + `\n${fullBlock}\n` + text.slice(insertAt);
+    }
+
+    if (!textBlockMatch && !text.match(singleImportRe)) {
+      const singleMatch = fileText.match(singleImportRe);
+      if (singleMatch) {
+        return text.slice(0, insertAt) + `\n${singleMatch[0]}\n` + text.slice(insertAt);
+      }
+    }
+    return text;
+  }
 
   if (fileBlockMatch) {
     // fileText (skeleton) has an import block — check if text needs it

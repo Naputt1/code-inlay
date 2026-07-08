@@ -194,12 +194,18 @@ export function defineService(input: {
   name?: string;
   close?: boolean;
   env?: string[];
+  structFields?: { name: string; goType: string }[];
+  extraImports?: string[];
+  interfaceMethods?: { name: string; signature: string }[];
 }): ServiceDefinition {
   return {
     kind: "ServiceDefinition",
     name: input.name ?? "",
     close: input.close,
     env: input.env,
+    structFields: input.structFields,
+    extraImports: input.extraImports,
+    interfaceMethods: input.interfaceMethods,
   };
 }
 

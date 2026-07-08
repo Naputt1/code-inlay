@@ -18,7 +18,7 @@ function renderInterfaceContent(
   dbAccessor: string | undefined,
   dbType: string | undefined,
   close: boolean | undefined,
-): string {
+): string[] {
   const parts: string[] = [];
 
   if (importsList.length > 0) {
@@ -46,14 +46,27 @@ function renderInterfaceContent(
     parts.push(content);
   }
 
-  return parts.join("\n\n");
+  return parts;
 }
 
-function renderStructContent(implName: string, needsConfig: boolean): string {
-  if (!needsConfig) {
+function renderStructContent(
+  implName: string,
+  needsConfig: boolean,
+  svcFields?: { name: string; goType: string }[],
+): string {
+  const structFields: go.Field[] = [];
+  if (svcFields) {
+    for (const f of svcFields) {
+      structFields.push(go.field([f.name], toGoType(f.goType)));
+    }
+  }
+  if (needsConfig) {
+    structFields.push(go.field(["cfg"], go.qual("config", "Config")));
+  }
+  if (structFields.length === 0) {
     return `type ${implName} struct {\n\n}`;
   }
-  const st = go.structType(go.field(["cfg"], go.qual("config", "Config")));
+  const st = go.structType(...structFields);
   const spec = go.typeSpec(implName, st);
   const decl = go.genDecl("type", spec);
   const sb = new go.StringBuilder();
@@ -61,13 +74,9 @@ function renderStructContent(implName: string, needsConfig: boolean): string {
   return sb.toString().trimEnd();
 }
 
-function constructorSignature(ctorName: string, needsConfig: boolean, implName: string): string {
-  const params = needsConfig ? [go.field(["cfg"], go.qual("config", "Config"))] : [];
-  const results = [go.field([], go.star(go.id(implName))), go.field([], go.id("error"))];
-  const fn = go.function_(ctorName, params, results);
-  const sb = new go.StringBuilder();
-  go.printDeclaration(sb, fn, 0);
-  return sb.toString().trimEnd();
+function constructorSignature(ctorName: string, params: string, implName: string): string {
+  const sig = `func ${ctorName}(${params}) (*${implName}, error)`;
+  return sig;
 }
 
 function methodSignature(
@@ -120,21 +129,37 @@ export function generateServiceFile(
   if (svc.dbTypePkg) {
     importsList.push(svc.dbTypePkg);
   }
+  if (svc.extraImports) {
+    for (const imp of svc.extraImports) {
+      importsList.push(imp);
+    }
+  }
   if (needsConfig && modulePath) {
-    importsList.push(`"${modulePath}/internal/config"`);
+    importsList.push(`${modulePath}/internal/config`);
   }
 
-  const interfaceContent = renderInterfaceContent(
+  const interfaceParts = renderInterfaceContent(
     typeName,
     importsList,
     svc.dbAccessor,
     svc.dbType,
     svc.close,
   );
+  if (svc.interfaceMethods) {
+    for (const m of svc.interfaceMethods) {
+      const lastIdx = interfaceParts.length - 1;
+      const last = interfaceParts[lastIdx];
+      if (last.startsWith("type ")) {
+        const lines = last.split("\n");
+        lines.splice(lines.length - 1, 0, `\t${m.name}${m.signature}`);
+        interfaceParts[lastIdx] = lines.join("\n");
+      }
+    }
+  }
   parts.push({
     kind: "interface" as const,
     symbolName: typeName,
-    content: interfaceContent,
+    content: interfaceParts.join("\n\n"),
     expectsUserCode: false,
     isStub: false,
   });
@@ -142,19 +167,39 @@ export function generateServiceFile(
   parts.push({
     kind: "struct" as const,
     symbolName: implName,
-    content: renderStructContent(implName, needsConfig),
-    expectsUserCode: false,
+    content: renderStructContent(implName, needsConfig, svc.structFields),
+    expectsUserCode: true,
     isStub: false,
   });
 
-  const ctorArg = needsConfig ? "cfg: cfg" : "";
-  const ctorSig = constructorSignature(ctorName, needsConfig, implName);
+  const ctorParams: string[] = [];
+  if (svc.ctor?.params) {
+    ctorParams.push(svc.ctor.params);
+  }
+  if (needsConfig) {
+    ctorParams.push("cfg config.Config");
+  }
+  const ctorSig = constructorSignature(ctorName, ctorParams.join(", "), implName);
+
+  const ctorFieldParts: string[] = [];
+  if (svc.ctor?.fieldInit) {
+    ctorFieldParts.push(svc.ctor.fieldInit);
+  }
+  if (needsConfig) {
+    ctorFieldParts.push("cfg: cfg");
+  }
+  const ctorArg = ctorFieldParts.join(", ");
+
+  const ctorBody = svc.ctor?.body
+    ? svc.ctor.body
+    : `\treturn &${implName}{${ctorArg}}, nil`;
+
   parts.push({
     kind: "function" as const,
     symbolName: ctorName,
     signature: ctorSig,
-    content: `\treturn &${implName}{${ctorArg}}, nil`,
-    expectsUserCode: false,
+    content: ctorBody,
+    expectsUserCode: true,
     isStub: false,
   });
 
@@ -183,6 +228,20 @@ export function generateServiceFile(
       expectsUserCode: false,
       isStub: false,
     });
+  }
+
+  if (svc.implementationMethods) {
+    for (const m of svc.implementationMethods) {
+      parts.push({
+        kind: "method" as const,
+        symbolName: `${implName}.${m.name}`,
+        receiver: `*${implName}`,
+        signature: m.signature,
+        content: m.body,
+        expectsUserCode: false,
+        isStub: false,
+      });
+    }
   }
 
   return parts;
