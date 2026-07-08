@@ -1,5 +1,4 @@
 import { describe, it, expect } from "vitest";
-import * as go from "@schemago/goast";
 import { generateLoggerCode, getLoggerGoModules } from "../src/runtime/loggers-goast.js";
 import type { LoggerConfig } from "../src/types/index.js";
 

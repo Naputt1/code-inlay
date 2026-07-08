@@ -1,4 +1,4 @@
-import type { ErrorDefinition, GeneratedFilePatch, RouteAst, SchemaLike } from "../types/index.js";
+import type { ErrorDefinition, GeneratedFilePatch, SchemaLike } from "../types/index.js";
 import { featuresPath, pascalCase } from "../utils/naming.js";
 import {
   renderStandardErrors as renderStandardErrorsAST,

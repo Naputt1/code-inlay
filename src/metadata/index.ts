@@ -1,5 +1,4 @@
-import type { AppAst, GeneratedFilePatch, RouteAst, RouteLikeAst } from "../types/index.js";
-import { pascalCase } from "../utils/naming.js";
+import type { AppAst, GeneratedFilePatch } from "../types/index.js";
 import { stableHash } from "../utils/hash.js";
 import { generateRegistryGo, generateSchemaReflection } from "./metadata-goast.js";
 

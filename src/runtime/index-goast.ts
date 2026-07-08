@@ -3,12 +3,6 @@ import { contentHash } from "../utils/hash.js";
 import { generateLoggerCode } from "./loggers-goast.js";
 import * as go from "@schemago/goast";
 
-function printDecl(decl: go.Declaration): string {
-  const sb = new go.StringBuilder();
-  go.printDeclaration(sb, decl, 0);
-  return sb.toString().replace(/\n$/, "");
-}
-
 function generateRuntimeTypes(): GeneratedFilePatch {
   const importDecl = go.genDecl("import", go.importSpec("context"));
 

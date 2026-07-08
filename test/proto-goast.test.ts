@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import type { ProtoMessage, ProtoEnum, ProtoField, FieldMapping } from "../src/targets/proto.js";
+import type { ProtoMessage } from "../src/targets/proto.js";
 import {
   generateStubPbGoContent,
   generateFromProtoFunc,

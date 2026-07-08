@@ -2,24 +2,7 @@
 // @schemago/goast — Visitor / traversal utilities
 // ─────────────────────────────────────────────────────────────
 
-import type {
-  Node,
-  File,
-  Declaration,
-  FuncDecl,
-  GenDecl,
-  Spec,
-  ImportSpec,
-  TypeSpec,
-  ValueSpec,
-  Type,
-  Field,
-  Expression,
-  Statement,
-  BlockStmt,
-  CaseClause,
-  CommClause,
-} from "./nodes.js";
+import type { Node } from "./nodes.js";
 
 // ─── Visitor ───────────────────────────────────────────────
 

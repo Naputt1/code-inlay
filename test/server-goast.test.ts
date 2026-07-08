@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect } from "vitest";
 import { compile, defineApp, defineModule, defineRoute, defineCors } from "../src/index.js";
 import { generateServer } from "../src/srvgen/server-goast.js";

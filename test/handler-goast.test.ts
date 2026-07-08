@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect } from "vitest";
 import type { ArchitectureAst, RouteExpansionAst } from "../src/types/index.js";
 import { generateHandlerStructs } from "../src/generators/handler-goast.js";

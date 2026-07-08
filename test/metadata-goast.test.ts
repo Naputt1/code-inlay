@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { z } from "zod";
 import { generateRegistryGo, generateSchemaReflection } from "../src/metadata/metadata-goast.js";
 import type { AppAst, RouteAst, RouteLikeAst, ModuleAst } from "../src/types/index.js";

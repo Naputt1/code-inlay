@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect } from "vitest";
 import {
   generateHandlerInitLines,
@@ -7,10 +8,14 @@ import {
 import type { AppServiceDef, ModuleAst, RouteExpansionAst } from "../src/types/index.js";
 import type { GoModuleInfo } from "../src/utils/env.js";
 
-function mockRouteExpansion(handlerName: string, layers: string[], moduleName = "users"): RouteExpansionAst {
+function mockRouteExpansion(
+  handlerName: string,
+  layers: string[],
+  moduleName = "users",
+): RouteExpansionAst {
   return {
     route: { moduleName, handlerName, kind: "Route" } as any,
-    layers: layers.map((kind) => ({ kind } as any)),
+    layers: layers.map((kind) => ({ kind }) as any),
   };
 }
 
@@ -70,14 +75,28 @@ describe("generateHandlerInitLines", () => {
     const mod = mockModule("users");
     const dbSvc: AppServiceDef = { name: "gorm", typeName: "GormService", dbAccessor: "DB" };
     const routes = [mockRouteExpansion("List", ["handler", "usecase"])];
-    const result = generateHandlerInitLines(mod, [dbSvc], routes, moduleInfo, undefined, new Set(["users"]));
+    const result = generateHandlerInitLines(
+      mod,
+      [dbSvc],
+      routes,
+      moduleInfo,
+      undefined,
+      new Set(["users"]),
+    );
     expect(result.handlerInitLines.some((l) => l.includes("usersRepo :="))).toBe(true);
   });
 });
 
 describe("generateRegisterModuleRoutes", () => {
   it("produces valid Go function for empty routes", () => {
-    const result = generateRegisterModuleRoutes("users", [], [], "api *gin.RouterGroup", [], new Map());
+    const result = generateRegisterModuleRoutes(
+      "users",
+      [],
+      [],
+      "api *gin.RouterGroup",
+      [],
+      new Map(),
+    );
     const output = result.join("\n");
     expect(output).toContain("import (");
     expect(output).toContain('"github.com/gin-gonic/gin"');
@@ -87,7 +106,14 @@ describe("generateRegisterModuleRoutes", () => {
 
   it("includes a single route registration call", () => {
     const lines = [{ content: 'api.GET("/users", usersHandler.ListUsers)', group: "" }];
-    const result = generateRegisterModuleRoutes("users", [], [], "api *gin.RouterGroup", lines, new Map());
+    const result = generateRegisterModuleRoutes(
+      "users",
+      [],
+      [],
+      "api *gin.RouterGroup",
+      lines,
+      new Map(),
+    );
     expect(result.join("\n")).toContain('api.GET("/users", usersHandler.ListUsers)');
   });
 
@@ -96,7 +122,14 @@ describe("generateRegisterModuleRoutes", () => {
       { content: 'api.GET("/users", usersHandler.ListUsers)', group: "" },
       { content: 'api.POST("/users", usersHandler.CreateUser)', group: "" },
     ];
-    const result = generateRegisterModuleRoutes("users", [], [], "api *gin.RouterGroup", lines, new Map());
+    const result = generateRegisterModuleRoutes(
+      "users",
+      [],
+      [],
+      "api *gin.RouterGroup",
+      lines,
+      new Map(),
+    );
     const output = result.join("\n");
     expect(output).toContain('api.GET("/users", usersHandler.ListUsers)');
     expect(output).toContain('api.POST("/users", usersHandler.CreateUser)');
@@ -105,7 +138,14 @@ describe("generateRegisterModuleRoutes", () => {
   it("groups routes under a prefix", () => {
     const lines = [{ content: 'api.GET("/", usersHandler.ListUsers)', group: "/api/v1" }];
     const groupMw = new Map([["/api/v1", new Set(["Auth"])]]);
-    const result = generateRegisterModuleRoutes("users", [], [], "api *gin.RouterGroup", lines, groupMw);
+    const result = generateRegisterModuleRoutes(
+      "users",
+      [],
+      [],
+      "api *gin.RouterGroup",
+      lines,
+      groupMw,
+    );
     const output = result.join("\n");
     expect(output).toContain('api_v1 := api.Group("/api/v1", middleware.Auth)');
     expect(output).toContain("api_v1.GET(");
@@ -126,10 +166,17 @@ describe("generateRegisterModuleRoutes", () => {
   });
 
   it("includes handler init lines before route registrations", () => {
-    const initLines = ['usersHandler := &users.Handler{ListUsecase: users.NewListUsecase()}'];
-    const result = generateRegisterModuleRoutes("users", [], initLines, "api *gin.RouterGroup", [], new Map());
+    const initLines = ["usersHandler := &users.Handler{ListUsecase: users.NewListUsecase()}"];
+    const result = generateRegisterModuleRoutes(
+      "users",
+      [],
+      initLines,
+      "api *gin.RouterGroup",
+      [],
+      new Map(),
+    );
     const output = result.join("\n");
-    expect(output).toContain('usersHandler := &users.Handler{ListUsecase: users.NewListUsecase()}');
+    expect(output).toContain("usersHandler := &users.Handler{ListUsecase: users.NewListUsecase()}");
   });
 });
 
@@ -160,7 +207,12 @@ describe("generateCombinedRegisterRoutes", () => {
   it("passes service params to register calls", () => {
     const svc: AppServiceDef = { name: "users", typeName: "UsersService" };
     const getServices = (name: string) => (name === "users" ? [svc] : []);
-    const result = generateCombinedRegisterRoutes(["users", "orders"], [svc], moduleInfo, getServices);
+    const result = generateCombinedRegisterRoutes(
+      ["users", "orders"],
+      [svc],
+      moduleInfo,
+      getServices,
+    );
     const output = result.join("\n");
     expect(output).toContain("registerUsersRoutes(api, usersSvc)");
     expect(output).toContain("registerOrdersRoutes(api)");

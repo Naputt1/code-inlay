@@ -669,7 +669,7 @@ export function generateGinHandler(
 
   const sb = new go.StringBuilder();
   go.printDeclaration(sb, methodDecl, 0);
-  let content = sb.toString().trimEnd();
+  const content = sb.toString().trimEnd();
   return {
     id: defaultRegionId(route, "handler"),
     stableHash: `${route.stableId}:${owner}:handler:${defaultFileForLayer(route, "handler")}`,
@@ -953,7 +953,7 @@ export function generateGinSSEHandler(route: SSEAst): GeneratedRegion {
 
   const sb = new go.StringBuilder();
   go.printDeclaration(sb, methodDecl, 0);
-  let content = sb.toString().trimEnd();
+  const content = sb.toString().trimEnd();
   return {
     id: defaultRegionId(route, "handler"),
     stableHash: `${route.stableId}:sse:handler:${defaultFileForLayer(route, "handler")}`,
@@ -1530,7 +1530,7 @@ export function generateGinWSHandler(route: WSAst): GeneratedRegion {
 
   const sb = new go.StringBuilder();
   go.printDeclaration(sb, methodDecl, 0);
-  let content = sb.toString().trimEnd();
+  const content = sb.toString().trimEnd();
   return {
     id: defaultRegionId(route, "handler"),
     stableHash: `${route.stableId}:ws:handler:${defaultFileForLayer(route, "handler")}`,
