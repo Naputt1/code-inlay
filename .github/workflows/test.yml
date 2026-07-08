@@ -31,8 +31,12 @@ jobs:
       - run: go build -o decl-parser .
         working-directory: tools/decl-parser
 
+      - run: pnpm build
+
       - run: pnpm lint
 
       - run: pnpm format
 
       - run: pnpm test
+
+      - run: pnpm typecheck
