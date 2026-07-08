@@ -3,7 +3,8 @@ import type { GoModuleInfo } from "../utils/env.js";
 
 export const configFilePath = "internal/config/env.go";
 
-export function generateEnvConfigFile(
+/** @deprecated Use generateEnvConfigFile from ./config-goast.js */
+export function generateEnvConfigFileLegacy(
   env: Record<string, EnvVarInfo>,
   moduleInfo: GoModuleInfo,
 ): GeneratedFilePatch | null {
@@ -144,3 +145,5 @@ export function generateEnvConfigFile(
     ],
   };
 }
+
+export { generateEnvConfigFile } from "./config-goast.js";
