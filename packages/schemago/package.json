@@ -21,7 +21,6 @@
   },
   "scripts": {
     "build": "tsup src/index.ts src/cli.ts --format esm --dts --clean --splitting false",
-    "postinstall": "cd ../goast/tools/decl-parser && go build -o decl-parser . || true",
     "test": "vitest run",
     "coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
