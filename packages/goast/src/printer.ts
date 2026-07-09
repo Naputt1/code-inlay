@@ -663,17 +663,17 @@ export function printType(sb: StringBuilder, type: Type): void {
       break;
     case "ParenExpr":
       sb.push("(");
-      printType(sb, type.x as unknown as Type);
+      printType(sb, type.x as Type);
       sb.push(")");
       break;
     case "IndexExpr":
-      printType(sb, type.x as unknown as Type);
+      printType(sb, type.x as Type);
       sb.push("[");
       printExpr(sb, type.index);
       sb.push("]");
       break;
     case "IndexListExpr":
-      printType(sb, type.x as unknown as Type);
+      printType(sb, type.x as Type);
       sb.push("[");
       for (let i = 0; i < type.indices.length; i++) {
         if (i > 0) sb.push(", ");
@@ -774,6 +774,12 @@ function printSpecBody(sb: StringBuilder, spec: Spec, depth: number): void {
         sb.push(" ");
       }
       sb.push(`"${spec.path}"`);
+      if (spec.comment && spec.comment.list.length > 0) {
+        sb.push(" ");
+        for (const c of spec.comment.list) {
+          sb.push(c.text);
+        }
+      }
       break;
     case "TypeSpec":
       sb.push(indent);

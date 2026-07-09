@@ -769,6 +769,8 @@ func toJSON(node ast.Node, fset *token.FileSet) any {
 		return nil
 	case *ast.BadDecl:
 		return nil
+	case *ast.BadStmt:
+		return map[string]any{"kind": "BadStmt"}
 	default:
 		return nil
 	}

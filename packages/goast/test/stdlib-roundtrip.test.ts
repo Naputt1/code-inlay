@@ -6,7 +6,7 @@ import { join } from "node:path";
 
 const TEST_BINARY = join(import.meta.dirname, "..", "tools", "decl-parser", "decl-parser");
 const GOROOT = "/usr/lib/go-1.19";
-const PKGS = ["fmt", "strings", "time", "encoding/json", "net/http"];
+const PKGS = ["fmt", "strings", "time", "encoding/json", "net/http", "net", "runtime"];
 
 const parser = go.createParser(existsSync(TEST_BINARY) ? TEST_BINARY : undefined);
 const hasParser = parser.hasParser();

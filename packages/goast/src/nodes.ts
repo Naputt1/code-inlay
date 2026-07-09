@@ -223,7 +223,7 @@ export type SliceLit = {
 
 export type ParenExpr = {
   kind: "ParenExpr";
-  x: Expression;
+  x: Expression | Type;
 };
 
 export type SelectorExpr = {
@@ -234,13 +234,13 @@ export type SelectorExpr = {
 
 export type IndexExpr = {
   kind: "IndexExpr";
-  x: Expression;
+  x: Expression | Type;
   index: Expression;
 };
 
 export type IndexListExpr = {
   kind: "IndexListExpr";
-  x: Expression;
+  x: Expression | Type;
   indices: Expression[];
 };
 
