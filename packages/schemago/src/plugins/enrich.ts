@@ -1,18 +1,11 @@
-import { spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
-import { sep, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { createParser } from "@schemago/goast";
 import type { GeneratedRegion, GoDeclaration } from "../types/index.js";
 
-const __dirname = fileURLToPath(new URL(".", import.meta.url));
-const dir = __dirname.endsWith(sep) ? __dirname : __dirname + sep;
-const parserBinary = resolve(
-  __dirname,
-  dir.includes(`${sep}dist${sep}`)
-    ? "../../goast/tools/decl-parser/decl-parser"
-    : "../../../goast/tools/decl-parser/decl-parser",
-);
-const hasParser = existsSync(parserBinary);
+let _parser: ReturnType<typeof createParser> | null = null;
+function getParser() {
+  if (!_parser) _parser = createParser();
+  return _parser;
+}
 
 const funcSignatureRe = /^(func\s+(?:\([^)]*\)\s+)?(\w+)\s*\([^)]*\)(?:\s*\([^)]*\))?)\s*\{/;
 const typeRe = /^type\s+(\w+)\s+/;
@@ -139,7 +132,7 @@ function enrichFromDecl(region: GeneratedRegion, decl: GoDeclaration): Generated
 }
 
 export function tryBatchAST(regions: GeneratedRegion[]): GeneratedRegion[] | null {
-  if (!hasParser) return null;
+  if (!getParser().hasParser()) return null;
 
   const combined: string[] = ["package p"];
   for (const r of regions) {
@@ -147,17 +140,9 @@ export function tryBatchAST(regions: GeneratedRegion[]): GeneratedRegion[] | nul
   }
   const source = combined.join("\n\n");
 
-  const result = spawnSync(parserBinary, ["--format=summary"], { input: source, encoding: "utf8" });
-  if (result.error || result.status !== 0) return null;
-
-  let decls: GoDeclaration[];
-  try {
-    const parsed = JSON.parse(result.stdout);
-    if (!Array.isArray(parsed)) return null;
-    decls = parsed as GoDeclaration[];
-  } catch {
-    return null;
-  }
+  const result = getParser().parseSummary(source);
+  if (!Array.isArray(result)) return null;
+  const decls = result as GoDeclaration[];
 
   if (decls.length !== regions.length) return null;
 

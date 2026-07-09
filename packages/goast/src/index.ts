@@ -157,5 +157,5 @@ export type { Visitor, VisitAction, Transformer } from "./walk.js";
 export { parseTag, serializeTag, getTag, setTag, removeTag } from "./tag.js";
 
 // Parser — full Go source → AST parsing
-export { createParser, GoParser, parseSource, parseFile } from "./parser.js";
-export type { ParseResult, ParseError } from "./parser.js";
+export { createParser, GoParser, parseSource, parseFile, parseSummarySource, parseSummaryFile } from "./parser.js";
+export type { ParseResult, ParseError, SummaryKind, SummaryDeclaration, SummaryResult } from "./parser.js";

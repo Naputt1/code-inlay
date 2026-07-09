@@ -7,6 +7,8 @@
 
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { resolve, sep } from "node:path";
 import type { File, ImportSpec, Declaration } from "./nodes.js";
 
 export type ParseError = {
@@ -19,6 +21,25 @@ export type ParseResult = {
   imports: ImportSpec[];
   declarations: Declaration[];
 };
+
+export type SummaryKind =
+  | "function" | "method" | "struct" | "interface"
+  | "type" | "const" | "var" | "imports";
+
+export type SummaryDeclaration = {
+  kind: SummaryKind;
+  symbolName: string;
+  receiver?: string;
+  signature?: string;
+  body?: string;
+  bodyStart: number;
+  bodyEnd: number;
+  startLine: number;
+  endLine: number;
+  imports?: string[];
+};
+
+export type SummaryResult = SummaryDeclaration[];
 
 // ─── Convenience functions ────────────────────────────────
 
@@ -46,7 +67,16 @@ export class GoParser {
   private binaryPath: string | null;
 
   constructor(declParserPath?: string) {
-    this.binaryPath = declParserPath ?? null;
+    const _dirname = fileURLToPath(new URL(".", import.meta.url));
+    if (declParserPath) {
+      this.binaryPath = declParserPath;
+    } else {
+      // Auto-detect binary relative to this source file
+      const dir = _dirname.endsWith(sep) ? _dirname : _dirname + sep;
+      const inDist = dir.includes(`${sep}dist${sep}`);
+      const rel = inDist ? "../tools/decl-parser/decl-parser" : "../tools/decl-parser/decl-parser";
+      this.binaryPath = resolve(_dirname, rel);
+    }
     if (this.binaryPath && !existsSync(this.binaryPath)) {
       this.binaryPath = null;
     }
@@ -99,4 +129,35 @@ export class GoParser {
       declarations: file.decls,
     };
   }
+
+  parseSummary(source: string): SummaryResult | ParseError {
+    if (!this.binaryPath) {
+      return [];
+    }
+
+    const result = spawnSync(this.binaryPath, ["--format=summary"], {
+      input: source, encoding: "utf8", maxBuffer: 50 * 1024 * 1024,
+    });
+    if (result.error || result.status !== 0) return [];
+
+    try {
+      const parsed = JSON.parse(result.stdout);
+      if (parsed.kind === "ParseError") return [];
+      if (!Array.isArray(parsed)) return [];
+      return parsed as SummaryResult;
+    } catch {
+      return [];
+    }
+  }
+}
+
+export function parseSummarySource(source: string, parserPath?: string): SummaryResult {
+  const parser = new GoParser(parserPath);
+  const result = parser.parseSummary(source);
+  return Array.isArray(result) ? result : [];
+}
+
+export function parseSummaryFile(filename: string, parserPath?: string): SummaryResult {
+  const source = readFileSync(filename, "utf8");
+  return parseSummarySource(source, parserPath);
 }
