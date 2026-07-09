@@ -15,8 +15,8 @@ const dir = __dirname.endsWith(sep) ? __dirname : __dirname + sep;
 const parserBinary = resolve(
   __dirname,
   dir.includes(`${sep}dist${sep}`)
-    ? "../tools/decl-parser/decl-parser"
-    : "../../tools/decl-parser/decl-parser",
+    ? "../../goast/tools/decl-parser/decl-parser"
+    : "../../../goast/tools/decl-parser/decl-parser",
 );
 
 export function shortHash(id: string): string {
@@ -24,11 +24,11 @@ export function shortHash(id: string): string {
 }
 
 export function parseGoFile(source: string): GoDeclaration[] {
-  const result = spawnSync(parserBinary, { input: source, encoding: "utf8" });
+  const result = spawnSync(parserBinary, ["--format=summary"], { input: source, encoding: "utf8" });
   if (result.error || result.status !== 0) return [];
   try {
     const parsed = JSON.parse(result.stdout);
-    if (parsed.error) return [];
+    if (parsed.kind === "ParseError") return [];
     return parsed as GoDeclaration[];
   } catch {
     return [];

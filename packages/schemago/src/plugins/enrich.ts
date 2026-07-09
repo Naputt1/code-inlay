@@ -9,8 +9,8 @@ const dir = __dirname.endsWith(sep) ? __dirname : __dirname + sep;
 const parserBinary = resolve(
   __dirname,
   dir.includes(`${sep}dist${sep}`)
-    ? "../tools/decl-parser/decl-parser"
-    : "../../tools/decl-parser/decl-parser",
+    ? "../../goast/tools/decl-parser/decl-parser"
+    : "../../../goast/tools/decl-parser/decl-parser",
 );
 const hasParser = existsSync(parserBinary);
 
@@ -147,7 +147,7 @@ export function tryBatchAST(regions: GeneratedRegion[]): GeneratedRegion[] | nul
   }
   const source = combined.join("\n\n");
 
-  const result = spawnSync(parserBinary, { input: source, encoding: "utf8" });
+  const result = spawnSync(parserBinary, ["--format=summary"], { input: source, encoding: "utf8" });
   if (result.error || result.status !== 0) return null;
 
   let decls: GoDeclaration[];
