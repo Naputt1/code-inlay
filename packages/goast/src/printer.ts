@@ -228,6 +228,15 @@ export function printExpr(
       }
       sb.push("]");
       break;
+    case "IndexListExpr":
+      printExpr(sb, expr.x, 6, outerDepth);
+      sb.push("[");
+      for (let i = 0; i < expr.indices.length; i++) {
+        if (i > 0) sb.push(", ");
+        printExpr(sb, expr.indices[i], 0, outerDepth);
+      }
+      sb.push("]");
+      break;
     case "TypeAssertExpr":
       printExpr(sb, expr.x, 6, outerDepth);
       sb.push(".");
@@ -640,6 +649,21 @@ export function printType(sb: StringBuilder, type: Type): void {
       sb.push("(");
       printType(sb, type.x as unknown as Type);
       sb.push(")");
+      break;
+    case "IndexExpr":
+      printType(sb, type.x as unknown as Type);
+      sb.push("[");
+      printExpr(sb, type.index);
+      sb.push("]");
+      break;
+    case "IndexListExpr":
+      printType(sb, type.x as unknown as Type);
+      sb.push("[");
+      for (let i = 0; i < type.indices.length; i++) {
+        if (i > 0) sb.push(", ");
+        printExpr(sb, type.indices[i]);
+      }
+      sb.push("]");
       break;
     default:
       sb.push("/* unhandled type */");

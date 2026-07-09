@@ -180,6 +180,10 @@ function walkChildren(node: Node, visit: (child: Node) => boolean): boolean {
       if (visit(node.x)) return true;
       if (visit(node.index)) return true;
       break;
+    case "IndexListExpr":
+      if (visit(node.x)) return true;
+      for (const i of node.indices) if (visit(i)) return true;
+      break;
     case "SliceExpr":
       if (visit(node.x)) return true;
       if (node.low && visit(node.low)) return true;
@@ -458,6 +462,11 @@ function collectChildren(node: Node): { key: string; value: unknown }[] {
       return [
         { key: "x", value: node.x },
         { key: "index", value: node.index },
+      ];
+    case "IndexListExpr":
+      return [
+        { key: "x", value: node.x },
+        { key: "indices", value: node.indices },
       ];
     case "SliceExpr": {
       const r: { key: string; value: unknown }[] = [{ key: "x", value: node.x }];
