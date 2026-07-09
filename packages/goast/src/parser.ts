@@ -65,7 +65,7 @@ export class GoParser {
       };
     }
 
-    const result = spawnSync(this.binaryPath, { input: source, encoding: "utf8" });
+    const result = spawnSync(this.binaryPath, { input: source, encoding: "utf8", maxBuffer: 50 * 1024 * 1024 });
     if (result.error) {
       return { kind: "ParseError", message: result.error.message };
     }

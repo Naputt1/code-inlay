@@ -254,6 +254,17 @@ export function printExpr(
       printBlock(sb, expr.body, outerDepth);
       break;
     default:
+      // Type nodes appearing in expression contexts (make, new, T{}, etc.)
+      if ("kind" in expr) {
+        const ek = expr.kind;
+        if (
+          ek === "ArrayType" || ek === "SliceType" || ek === "MapType" ||
+          ek === "StructType" || ek === "InterfaceType" || ek === "FuncType" || ek === "ChanType"
+        ) {
+          printType(sb, expr as unknown as Type);
+          break;
+        }
+      }
       sb.push("/* unhandled expr */");
   }
 }
@@ -484,6 +495,11 @@ function printStatementSimple(sb: StringBuilder, stmt: Statement, depth: number 
     case "IncDecStmt":
       printExpr(sb, stmt.expr, 0, depth);
       sb.push(stmt.token);
+      break;
+    case "SendStmt":
+      printExpr(sb, stmt.chan, 0, depth);
+      sb.push(" <- ");
+      printExpr(sb, stmt.value, 0, depth);
       break;
     default:
       printStatement(sb, stmt, depth);
