@@ -92,12 +92,13 @@ export function enrichRegionWithRegex(region: GeneratedRegion): GeneratedRegion 
 
   const typeMatch = content.match(typeRe);
   if (typeMatch) {
+    const afterSymbol = content.slice(typeMatch[0].length);
     return {
       ...region,
       symbolName: typeMatch[1],
-      kind: content.includes(" struct")
+      kind: afterSymbol.startsWith("struct")
         ? "struct"
-        : content.includes(" interface")
+        : afterSymbol.startsWith("interface")
           ? "interface"
           : "type",
     };

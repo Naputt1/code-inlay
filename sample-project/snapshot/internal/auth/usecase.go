@@ -8,16 +8,16 @@ type LoginUsecase interface {
 	Execute(ctx context.Context, input LoginAuthRequest) (LoginAuthResponse, error)
 }
 
+type LogoutUsecase interface {
+	Execute(ctx context.Context, input struct{}) (LogoutAuthResponse, error)
+}
+
 type RegisterUsecase interface {
 	Execute(ctx context.Context, input RegisterAuthRequest) (RegisterAuthResponse, error)
 }
 
 type loginUsecaseImpl struct {
 	repo AuthRepository
-}
-
-type LogoutUsecase interface {
-	Execute(ctx context.Context, input struct{}) (LogoutAuthResponse, error)
 }
 
 type logoutUsecaseImpl struct {
