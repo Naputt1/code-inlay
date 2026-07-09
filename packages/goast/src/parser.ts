@@ -1,27 +1,13 @@
 // ─────────────────────────────────────────────────────────────
 // @schemago/goast — Go source → AST parser
-// Currently bridges to Go's `go/parser` via the decl-parser binary.
-// Future: pure TypeScript parser.
+// Bridges to Go's `go/parser` via the decl-parser binary.
+// The binary outputs the full AST as a JSON tree matching goast
+// node format, so no recursive conversion is needed.
 // ─────────────────────────────────────────────────────────────
 
 import { spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
-import type { Declaration, ImportSpec } from "./nodes.js";
-
-// ─── JSON wire format from decl-parser ────────────────────
-
-type ParsedDeclaration = {
-  kind: string;
-  symbolName: string;
-  receiver?: string;
-  signature?: string;
-  body?: string;
-  bodyStart?: number;
-  bodyEnd?: number;
-  startLine: number;
-  endLine: number;
-  imports?: string[];
-};
+import { existsSync, readFileSync } from "node:fs";
+import type { File, ImportSpec, Declaration } from "./nodes.js";
 
 export type ParseError = {
   kind: "ParseError";
@@ -29,9 +15,26 @@ export type ParseError = {
 };
 
 export type ParseResult = {
+  file: File;
   imports: ImportSpec[];
   declarations: Declaration[];
 };
+
+// ─── Convenience functions ────────────────────────────────
+
+export function parseSource(source: string, parserPath?: string): File {
+  const parser = new GoParser(parserPath);
+  const result = parser.parse(source);
+  if (result.kind === "ParseError") {
+    throw new Error(result.message);
+  }
+  return result.file;
+}
+
+export function parseFile(filename: string, parserPath?: string): File {
+  const source = readFileSync(filename, "utf8");
+  return parseSource(source, parserPath);
+}
 
 // ─── Parser bridge ─────────────────────────────────────────
 
@@ -70,98 +73,30 @@ export class GoParser {
       return { kind: "ParseError", message: result.stderr || result.stdout || "unknown error" };
     }
 
-    let parsed: ParsedDeclaration[];
+    let parsed: any;
     try {
       parsed = JSON.parse(result.stdout);
-      if (!Array.isArray(parsed)) {
-        return { kind: "ParseError", message: "expected array from decl-parser" };
-      }
     } catch {
       return { kind: "ParseError", message: "failed to parse decl-parser output as JSON" };
     }
 
-    return convertDeclarations(parsed);
-  }
-}
-
-// ─── Convert flat JSON to AST nodes ────────────────────────
-
-function convertDeclarations(parsed: ParsedDeclaration[]): ParseResult {
-  let imports: ImportSpec[] = [];
-  const decls: Declaration[] = [];
-
-  for (const pd of parsed) {
-    if (pd.kind === "imports") {
-      imports = convertImports(pd.imports ?? []);
-      continue;
+    // Check for error response from Go binary
+    if (parsed.kind === "ParseError") {
+      return { kind: "ParseError", message: parsed.message ?? "parse error" };
     }
-    const decl = convertDeclaration(pd);
-    if (decl) decls.push(decl);
-  }
 
-  return { imports, declarations: decls };
-}
-
-function convertImports(imports: string[]): ImportSpec[] {
-  return imports.map((imp) => {
-    // Format: `alias "path"` or `"path"`
-    const match = imp.match(/^(\S+)\s+"(.+)"$/);
-    if (match) {
-      return { kind: "ImportSpec", path: match[2], name: match[1] };
+    // Validate we have a file node
+    if (!parsed.file || parsed.file.kind !== "File") {
+      return { kind: "ParseError", message: "decl-parser output missing File node" };
     }
-    const pathMatch = imp.match(/"(.+)"/);
-    if (pathMatch) {
-      return { kind: "ImportSpec", path: pathMatch[1] };
-    }
-    return { kind: "ImportSpec", path: imp };
-  });
-}
 
-function convertDeclaration(pd: ParsedDeclaration): Declaration | null {
-  switch (pd.kind) {
-    case "function":
-    case "method":
-      return convertFuncDecl(pd);
-    case "struct":
-    case "interface":
-    case "type":
-      // For these, we keep the signature as the raw type spec and parse it minimally.
-      // A full TypeScript parser would properly parse these in the future.
-      return { kind: "GenDecl", token: "type", specs: [], lparen: false };
-    case "var":
-    case "const":
-    case "imports":
-      return null;
-    default:
-      return null;
+    // Type-assert to File — the Go binary already outputs nodes matching
+    // goast's format exactly, so no recursive conversion is needed.
+    const file = parsed.file as File;
+    return {
+      file,
+      imports: file.imports,
+      declarations: file.decls,
+    };
   }
-}
-
-function convertFuncDecl(pd: ParsedDeclaration): Declaration | null {
-  if (!pd.symbolName) return null;
-
-  // symbolName format:
-  //   "Foo" for functions
-  //   "ReceiverType.Foo" for methods
-  const dotIndex = pd.symbolName.lastIndexOf(".");
-  const isMethod = dotIndex > 0;
-
-  const name = isMethod ? pd.symbolName.slice(dotIndex + 1) : pd.symbolName;
-
-  // Store signature and body as raw string placeholders.
-  // Full TypeScript parser would properly parse these.
-  return {
-    kind: "FuncDecl",
-    name,
-    recv: isMethod
-      ? {
-          kind: "Field",
-          names: [],
-          type: { kind: "Ident", name: pd.receiver ?? "" },
-          embedded: true,
-        }
-      : undefined,
-    type: { kind: "FuncType", params: [], results: [] },
-    body: pd.body ? { kind: "BlockStmt", list: [] } : undefined,
-  };
 }
