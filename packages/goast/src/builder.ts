@@ -22,6 +22,7 @@ import type {
   CompositeLit,
   SliceLit,
   IndexExpr,
+  IndexListExpr,
   SliceExpr,
   TypeAssertExpr,
   ParenExpr,
@@ -155,6 +156,10 @@ export function sliceLit(...elts: Expression[]): SliceLit {
 
 export function index(x: Expression, index: Expression): IndexExpr {
   return { kind: "IndexExpr", x, index };
+}
+
+export function indexList(x: Expression, ...indices: Expression[]): IndexListExpr {
+  return { kind: "IndexListExpr", x, indices };
 }
 
 export function sliceExpr(x: Expression, low?: Expression, high?: Expression): SliceExpr {

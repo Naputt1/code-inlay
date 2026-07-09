@@ -17,6 +17,7 @@
   },
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --clean --splitting false",
+    "postinstall": "cd tools/decl-parser && go build -o decl-parser . || true",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

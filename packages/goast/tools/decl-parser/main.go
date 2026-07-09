@@ -268,12 +268,14 @@ func toJSON(node ast.Node, fset *token.FileSet) any {
 				imps = append(imps, j)
 			}
 		}
-		m := map[string]any{
-			"kind":        "File",
-			"packageName": n.Name.Name,
-			"imports":     imps,
-			"decls":       decls,
-		}
+	pos := posMap(n, fset)
+	m := map[string]any{
+		"kind":        "File",
+		"packageName": n.Name.Name,
+		"imports":     imps,
+		"decls":       decls,
+		"pos":         pos,
+	}
 		if len(n.Comments) > 0 {
 			cgs := make([]any, len(n.Comments))
 			for i, cg := range n.Comments {
@@ -300,6 +302,7 @@ func toJSON(node ast.Node, fset *token.FileSet) any {
 			"kind": "FuncDecl",
 			"name": n.Name.Name,
 			"type": toJSON(n.Type, fset),
+			"pos":  posMap(n, fset),
 		}
 		if n.Recv != nil && len(n.Recv.List) > 0 {
 			m["recv"] = fieldToJSON(n.Recv.List[0], fset)
@@ -326,6 +329,7 @@ func toJSON(node ast.Node, fset *token.FileSet) any {
 			"kind":  "GenDecl",
 			"token": n.Tok.String(),
 			"specs": specs,
+			"pos":   posMap(n, fset),
 		}
 		if n.Lparen.IsValid() {
 			m["lparen"] = true
@@ -396,7 +400,7 @@ func toJSON(node ast.Node, fset *token.FileSet) any {
 
 	// ── Types / Expressions ────────────────────────────────
 	case *ast.Ident:
-		return map[string]any{"kind": "Ident", "name": n.Name}
+		return map[string]any{"kind": "Ident", "name": n.Name, "pos": posMap(n, fset)}
 
 	case *ast.StarExpr:
 		return map[string]any{"kind": "StarExpr", "x": toJSON(n.X, fset)}
@@ -462,6 +466,7 @@ func toJSON(node ast.Node, fset *token.FileSet) any {
 			"kind":  "BasicLit",
 			"token": tokToLitToken(n.Kind),
 			"value": n.Value,
+			"pos":   posMap(n, fset),
 		}
 
 	case *ast.FuncLit:
@@ -493,6 +498,17 @@ func toJSON(node ast.Node, fset *token.FileSet) any {
 			"kind":  "IndexExpr",
 			"x":     toJSON(n.X, fset),
 			"index": toJSON(n.Index, fset),
+		}
+
+	case *ast.IndexListExpr:
+		indices := make([]any, len(n.Indices))
+		for i, idx := range n.Indices {
+			indices[i] = toJSON(idx, fset)
+		}
+		return map[string]any{
+			"kind":    "IndexListExpr",
+			"x":       toJSON(n.X, fset),
+			"indices": indices,
 		}
 
 	case *ast.SliceExpr:
@@ -530,6 +546,7 @@ func toJSON(node ast.Node, fset *token.FileSet) any {
 			"kind": "CallExpr",
 			"func": toJSON(n.Fun, fset),
 			"args": args,
+			"pos":  posMap(n, fset),
 		}
 		if n.Ellipsis.IsValid() {
 			m["ellipsis"] = true
@@ -807,6 +824,17 @@ func fieldToJSON(f *ast.Field, fset *token.FileSet) any {
 	}
 
 	return m
+}
+
+// ─── Position helper ─────────────────────────────────────────
+
+func posMap(node ast.Node, fset *token.FileSet) map[string]any {
+	p := fset.Position(node.Pos())
+	return map[string]any{
+		"line":   p.Line,
+		"col":    p.Column,
+		"offset": p.Offset,
+	}
 }
 
 // ─── Token helpers ──────────────────────────────────────────

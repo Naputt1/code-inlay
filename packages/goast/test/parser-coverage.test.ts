@@ -11,6 +11,7 @@ import type {
   FuncLit, KeyValueExpr, SliceExpr, TypeAssertExpr,
   StarExpr, MapType, ChanType, SliceType, ArrayType,
   InterfaceType, ParenExpr, UnaryExpr, BinaryExpr,
+  IndexListExpr,
 } from "../src/nodes.js";
 
 const TEST_BINARY = join(import.meta.dirname, "..", "tools", "decl-parser", "decl-parser");
@@ -427,5 +428,54 @@ func split(sum int) (x, y int) {
 `);
     expect(f.type.results).toHaveLength(1);
     expect(f.type.results[0].names).toEqual(["x", "y"]);
+  });
+});
+
+describe("parser: IndexListExpr (generics multi-arg)", () => {
+  it("parses single type param instantiation", () => {
+    if (skipIfNoParser()) return;
+    const f = parse(`package p
+type Vector []int
+func zero[T any]() T { var zero T; return zero }
+`);
+    const funcDecl = f.decls.find((d): d is FuncDecl => d.kind === "FuncDecl");
+    expect(funcDecl).toBeDefined();
+    if (!funcDecl) return;
+    expect(funcDecl.typeParams).toBeDefined();
+    expect(funcDecl.typeParams!).toHaveLength(1);
+  });
+
+  it("parses generic type instantiation via builder and printer", () => {
+    const expr = go.indexList(go.id("p"), go.id("T"), go.id("U"));
+    expect(expr.kind).toBe("IndexListExpr");
+    expect(expr.indices).toHaveLength(2);
+
+    const sb = new go.StringBuilder();
+    go.printExpr(sb, expr);
+    expect(sb.toString()).toBe("p[T, U]");
+
+    const found: string[] = [];
+    go.walk(expr, { enter: (n) => { if (n.kind === "Ident") found.push((n as Ident).name); return "continue"; } });
+    expect(found).toContain("p");
+    expect(found).toContain("T");
+    expect(found).toContain("U");
+  });
+});
+
+describe("parser: position info", () => {
+  it("populates pos on parsed nodes", () => {
+    if (skipIfNoParser()) return;
+    const f = parse(`package p
+
+type X struct{}
+
+func Foo() {}
+`);
+
+    expect(f.pos).toBeDefined();
+
+    const funcDecl = f.decls.find((d): d is FuncDecl => d.kind === "FuncDecl")!;
+    expect(funcDecl.pos).toBeDefined();
+    expect(funcDecl.pos!.line).toBeGreaterThan(0);
   });
 });
