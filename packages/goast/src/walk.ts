@@ -165,6 +165,9 @@ function walkChildren(node: Node, visit: (child: Node) => boolean): boolean {
       if (visit(node.x)) return true;
       if (visit(node.y)) return true;
       break;
+    case "SliceLit":
+      for (const e of node.elts) if (visit(e)) return true;
+      break;
     case "CompositeLit":
       if (node.type && visit(node.type)) return true;
       for (const e of node.elts) if (visit(e)) return true;
@@ -438,6 +441,8 @@ function collectChildren(node: Node): { key: string; value: unknown }[] {
         { key: "x", value: node.x },
         { key: "y", value: node.y },
       ];
+    case "SliceLit":
+      return [{ key: "elts", value: node.elts }];
     case "CompositeLit": {
       const r: { key: string; value: unknown }[] = [];
       if (node.type) r.push({ key: "type", value: node.type });
