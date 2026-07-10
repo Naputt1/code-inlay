@@ -17,6 +17,7 @@ export type ParseError = {
 };
 
 export type ParseResult = {
+  kind: "ParseResult";
   file: File;
   imports: ImportSpec[];
   declarations: Declaration[];
@@ -124,6 +125,7 @@ export class GoParser {
     // goast's format exactly, so no recursive conversion is needed.
     const file = parsed.file as File;
     return {
+      kind: "ParseResult",
       file,
       imports: file.imports,
       declarations: file.decls,

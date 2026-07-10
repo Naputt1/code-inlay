@@ -9,7 +9,7 @@ import type {
   GoStmt, DeferStmt, SendStmt, SelectStmt, TypeSwitchStmt,
   IncDecStmt, BranchStmt, LabeledStmt, ExprStmt, DeclStmt,
   FuncLit, KeyValueExpr, SliceExpr, TypeAssertExpr,
-  StarExpr, MapType, ChanType, SliceType, ArrayType,
+  StarExpr, MapType, ChanType, SliceType, ArrayType, FuncType,
   InterfaceType, ParenExpr, UnaryExpr, BinaryExpr,
   IndexListExpr,
 } from "../src/nodes.js";
@@ -426,8 +426,9 @@ func split(sum int) (x, y int) {
   return
 }
 `);
-    expect(f.type.results).toHaveLength(1);
-    expect(f.type.results[0].names).toEqual(["x", "y"]);
+    expect(f.type.results).toBeDefined();
+    expect(f.type.results!).toHaveLength(1);
+    expect(f.type.results![0].names).toEqual(["x", "y"]);
   });
 });
 
