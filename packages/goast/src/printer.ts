@@ -21,6 +21,37 @@ import type {
   CommClause,
 } from "./nodes.js";
 
+function printExprOrType(
+  sb: StringBuilder,
+  x: Expression | Type,
+  prec?: number,
+  depth?: number,
+): void {
+  switch (x.kind) {
+    case "Ident":
+    case "BasicLit":
+    case "StarExpr":
+    case "SelectorExpr":
+    case "CallExpr":
+    case "UnaryExpr":
+    case "BinaryExpr":
+    case "KeyValueExpr":
+    case "CompositeLit":
+    case "SliceLit":
+    case "ParenExpr":
+    case "IndexExpr":
+    case "IndexListExpr":
+    case "SliceExpr":
+    case "TypeAssertExpr":
+    case "FuncLit":
+    case "BadExpr":
+      printExpr(sb, x as Expression, prec, depth);
+      break;
+    default:
+      printType(sb, x as Type);
+  }
+}
+
 // ─── Precedence levels (matching Go spec) ──────────────────
 
 const PREC: Record<string, number> = {
@@ -73,6 +104,7 @@ export type PrintConfig = {
 
 // ─── Main entry ────────────────────────────────────────────
 
+/** Print a complete File AST node to formatted Go source. */
 export function printFile(file: File): string {
   const sb = new StringBuilder();
   sb.pushLine(`package ${file.packageName}`);
@@ -91,6 +123,7 @@ export function printFile(file: File): string {
   return sb.toString();
 }
 
+/** Print a single declaration node. */
 export function printDeclaration(sb: StringBuilder, decl: Declaration, depth: number): void {
   switch (decl.kind) {
     case "FuncDecl":
@@ -100,6 +133,7 @@ export function printDeclaration(sb: StringBuilder, decl: Declaration, depth: nu
   }
 }
 
+/** Print an expression node, respecting operator precedence. */
 export function printExpr(
   sb: StringBuilder,
   expr: Expression,
@@ -135,7 +169,7 @@ export function printExpr(
       break;
     case "ParenExpr":
       sb.push("(");
-      printExpr(sb, expr.x, 0, outerDepth);
+      printExprOrType(sb, expr.x, 0, outerDepth);
       sb.push(")");
       break;
     case "StarExpr":
@@ -211,7 +245,7 @@ export function printExpr(
       printExpr(sb, expr.value, 0, outerDepth);
       break;
     case "IndexExpr":
-      printExpr(sb, expr.x, 6, outerDepth);
+      printExprOrType(sb, expr.x, 6, outerDepth);
       sb.push("[");
       printExpr(sb, expr.index, 0, outerDepth);
       sb.push("]");
@@ -225,6 +259,15 @@ export function printExpr(
       if (expr.max) {
         sb.push(":");
         printExpr(sb, expr.max, 0, outerDepth);
+      }
+      sb.push("]");
+      break;
+    case "IndexListExpr":
+      printExprOrType(sb, expr.x, 6, outerDepth);
+      sb.push("[");
+      for (let i = 0; i < expr.indices.length; i++) {
+        if (i > 0) sb.push(", ");
+        printExpr(sb, expr.indices[i], 0, outerDepth);
       }
       sb.push("]");
       break;
@@ -245,10 +288,11 @@ export function printExpr(
       printBlock(sb, expr.body, outerDepth);
       break;
     default:
-      sb.push("/* unhandled expr */");
+      printType(sb, expr as unknown as Type);
   }
 }
 
+/** Print a statement node with indentation. */
 export function printStatement(sb: StringBuilder, stmt: Statement, depth: number): void {
   const indent = getIndent(depth);
 
@@ -476,11 +520,17 @@ function printStatementSimple(sb: StringBuilder, stmt: Statement, depth: number 
       printExpr(sb, stmt.expr, 0, depth);
       sb.push(stmt.token);
       break;
+    case "SendStmt":
+      printExpr(sb, stmt.chan, 0, depth);
+      sb.push(" <- ");
+      printExpr(sb, stmt.value, 0, depth);
+      break;
     default:
       printStatement(sb, stmt, depth);
   }
 }
 
+/** Print a block statement { ... } with indented body. */
 export function printBlock(sb: StringBuilder, block: BlockStmt, depth: number): void {
   const indent = getIndent(depth);
   sb.push("{\n");
@@ -570,6 +620,7 @@ function printCommClause(sb: StringBuilder, cc: CommClause, depth: number): void
 
 // ─── Types ─────────────────────────────────────────────────
 
+/** Print a type node. */
 export function printType(sb: StringBuilder, type: Type): void {
   switch (type.kind) {
     case "Ident":
@@ -638,8 +689,23 @@ export function printType(sb: StringBuilder, type: Type): void {
       break;
     case "ParenExpr":
       sb.push("(");
-      printType(sb, type.x as unknown as Type);
+      printType(sb, type.x as Type);
       sb.push(")");
+      break;
+    case "IndexExpr":
+      printType(sb, type.x as Type);
+      sb.push("[");
+      printExpr(sb, type.index);
+      sb.push("]");
+      break;
+    case "IndexListExpr":
+      printType(sb, type.x as Type);
+      sb.push("[");
+      for (let i = 0; i < type.indices.length; i++) {
+        if (i > 0) sb.push(", ");
+        printExpr(sb, type.indices[i]);
+      }
+      sb.push("]");
       break;
     default:
       sb.push("/* unhandled type */");
@@ -734,6 +800,12 @@ function printSpecBody(sb: StringBuilder, spec: Spec, depth: number): void {
         sb.push(" ");
       }
       sb.push(`"${spec.path}"`);
+      if (spec.comment && spec.comment.list.length > 0) {
+        sb.push(" ");
+        for (const c of spec.comment.list) {
+          sb.push(c.text);
+        }
+      }
       break;
     case "TypeSpec":
       sb.push(indent);
@@ -889,6 +961,7 @@ function getIndent(depth: number): string {
   return "\t".repeat(depth);
 }
 
+/** Accumulator for efficient string building during printing. */
 export class StringBuilder {
   private buf: string[] = [];
 

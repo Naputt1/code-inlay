@@ -29,6 +29,7 @@ export type File = {
   imports: ImportSpec[];
   decls: Declaration[];
   comments?: CommentGroup[];
+  pos?: Pos;
 };
 
 // ─── Declarations ──────────────────────────────────────────
@@ -43,6 +44,7 @@ export type FuncDecl = {
   type: FuncType;
   body?: BlockStmt;
   doc?: CommentGroup;
+  pos?: Pos;
 };
 
 export type GenDecl = {
@@ -51,6 +53,7 @@ export type GenDecl = {
   specs: Spec[];
   lparen?: boolean; // has ( )
   doc?: CommentGroup;
+  pos?: Pos;
 };
 
 export type Token = "import" | "const" | "type" | "var";
@@ -96,7 +99,9 @@ export type Type =
   | InterfaceType
   | FuncType
   | ChanType
-  | ParenExpr;
+  | ParenExpr
+  | IndexExpr
+  | IndexListExpr;
 
 export type ArrayType = {
   kind: "ArrayType";
@@ -169,6 +174,7 @@ export type Expression =
   | ParenExpr
   | SelectorExpr
   | IndexExpr
+  | IndexListExpr
   | SliceExpr
   | TypeAssertExpr
   | CallExpr
@@ -184,12 +190,14 @@ export type BadExpr = {
 export type Ident = {
   kind: "Ident";
   name: string;
+  pos?: Pos;
 };
 
 export type BasicLit = {
   kind: "BasicLit";
   token: LitToken;
   value: string; // raw literal including quotes for strings
+  pos?: Pos;
 };
 
 export type LitToken = "int" | "float" | "string" | "char" | "imag";
@@ -215,7 +223,7 @@ export type SliceLit = {
 
 export type ParenExpr = {
   kind: "ParenExpr";
-  x: Expression;
+  x: Expression | Type;
 };
 
 export type SelectorExpr = {
@@ -226,8 +234,14 @@ export type SelectorExpr = {
 
 export type IndexExpr = {
   kind: "IndexExpr";
-  x: Expression;
+  x: Expression | Type;
   index: Expression;
+};
+
+export type IndexListExpr = {
+  kind: "IndexListExpr";
+  x: Expression | Type;
+  indices: Expression[];
 };
 
 export type SliceExpr = {
@@ -497,4 +511,5 @@ export type Node =
   | Comment
   | CaseClause
   | CommClause
-  | SliceLit;
+  | SliceLit
+  | IndexListExpr;
