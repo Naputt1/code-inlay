@@ -3,14 +3,46 @@ import * as go from "../src/index.js";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import type {
-  File, FuncDecl, GenDecl, StructType, Field, TypeSpec,
-  ReturnStmt, AssignStmt, IfStmt, RangeStmt, ForStmt,
-  SwitchStmt, CallExpr, CompositeLit, Ident, BasicLit,
-  GoStmt, DeferStmt, SendStmt, SelectStmt, TypeSwitchStmt,
-  IncDecStmt, BranchStmt, LabeledStmt, ExprStmt, DeclStmt,
-  FuncLit, KeyValueExpr, SliceExpr, TypeAssertExpr,
-  StarExpr, MapType, ChanType, SliceType, ArrayType, FuncType,
-  InterfaceType, ParenExpr, UnaryExpr, BinaryExpr,
+  File,
+  FuncDecl,
+  GenDecl,
+  StructType,
+  Field,
+  TypeSpec,
+  ReturnStmt,
+  AssignStmt,
+  IfStmt,
+  RangeStmt,
+  ForStmt,
+  SwitchStmt,
+  CallExpr,
+  CompositeLit,
+  Ident,
+  BasicLit,
+  GoStmt,
+  DeferStmt,
+  SendStmt,
+  SelectStmt,
+  TypeSwitchStmt,
+  IncDecStmt,
+  BranchStmt,
+  LabeledStmt,
+  ExprStmt,
+  DeclStmt,
+  FuncLit,
+  KeyValueExpr,
+  SliceExpr,
+  TypeAssertExpr,
+  StarExpr,
+  MapType,
+  ChanType,
+  SliceType,
+  ArrayType,
+  FuncType,
+  InterfaceType,
+  ParenExpr,
+  UnaryExpr,
+  BinaryExpr,
   IndexListExpr,
 } from "../src/nodes.js";
 
@@ -42,10 +74,13 @@ function getFunc(name: string, src: string): FuncDecl {
 describe("parser: statement coverage", () => {
   it("parses GoStmt (goroutine)", () => {
     if (skipIfNoParser()) return;
-    const f = getFunc("run", `package p
+    const f = getFunc(
+      "run",
+      `package p
 func run() { go doWork() }
 func doWork() {}
-`);
+`,
+    );
     const stmt = f.body!.list[0] as GoStmt;
     expect(stmt.kind).toBe("GoStmt");
     expect(stmt.call.func.kind).toBe("Ident");
@@ -54,18 +89,24 @@ func doWork() {}
 
   it("parses DeferStmt", () => {
     if (skipIfNoParser()) return;
-    const f = getFunc("clean", `package p
+    const f = getFunc(
+      "clean",
+      `package p
 func clean() { defer close() }
-`);
+`,
+    );
     const stmt = f.body!.list[0] as DeferStmt;
     expect(stmt.kind).toBe("DeferStmt");
   });
 
   it("parses SendStmt (channel send)", () => {
     if (skipIfNoParser()) return;
-    const f = getFunc("send", `package p
+    const f = getFunc(
+      "send",
+      `package p
 func send(ch chan int) { ch <- 42 }
-`);
+`,
+    );
     const stmt = f.body!.list[0] as SendStmt;
     expect(stmt.kind).toBe("SendStmt");
     expect(stmt.chan.kind).toBe("Ident");
@@ -74,7 +115,9 @@ func send(ch chan int) { ch <- 42 }
 
   it("parses SelectStmt", () => {
     if (skipIfNoParser()) return;
-    const f = getFunc("pick", `package p
+    const f = getFunc(
+      "pick",
+      `package p
 func pick(ch1, ch2 chan int) int {
   select {
   case x := <-ch1:
@@ -85,7 +128,8 @@ func pick(ch1, ch2 chan int) int {
     return -1
   }
 }
-`);
+`,
+    );
     const stmt = f.body!.list[0] as SelectStmt;
     expect(stmt.kind).toBe("SelectStmt");
     expect(stmt.body.list.length).toBeGreaterThanOrEqual(2);
@@ -93,7 +137,9 @@ func pick(ch1, ch2 chan int) int {
 
   it("parses TypeSwitchStmt", () => {
     if (skipIfNoParser()) return;
-    const f = getFunc("kind", `package p
+    const f = getFunc(
+      "kind",
+      `package p
 func kind(v any) string {
   switch x := v.(type) {
   case int:
@@ -104,7 +150,8 @@ func kind(v any) string {
     return "other"
   }
 }
-`);
+`,
+    );
     const stmt = f.body!.list[0] as TypeSwitchStmt;
     expect(stmt.kind).toBe("TypeSwitchStmt");
     expect(stmt.body.list.length).toBeGreaterThanOrEqual(2);
@@ -114,9 +161,12 @@ func kind(v any) string {
 
   it("parses IncDecStmt", () => {
     if (skipIfNoParser()) return;
-    const f = getFunc("inc", `package p
+    const f = getFunc(
+      "inc",
+      `package p
 func inc() { x := 0; x++; x-- }
-`);
+`,
+    );
     const body = f.body!;
     expect(body.list[1].kind).toBe("IncDecStmt");
     expect((body.list[1] as IncDecStmt).token).toBe("++");
@@ -126,7 +176,9 @@ func inc() { x := 0; x++; x-- }
 
   it("parses BranchStmt: break, continue, goto", () => {
     if (skipIfNoParser()) return;
-    const f = getFunc("branch", `package p
+    const f = getFunc(
+      "branch",
+      `package p
 func branch() {
   for i := 0; i < 10; i++ {
     if i == 5 { break }
@@ -135,13 +187,13 @@ func branch() {
   goto end
 end:
 }
-`);
+`,
+    );
     const body = f.body!;
-    const outerIf = body.list[0].kind === "ForStmt"
-      ? (body.list[0] as ForStmt).body.list.find(
-          (s): s is IfStmt => s.kind === "IfStmt"
-        )
-      : null;
+    const outerIf =
+      body.list[0].kind === "ForStmt"
+        ? (body.list[0] as ForStmt).body.list.find((s): s is IfStmt => s.kind === "IfStmt")
+        : null;
     if (outerIf) {
       expect(outerIf.body.list[0].kind).toBe("BranchStmt");
       expect((outerIf.body.list[0] as BranchStmt).token).toBe("break");
@@ -159,9 +211,12 @@ end:
 describe("parser: expression coverage", () => {
   it("parses FuncLit (closure)", () => {
     if (skipIfNoParser()) return;
-    const f = getFunc("mapIt", `package p
+    const f = getFunc(
+      "mapIt",
+      `package p
 func mapIt(fn func(int) int) int { return fn(1) }
-`);
+`,
+    );
     // FuncLit in the source — function param
     const param = f.type.params[0].type as FuncType;
     expect(param.kind).toBe("FuncType");
@@ -171,12 +226,15 @@ func mapIt(fn func(int) int) int { return fn(1) }
 
   it("parses inline FuncLit", () => {
     if (skipIfNoParser()) return;
-    const f = getFunc("run", `package p
+    const f = getFunc(
+      "run",
+      `package p
 func run() {
   add := func(a, b int) int { return a + b }
   _ = add(1, 2)
 }
-`);
+`,
+    );
     const assign = f.body!.list[0] as AssignStmt;
     const rhs = assign.rhs[0] as FuncLit;
     expect(rhs.kind).toBe("FuncLit");
@@ -187,10 +245,13 @@ func run() {
 
   it("parses CompositeLit with key-value", () => {
     if (skipIfNoParser()) return;
-    const f = getFunc("make", `package p
+    const f = getFunc(
+      "make",
+      `package p
 type Item struct { X int }
 func make() Item { return Item{X: 1} }
-`);
+`,
+    );
     const ret = f.body!.list[0] as ReturnStmt;
     const cl = ret.results[0] as CompositeLit;
     expect(cl.kind).toBe("CompositeLit");
@@ -205,9 +266,12 @@ func make() Item { return Item{X: 1} }
 
   it("parses bare CompositeLit (slice literal)", () => {
     if (skipIfNoParser()) return;
-    const f = getFunc("nums", `package p
+    const f = getFunc(
+      "nums",
+      `package p
 func nums() { _ = []int{1, 2, 3} }
-`);
+`,
+    );
     const assign = f.body!.list[0] as AssignStmt;
     const rhs = assign.rhs[0] as CompositeLit;
     expect(rhs.kind).toBe("CompositeLit");
@@ -216,11 +280,14 @@ func nums() { _ = []int{1, 2, 3} }
 
   it("parses SliceExpr (slice operation)", () => {
     if (skipIfNoParser()) return;
-    const f = getFunc("sub", `package p
+    const f = getFunc(
+      "sub",
+      `package p
 func sub(s []int) { _ = s[1:3]; _ = s[:2]; _ = s[1:] }
-`);
+`,
+    );
     const stmts = f.body!.list;
-    const se1 = ((stmts[0] as AssignStmt).rhs[0] as SliceExpr);
+    const se1 = (stmts[0] as AssignStmt).rhs[0] as SliceExpr;
     expect(se1.kind).toBe("SliceExpr");
     expect(se1.low).toBeDefined();
     expect(se1.high).toBeDefined();
@@ -228,9 +295,12 @@ func sub(s []int) { _ = s[1:3]; _ = s[:2]; _ = s[1:] }
 
   it("parses TypeAssertExpr", () => {
     if (skipIfNoParser()) return;
-    const f = getFunc("conv", `package p
+    const f = getFunc(
+      "conv",
+      `package p
 func conv(v any) { _ = v.(string) }
-`);
+`,
+    );
     const assign = f.body!.list[0] as AssignStmt;
     const ta = assign.rhs[0] as TypeAssertExpr;
     expect(ta.kind).toBe("TypeAssertExpr");
@@ -240,12 +310,15 @@ func conv(v any) { _ = v.(string) }
 
   it("parses UnaryExpr (all ops)", () => {
     if (skipIfNoParser()) return;
-    const f = getFunc("ops", `package p
+    const f = getFunc(
+      "ops",
+      `package p
 func ops(x int, ok bool) {
   _ = -x; _ = +x; _ = ^x
   _ = !ok; _ = &x
 }
-`);
+`,
+    );
     const stmts = f.body!.list;
     const ops = ["-", "+", "^", "!", "&"];
     for (let i = 0; i < ops.length; i++) {
@@ -257,9 +330,12 @@ func ops(x int, ok bool) {
 
   it("parses BinaryExpr (various ops)", () => {
     if (skipIfNoParser()) return;
-    const f = getFunc("calc", `package p
+    const f = getFunc(
+      "calc",
+      `package p
 func calc(a, b int) { _ = a + b; _ = a == b; _ = a && true }
-`);
+`,
+    );
     const stmts = f.body!.list;
     expect(((stmts[0] as AssignStmt).rhs[0] as BinaryExpr).op).toBe("+");
     expect(((stmts[1] as AssignStmt).rhs[0] as BinaryExpr).op).toBe("==");
@@ -288,9 +364,9 @@ type S <-chan int
 type T chan<- int
 `);
     const specs: any[] = [];
-      for (const d of f.decls) {
-        if (d.kind === "GenDecl") specs.push(...(d as GenDecl).specs);
-      }
+    for (const d of f.decls) {
+      if (d.kind === "GenDecl") specs.push(...(d as GenDecl).specs);
+    }
     expect((specs[0].type as ChanType).dir).toBe("both");
     expect((specs[1].type as ChanType).dir).toBe("recv");
     expect((specs[2].type as ChanType).dir).toBe("send");
@@ -358,13 +434,16 @@ import (
 
   it("parses variadic parameters", () => {
     if (skipIfNoParser()) return;
-    const f = getFunc("sum", `package p
+    const f = getFunc(
+      "sum",
+      `package p
 func sum(nums ...int) int {
   total := 0
   for _, n := range nums { total += n }
   return total
 }
-`);
+`,
+    );
     expect(f.type.params[0].variadic).toBe(true);
     expect(f.type.params[0].variadic).toBe(true);
     expect((f.type.params[0].type as Ident).name).toBe("int");
@@ -408,24 +487,30 @@ type Outer struct {
 describe("parser: multi-return and named returns", () => {
   it("parses multiple return values", () => {
     if (skipIfNoParser()) return;
-    const f = getFunc("div", `package p
+    const f = getFunc(
+      "div",
+      `package p
 func div(a, b int) (int, error) {
   if b == 0 { return 0, errors.New("div by zero") }
   return a / b, nil
 }
-`);
+`,
+    );
     expect(f.type.results).toHaveLength(2);
   });
 
   it("parses named returns", () => {
     if (skipIfNoParser()) return;
-    const f = getFunc("split", `package p
+    const f = getFunc(
+      "split",
+      `package p
 func split(sum int) (x, y int) {
   x = sum * 4 / 9
   y = sum - x
   return
 }
-`);
+`,
+    );
     expect(f.type.results).toBeDefined();
     expect(f.type.results!).toHaveLength(1);
     expect(f.type.results![0].names).toEqual(["x", "y"]);
@@ -456,7 +541,12 @@ func zero[T any]() T { var zero T; return zero }
     expect(sb.toString()).toBe("p[T, U]");
 
     const found: string[] = [];
-    go.walk(expr, { enter: (n) => { if (n.kind === "Ident") found.push((n as Ident).name); return "continue"; } });
+    go.walk(expr, {
+      enter: (n) => {
+        if (n.kind === "Ident") found.push((n as Ident).name);
+        return "continue";
+      },
+    });
     expect(found).toContain("p");
     expect(found).toContain("T");
     expect(found).toContain("U");

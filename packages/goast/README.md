@@ -22,10 +22,13 @@ import * as go from "@schemago/goast";
 const f = go.file(
   "handler",
   go.genDecl("import", go.importSpec("fmt")),
-  go.function_("Greet",
+  go.function_(
+    "Greet",
     [go.field(["name"], go.id("string"))],
     [go.field([], go.id("string"))],
-    go.block(go.return_(go.call(go.sel(go.id("fmt"), "Sprintf"), go.str("Hello %s"), go.id("name")))),
+    go.block(
+      go.return_(go.call(go.sel(go.id("fmt"), "Sprintf"), go.str("Hello %s"), go.id("name"))),
+    ),
   ),
 );
 ```
@@ -45,7 +48,7 @@ Traverse, search, and mutate AST trees.
 ```typescript
 const structs = go.find(f, "StructType");
 const result = go.transform(f, {
-  leave: (node) => node.kind === "Field" ? go.field(["Name", "Age"], go.id("string")) : node,
+  leave: (node) => (node.kind === "Field" ? go.field(["Name", "Age"], go.id("string")) : node),
 });
 ```
 
@@ -58,7 +61,7 @@ const ast = go.parseSource('package main\n\nfunc main() { println("hello") }');
 const source = go.printFile(ast); // round-trip: parse → print
 
 // Summary mode — lightweight declaration metadata
-const summaries = go.parseSummarySource('package p\nfunc Foo() {}');
+const summaries = go.parseSummarySource("package p\nfunc Foo() {}");
 console.log(summaries[0].symbolName); // "Foo"
 ```
 
@@ -73,14 +76,14 @@ const parsed = go.parseTag(tag); // { json: "name,omitempty", validate: "require
 
 ## Modules
 
-| Module | File | Exports | Description |
-|--------|------|---------|-------------|
-| **Nodes** | `nodes.ts` | Types | Discriminated union types for all Go AST nodes |
-| **Builder** | `builder.ts` | 69 functions | Fluent AST construction helpers |
-| **Printer** | `printer.ts` | 7 functions + `StringBuilder` | AST to formatted Go source |
-| **Walker** | `walk.ts` | 4 functions + types | Depth-first traversal, search, transform |
-| **Parser** | `parser.ts` | 5 functions + `GoParser` class | Parse Go source to AST via Go bridge |
-| **Tags** | `tag.ts` | 5 functions | Struct tag parsing and manipulation |
+| Module      | File         | Exports                        | Description                                    |
+| ----------- | ------------ | ------------------------------ | ---------------------------------------------- |
+| **Nodes**   | `nodes.ts`   | Types                          | Discriminated union types for all Go AST nodes |
+| **Builder** | `builder.ts` | 69 functions                   | Fluent AST construction helpers                |
+| **Printer** | `printer.ts` | 7 functions + `StringBuilder`  | AST to formatted Go source                     |
+| **Walker**  | `walk.ts`    | 4 functions + types            | Depth-first traversal, search, transform       |
+| **Parser**  | `parser.ts`  | 5 functions + `GoParser` class | Parse Go source to AST via Go bridge           |
+| **Tags**    | `tag.ts`     | 5 functions                    | Struct tag parsing and manipulation            |
 
 ## Development
 

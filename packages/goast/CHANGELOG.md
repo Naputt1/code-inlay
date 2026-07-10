@@ -3,6 +3,7 @@
 ## [0.1.0] — 2024-07
 
 ### Added
+
 - Full Go source → AST parser via decl-parser Go bridge
 - Generics support: `IndexListExpr` type for multi-type-arg expressions
 - Position tracking on key AST nodes (File, FuncDecl, GenDecl, Ident, BasicLit)
@@ -14,6 +15,7 @@
 - `postinstall` script for automatic binary build
 
 ### Fixed
+
 - Walker: `SliceLit` now properly traversed by `walkChildren` and `collectChildren`
 - Printer: Type nodes in expression contexts (make, new) now delegate to `printType`
 - Printer: `SendStmt` trailing newline in `CommClause` context
@@ -25,6 +27,7 @@
 ## [0.0.1] — 2024-06
 
 ### Initial release
+
 - Go AST node type definitions (nodes.ts)
 - Fluent builder API (builder.ts)
 - AST printer (printer.ts)
