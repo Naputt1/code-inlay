@@ -3,22 +3,14 @@ import * as go from "../src/index.js";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import type {
-  File,
   FuncDecl,
   GenDecl,
   StructType,
-  Field,
-  TypeSpec,
-  ReturnStmt,
-  AssignStmt,
   IfStmt,
   RangeStmt,
   ForStmt,
   SwitchStmt,
-  CallExpr,
-  CompositeLit,
   Ident,
-  BasicLit,
 } from "../src/nodes.js";
 
 const TEST_BINARY = join(import.meta.dirname, "..", "tools", "decl-parser", "decl-parser");

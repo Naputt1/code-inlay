@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { createParser, parseSummaryFile } from "@schemago/goast";
+import { createParser } from "@schemago/goast";
 import type {
   CompilerCache,
   Diagnostic,
