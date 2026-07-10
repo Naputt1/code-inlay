@@ -44,6 +44,7 @@ export type SummaryResult = SummaryDeclaration[];
 
 // ─── Convenience functions ────────────────────────────────
 
+/** Parse a Go source string and return the full AST File node. Throws on error. */
 export function parseSource(source: string, parserPath?: string): File {
   const parser = new GoParser(parserPath);
   const result = parser.parse(source);
@@ -53,6 +54,7 @@ export function parseSource(source: string, parserPath?: string): File {
   return result.file;
 }
 
+/** Read a .go file from disk and parse it into an AST File node. Throws on error. */
 export function parseFile(filename: string, parserPath?: string): File {
   const source = readFileSync(filename, "utf8");
   return parseSource(source, parserPath);
@@ -60,6 +62,7 @@ export function parseFile(filename: string, parserPath?: string): File {
 
 // ─── Parser bridge ─────────────────────────────────────────
 
+/** Create a GoParser instance with optional explicit binary path. */
 export function createParser(declParserPath?: string): GoParser {
   return new GoParser(declParserPath);
 }
@@ -153,12 +156,14 @@ export class GoParser {
   }
 }
 
+/** Parse a Go source string and return declaration summaries. */
 export function parseSummarySource(source: string, parserPath?: string): SummaryResult {
   const parser = new GoParser(parserPath);
   const result = parser.parseSummary(source);
   return Array.isArray(result) ? result : [];
 }
 
+/** Read a .go file and return declaration summaries. */
 export function parseSummaryFile(filename: string, parserPath?: string): SummaryResult {
   const source = readFileSync(filename, "utf8");
   return parseSummarySource(source, parserPath);

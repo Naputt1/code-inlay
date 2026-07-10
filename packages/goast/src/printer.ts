@@ -87,6 +87,7 @@ export type PrintConfig = {
 
 // ─── Main entry ────────────────────────────────────────────
 
+/** Print a complete File AST node to formatted Go source. */
 export function printFile(file: File): string {
   const sb = new StringBuilder();
   sb.pushLine(`package ${file.packageName}`);
@@ -105,6 +106,7 @@ export function printFile(file: File): string {
   return sb.toString();
 }
 
+/** Print a single declaration node. */
 export function printDeclaration(sb: StringBuilder, decl: Declaration, depth: number): void {
   switch (decl.kind) {
     case "FuncDecl":
@@ -114,6 +116,7 @@ export function printDeclaration(sb: StringBuilder, decl: Declaration, depth: nu
   }
 }
 
+/** Print an expression node, respecting operator precedence. */
 export function printExpr(
   sb: StringBuilder,
   expr: Expression,
@@ -272,6 +275,7 @@ export function printExpr(
   }
 }
 
+/** Print a statement node with indentation. */
 export function printStatement(sb: StringBuilder, stmt: Statement, depth: number): void {
   const indent = getIndent(depth);
 
@@ -509,6 +513,7 @@ function printStatementSimple(sb: StringBuilder, stmt: Statement, depth: number 
   }
 }
 
+/** Print a block statement { ... } with indented body. */
 export function printBlock(sb: StringBuilder, block: BlockStmt, depth: number): void {
   const indent = getIndent(depth);
   sb.push("{\n");
@@ -598,6 +603,7 @@ function printCommClause(sb: StringBuilder, cc: CommClause, depth: number): void
 
 // ─── Types ─────────────────────────────────────────────────
 
+/** Print a type node. */
 export function printType(sb: StringBuilder, type: Type): void {
   switch (type.kind) {
     case "Ident":
@@ -938,6 +944,7 @@ function getIndent(depth: number): string {
   return "\t".repeat(depth);
 }
 
+/** Accumulator for efficient string building during printing. */
 export class StringBuilder {
   private buf: string[] = [];
 
