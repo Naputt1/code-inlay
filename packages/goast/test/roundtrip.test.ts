@@ -15,10 +15,7 @@ function validateGo(source: string): boolean {
   return r.status === 0;
 }
 
-const snapshotDir = join(
-  import.meta.dirname, "..", "..", "..",
-  "sample-project", "snapshot",
-);
+const snapshotDir = join(import.meta.dirname, "..", "..", "..", "sample-project", "snapshot");
 
 function collectGoFiles(dir: string, results: string[]): void {
   if (!existsSync(dir)) return;
@@ -72,24 +69,22 @@ describe("round-trip: in-memory → print → parse back", () => {
 
     const f = go.file(
       "test",
-      go.genDecl("import",
-        go.importSpec("fmt"),
-        go.importSpec("net/http", "h"),
-      ),
-      go.genDecl("type",
-        go.typeSpec("Config",
+      go.genDecl("import", go.importSpec("fmt"), go.importSpec("net/http", "h")),
+      go.genDecl(
+        "type",
+        go.typeSpec(
+          "Config",
           go.structType(
             go.field(["Port"], go.id("int"), go.tag({ json: "port" })),
             go.embedded(go.id("http.Handler")),
           ),
         ),
       ),
-      go.function_("NewConfig",
+      go.function_(
+        "NewConfig",
         [go.field(["port"], go.id("int"))],
         [go.field([], go.star(go.id("Config")))],
-        go.block(
-          go.return_(go.addr(go.elt(go.id("Config"), go.kv("Port", go.id("port"))))),
-        ),
+        go.block(go.return_(go.addr(go.elt(go.id("Config"), go.kv("Port", go.id("port")))))),
       ),
     );
 

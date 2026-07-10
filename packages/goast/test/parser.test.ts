@@ -2,7 +2,24 @@ import { describe, it, expect, beforeAll } from "vitest";
 import * as go from "../src/index.js";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import type { File, FuncDecl, GenDecl, StructType, Field, TypeSpec, ReturnStmt, AssignStmt, IfStmt, RangeStmt, ForStmt, SwitchStmt, CallExpr, CompositeLit, Ident, BasicLit } from "../src/nodes.js";
+import type {
+  File,
+  FuncDecl,
+  GenDecl,
+  StructType,
+  Field,
+  TypeSpec,
+  ReturnStmt,
+  AssignStmt,
+  IfStmt,
+  RangeStmt,
+  ForStmt,
+  SwitchStmt,
+  CallExpr,
+  CompositeLit,
+  Ident,
+  BasicLit,
+} from "../src/nodes.js";
 
 const TEST_BINARY = join(import.meta.dirname, "..", "tools", "decl-parser", "decl-parser");
 
@@ -14,7 +31,9 @@ beforeAll(() => {
 
 function skipIfNoParser() {
   if (!parser.hasParser()) {
-    console.warn("Skipping: decl-parser binary not found. Build with: cd tools/decl-parser && go build -o decl-parser .");
+    console.warn(
+      "Skipping: decl-parser binary not found. Build with: cd tools/decl-parser && go build -o decl-parser .",
+    );
   }
   return !parser.hasParser();
 }
@@ -64,7 +83,10 @@ func Greet(name string) string {
     if (!genDecl) return;
 
     const typeSpec = genDecl.specs[0];
-    if (typeSpec.kind !== "TypeSpec") { expect.fail("expected TypeSpec"); return; }
+    if (typeSpec.kind !== "TypeSpec") {
+      expect.fail("expected TypeSpec");
+      return;
+    }
     expect(typeSpec.name).toBe("User");
     expect(typeSpec.type.kind).toBe("StructType");
 
@@ -172,7 +194,9 @@ func iterate(items []string) {
     const result = parser.parse(ctrlSrc);
     if (result.kind === "ParseError") expect.fail(result.message);
 
-    const funcDecl = result.file.decls.find((d): d is FuncDecl => d.kind === "FuncDecl" && d.name === "example");
+    const funcDecl = result.file.decls.find(
+      (d): d is FuncDecl => d.kind === "FuncDecl" && d.name === "example",
+    );
     expect(funcDecl).toBeDefined();
     if (!funcDecl || !funcDecl.body) return;
 
@@ -187,7 +211,9 @@ func iterate(items []string) {
     const result = parser.parse(ctrlSrc);
     if (result.kind === "ParseError") expect.fail(result.message);
 
-    const funcDecl = result.file.decls.find((d): d is FuncDecl => d.kind === "FuncDecl" && d.name === "loop");
+    const funcDecl = result.file.decls.find(
+      (d): d is FuncDecl => d.kind === "FuncDecl" && d.name === "loop",
+    );
     expect(funcDecl).toBeDefined();
     if (!funcDecl || !funcDecl.body) return;
 
@@ -203,7 +229,9 @@ func iterate(items []string) {
     const result = parser.parse(ctrlSrc);
     if (result.kind === "ParseError") expect.fail(result.message);
 
-    const funcDecl = result.file.decls.find((d): d is FuncDecl => d.kind === "FuncDecl" && d.name === "iterate");
+    const funcDecl = result.file.decls.find(
+      (d): d is FuncDecl => d.kind === "FuncDecl" && d.name === "iterate",
+    );
     expect(funcDecl).toBeDefined();
     if (!funcDecl || !funcDecl.body) return;
 
@@ -241,7 +269,9 @@ func cleanup() {
     const result = parser.parse(switchSrc);
     if (result.kind === "ParseError") expect.fail(result.message);
 
-    const funcDecl = result.file.decls.find((d): d is FuncDecl => d.kind === "FuncDecl" && d.name === "handle");
+    const funcDecl = result.file.decls.find(
+      (d): d is FuncDecl => d.kind === "FuncDecl" && d.name === "handle",
+    );
     expect(funcDecl).toBeDefined();
     if (!funcDecl || !funcDecl.body) return;
 
@@ -256,7 +286,9 @@ func cleanup() {
     const result = parser.parse(switchSrc);
     if (result.kind === "ParseError") expect.fail(result.message);
 
-    const funcDecl = result.file.decls.find((d): d is FuncDecl => d.kind === "FuncDecl" && d.name === "cleanup");
+    const funcDecl = result.file.decls.find(
+      (d): d is FuncDecl => d.kind === "FuncDecl" && d.name === "cleanup",
+    );
     expect(funcDecl).toBeDefined();
     if (!funcDecl || !funcDecl.body) return;
 
@@ -292,12 +324,17 @@ var (
     const result = parser.parse(importSrc);
     if (result.kind === "ParseError") expect.fail(result.message);
 
-    const genDecl = result.file.decls.find((d): d is GenDecl => d.kind === "GenDecl" && d.token === "var");
+    const genDecl = result.file.decls.find(
+      (d): d is GenDecl => d.kind === "GenDecl" && d.token === "var",
+    );
     expect(genDecl).toBeDefined();
     if (!genDecl) return;
     expect(genDecl.specs).toHaveLength(2);
     const spec = genDecl.specs[0];
-    if (spec.kind !== "ValueSpec") { expect.fail("expected ValueSpec"); return; }
+    if (spec.kind !== "ValueSpec") {
+      expect.fail("expected ValueSpec");
+      return;
+    }
     expect(spec.names).toEqual(["x"]);
     expect(spec.values).toHaveLength(1);
   });

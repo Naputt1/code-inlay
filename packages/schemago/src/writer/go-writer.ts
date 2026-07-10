@@ -20,7 +20,7 @@ function getParser() {
 
 export function parseGoFile(source: string): GoDeclaration[] {
   const result = getParser().parseSummary(source);
-  return Array.isArray(result) ? result as GoDeclaration[] : [];
+  return Array.isArray(result) ? (result as GoDeclaration[]) : [];
 }
 
 type BlobMarker = { id: string; startIdx: number; endIdx: number; indent: string };

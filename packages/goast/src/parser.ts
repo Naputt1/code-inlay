@@ -24,8 +24,14 @@ export type ParseResult = {
 };
 
 export type SummaryKind =
-  | "function" | "method" | "struct" | "interface"
-  | "type" | "const" | "var" | "imports";
+  | "function"
+  | "method"
+  | "struct"
+  | "interface"
+  | "type"
+  | "const"
+  | "var"
+  | "imports";
 
 export type SummaryDeclaration = {
   kind: SummaryKind;
@@ -99,7 +105,11 @@ export class GoParser {
       };
     }
 
-    const result = spawnSync(this.binaryPath, { input: source, encoding: "utf8", maxBuffer: 50 * 1024 * 1024 });
+    const result = spawnSync(this.binaryPath, {
+      input: source,
+      encoding: "utf8",
+      maxBuffer: 50 * 1024 * 1024,
+    });
     if (result.error) {
       return { kind: "ParseError", message: result.error.message };
     }
@@ -141,7 +151,9 @@ export class GoParser {
     }
 
     const result = spawnSync(this.binaryPath, ["--format=summary"], {
-      input: source, encoding: "utf8", maxBuffer: 50 * 1024 * 1024,
+      input: source,
+      encoding: "utf8",
+      maxBuffer: 50 * 1024 * 1024,
     });
     if (result.error || result.status !== 0) return [];
 

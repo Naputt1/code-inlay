@@ -21,12 +21,29 @@ import type {
   CommClause,
 } from "./nodes.js";
 
-function printExprOrType(sb: StringBuilder, x: Expression | Type, prec?: number, depth?: number): void {
+function printExprOrType(
+  sb: StringBuilder,
+  x: Expression | Type,
+  prec?: number,
+  depth?: number,
+): void {
   switch (x.kind) {
-    case "Ident": case "BasicLit": case "StarExpr": case "SelectorExpr":
-    case "CallExpr": case "UnaryExpr": case "BinaryExpr": case "KeyValueExpr":
-    case "CompositeLit": case "SliceLit": case "ParenExpr": case "IndexExpr":
-    case "IndexListExpr": case "SliceExpr": case "TypeAssertExpr": case "FuncLit":
+    case "Ident":
+    case "BasicLit":
+    case "StarExpr":
+    case "SelectorExpr":
+    case "CallExpr":
+    case "UnaryExpr":
+    case "BinaryExpr":
+    case "KeyValueExpr":
+    case "CompositeLit":
+    case "SliceLit":
+    case "ParenExpr":
+    case "IndexExpr":
+    case "IndexListExpr":
+    case "SliceExpr":
+    case "TypeAssertExpr":
+    case "FuncLit":
     case "BadExpr":
       printExpr(sb, x as Expression, prec, depth);
       break;
