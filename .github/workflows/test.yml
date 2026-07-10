@@ -27,7 +27,7 @@ jobs:
           go-version: "1.22"
 
       - run: go build -o decl-parser .
-        working-directory: packages/schemago/tools/decl-parser
+        working-directory: packages/goast/tools/decl-parser
 
       - run: pnpm build
 
