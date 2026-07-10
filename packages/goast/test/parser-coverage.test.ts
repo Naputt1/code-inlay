@@ -3,14 +3,20 @@ import * as go from "../src/index.js";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import type {
+  File,
   FuncDecl,
   GenDecl,
+  TypeSpec,
+  StructType,
+  ReturnStmt,
   AssignStmt,
   IfStmt,
   ForStmt,
   CompositeLit,
   Ident,
+  BasicLit,
   FuncLit,
+  FuncType,
   KeyValueExpr,
   SliceExpr,
   TypeAssertExpr,
@@ -347,13 +353,13 @@ type C chan int
 type S <-chan int
 type T chan<- int
 `);
-    const specs: Array<go.Type> = [];
+    const specs: go.Spec[] = [];
     for (const d of f.decls) {
       if (d.kind === "GenDecl") specs.push(...(d as GenDecl).specs);
     }
-    expect((specs[0].type as ChanType).dir).toBe("both");
-    expect((specs[1].type as ChanType).dir).toBe("recv");
-    expect((specs[2].type as ChanType).dir).toBe("send");
+    expect(((specs[0] as TypeSpec).type as ChanType).dir).toBe("both");
+    expect(((specs[1] as TypeSpec).type as ChanType).dir).toBe("recv");
+    expect(((specs[2] as TypeSpec).type as ChanType).dir).toBe("send");
   });
 
   it("parses ArrayType", () => {
