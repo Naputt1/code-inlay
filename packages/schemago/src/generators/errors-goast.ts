@@ -118,8 +118,22 @@ function renderHTTPStatusMethod(name: string, httpStatus: number): string {
   return sb.toString().trimEnd();
 }
 
+function renderHTTPErrorInterface(): string {
+  const httpErrorSpec = go.typeSpec(
+    "HTTPError",
+    go.interfaceType(
+      go.embedded(go.id("error")),
+      go.field(["HTTPStatus"], go.funcType([], [go.field([], go.id("int"))])),
+    ),
+  );
+  const decl = go.genDecl("type", httpErrorSpec);
+  const sb = new go.StringBuilder();
+  go.printDeclaration(sb, decl, 0);
+  return sb.toString().trimEnd();
+}
+
 export function renderStandardErrors(structs: ErrorStruct[]): string {
-  const parts: string[] = [renderImport(), ""];
+  const parts: string[] = [renderImport(), "", renderHTTPErrorInterface(), ""];
 
   for (const s of structs) {
     parts.push(renderStructType(s.name, s.fields));
