@@ -117,7 +117,8 @@ export class GoParser {
       return { kind: "ParseError", message: result.stderr || result.stdout || "unknown error" };
     }
 
-    let parsed: Record<string, unknown>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let parsed: any;
     try {
       parsed = JSON.parse(result.stdout);
     } catch {
