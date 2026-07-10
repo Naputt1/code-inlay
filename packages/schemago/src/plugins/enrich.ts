@@ -78,7 +78,7 @@ export function enrichRegionWithRegex(region: GeneratedRegion): GeneratedRegion 
       symbolName,
       signature,
       kind: content.startsWith("func (") ? "method" : "function",
-      expectsUserCode: region.id.endsWith(".handler"),
+      expectsUserCode: region.id.endsWith(".handler") && body.includes("// @gen:start"),
       isStub: region.id.endsWith(".usecase.impl") || region.id.endsWith(".impl"),
     };
   }
@@ -125,7 +125,7 @@ function enrichFromDecl(region: GeneratedRegion, decl: GoDeclaration): Generated
     enriched.signature = decl.signature;
     enriched.content = decl.body ?? "";
     if (decl.receiver) enriched.receiver = decl.receiver;
-    enriched.expectsUserCode = region.id.endsWith(".handler");
+    enriched.expectsUserCode = region.id.endsWith(".handler") && (decl.body ?? "").includes("// @gen:start");
     enriched.isStub = region.id.endsWith(".usecase.impl") || region.id.endsWith(".impl");
   }
 
