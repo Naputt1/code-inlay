@@ -15,6 +15,7 @@ export type VisitAction = "skip" | "stop" | "continue";
 
 // ─── Walk ──────────────────────────────────────────────────
 
+/** Walk an AST tree depth-first, calling visitor on each node. */
 export function walk(node: Node, visitor: Visitor): void {
   internalWalk(node, visitor);
 }

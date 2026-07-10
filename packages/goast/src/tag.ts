@@ -5,6 +5,7 @@
 import type { Tag } from "./nodes.js";
 
 // Parse `json:"name,omitempty" gorm:"column:name"` into { json: "name,omitempty", gorm: "column:name" }
+/** Parse a raw struct tag string into key-value pairs. */
 export function parseTag(tag: Tag): Record<string, string> {
   const result: Record<string, string> = {};
   const re = /(\w+):"((?:[^"\\]|\\.)*)"/g;
@@ -16,6 +17,7 @@ export function parseTag(tag: Tag): Record<string, string> {
 }
 
 // Serialize { json: "name,omitempty" } into `json:"name,omitempty"`
+/** Serialize a map of key-value pairs into a raw struct tag string. */
 export function serializeTag(tags: Record<string, string>): Tag {
   return Object.entries(tags)
     .map(([key, value]) => `${key}:"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`)
@@ -23,6 +25,7 @@ export function serializeTag(tags: Record<string, string>): Tag {
 }
 
 // Get a single tag value, or undefined
+/** Get the value for a specific key from a raw struct tag string. */
 export function getTag(tag: Tag | undefined, key: string): string | undefined {
   if (!tag) return undefined;
   const parsed = parseTag(tag);
@@ -30,6 +33,7 @@ export function getTag(tag: Tag | undefined, key: string): string | undefined {
 }
 
 // Set a single tag value, returning a new tag string
+/** Set or update a key in a raw struct tag string. Returns the updated tag string. */
 export function setTag(tag: Tag | undefined, key: string, value: string): Tag {
   const parsed = tag ? parseTag(tag) : {};
   parsed[key] = value;
@@ -37,6 +41,7 @@ export function setTag(tag: Tag | undefined, key: string, value: string): Tag {
 }
 
 // Remove a single tag key, returning a new tag string
+/** Remove a key from a raw struct tag string. Returns the updated tag string. */
 export function removeTag(tag: Tag | undefined, key: string): Tag | undefined {
   if (!tag) return undefined;
   const parsed = parseTag(tag);
