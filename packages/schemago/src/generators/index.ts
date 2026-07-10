@@ -143,7 +143,7 @@ export function generateCode(
 
       const content = generateLayerContent(route, layer.kind, diagnostics, hasDomainLayer);
       if (content !== undefined) {
-        add(layer.file, {
+        const region: GeneratedRegion = {
           id: layer.regionId,
           stableHash: layer.stableId
             ? `${layer.stableId}:${layer.file}:codegen`
@@ -152,7 +152,12 @@ export function generateCode(
           language: "go",
           content,
           groupKey: layerGroupKey,
-        });
+        };
+        if (layer.kind === "usecase" && route.kind === "Route") {
+          region.symbolName = `${route.handlerName}Usecase`;
+          region.kind = "interface";
+        }
+        add(layer.file, region);
       }
     }
 
