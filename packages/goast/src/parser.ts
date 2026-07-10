@@ -117,7 +117,7 @@ export class GoParser {
       return { kind: "ParseError", message: result.stderr || result.stdout || "unknown error" };
     }
 
-    let parsed: any;
+    let parsed: Record<string, unknown>;
     try {
       parsed = JSON.parse(result.stdout);
     } catch {

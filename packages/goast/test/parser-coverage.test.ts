@@ -1,49 +1,33 @@
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect } from "vitest";
 import * as go from "../src/index.js";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import type {
-  File,
   FuncDecl,
   GenDecl,
-  StructType,
-  Field,
-  TypeSpec,
-  ReturnStmt,
   AssignStmt,
   IfStmt,
-  RangeStmt,
   ForStmt,
-  SwitchStmt,
-  CallExpr,
   CompositeLit,
   Ident,
-  BasicLit,
-  GoStmt,
-  DeferStmt,
-  SendStmt,
-  SelectStmt,
-  TypeSwitchStmt,
-  IncDecStmt,
-  BranchStmt,
-  LabeledStmt,
-  ExprStmt,
-  DeclStmt,
   FuncLit,
   KeyValueExpr,
   SliceExpr,
   TypeAssertExpr,
-  StarExpr,
-  MapType,
-  ChanType,
-  SliceType,
-  ArrayType,
-  FuncType,
-  InterfaceType,
-  ParenExpr,
   UnaryExpr,
   BinaryExpr,
-  IndexListExpr,
+  MapType,
+  ChanType,
+  ArrayType,
+  InterfaceType,
+  BranchStmt,
+  LabeledStmt,
+  IncDecStmt,
+  SendStmt,
+  GoStmt,
+  DeferStmt,
+  SelectStmt,
+  TypeSwitchStmt,
 } from "../src/nodes.js";
 
 const TEST_BINARY = join(import.meta.dirname, "..", "tools", "decl-parser", "decl-parser");
@@ -363,7 +347,7 @@ type C chan int
 type S <-chan int
 type T chan<- int
 `);
-    const specs: any[] = [];
+    const specs: Array<go.Type> = [];
     for (const d of f.decls) {
       if (d.kind === "GenDecl") specs.push(...(d as GenDecl).specs);
     }
