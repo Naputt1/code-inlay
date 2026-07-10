@@ -21,6 +21,20 @@ import type {
   CommClause,
 } from "./nodes.js";
 
+function printExprOrType(sb: StringBuilder, x: Expression | Type, prec?: number, depth?: number): void {
+  switch (x.kind) {
+    case "Ident": case "BasicLit": case "StarExpr": case "SelectorExpr":
+    case "CallExpr": case "UnaryExpr": case "BinaryExpr": case "KeyValueExpr":
+    case "CompositeLit": case "SliceLit": case "ParenExpr": case "IndexExpr":
+    case "IndexListExpr": case "SliceExpr": case "TypeAssertExpr": case "FuncLit":
+    case "BadExpr":
+      printExpr(sb, x as Expression, prec, depth);
+      break;
+    default:
+      printType(sb, x as Type);
+  }
+}
+
 // ─── Precedence levels (matching Go spec) ──────────────────
 
 const PREC: Record<string, number> = {
@@ -135,7 +149,7 @@ export function printExpr(
       break;
     case "ParenExpr":
       sb.push("(");
-      printExpr(sb, expr.x, 0, outerDepth);
+      printExprOrType(sb, expr.x, 0, outerDepth);
       sb.push(")");
       break;
     case "StarExpr":
@@ -211,7 +225,7 @@ export function printExpr(
       printExpr(sb, expr.value, 0, outerDepth);
       break;
     case "IndexExpr":
-      printExpr(sb, expr.x, 6, outerDepth);
+      printExprOrType(sb, expr.x, 6, outerDepth);
       sb.push("[");
       printExpr(sb, expr.index, 0, outerDepth);
       sb.push("]");
@@ -229,7 +243,7 @@ export function printExpr(
       sb.push("]");
       break;
     case "IndexListExpr":
-      printExpr(sb, expr.x, 6, outerDepth);
+      printExprOrType(sb, expr.x, 6, outerDepth);
       sb.push("[");
       for (let i = 0; i < expr.indices.length; i++) {
         if (i > 0) sb.push(", ");
@@ -254,18 +268,7 @@ export function printExpr(
       printBlock(sb, expr.body, outerDepth);
       break;
     default:
-      // Type nodes appearing in expression contexts (make, new, T{}, etc.)
-      if ("kind" in expr) {
-        const ek = expr.kind;
-        if (
-          ek === "ArrayType" || ek === "SliceType" || ek === "MapType" ||
-          ek === "StructType" || ek === "InterfaceType" || ek === "FuncType" || ek === "ChanType"
-        ) {
-          printType(sb, expr as unknown as Type);
-          break;
-        }
-      }
-      sb.push("/* unhandled expr */");
+      printType(sb, expr as unknown as Type);
   }
 }
 
