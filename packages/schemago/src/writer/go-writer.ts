@@ -71,10 +71,6 @@ export function injectGoFile(
     patch.regions.filter((r) => !r.symbolName && r.kind !== "imports").map((r) => r.id),
   );
 
-  const declarations = parseGoFile(fileText);
-  const lines = fileText.split("\n");
-  const blobLineRanges = findBlobLineRanges(fileText, blobIds);
-
   const symbolRegions: GeneratedRegion[] = [];
   for (const region of patch.regions) {
     if (region.symbolName) symbolRegions.push(region);
@@ -82,11 +78,18 @@ export function injectGoFile(
   symbolRegions.sort((a, b) => a.id.localeCompare(b.id));
   const plannedByName = new Map(symbolRegions.map((r) => [r.symbolName!, r]));
 
+  fileText = removeStaleMarkerDeclarations(fileText, plannedByName, diagnostics, patch.path);
+
+  const declarations = parseGoFile(fileText);
+  const lines = fileText.split("\n");
+  const blobLineRanges = findBlobLineRanges(fileText, blobIds);
+
   if (declarations.length === 0) {
     let t = injectAllViaMarkers(fileText, patch, diagnostics, patch.path);
     t = mergeImports(t, patch, fileText);
     return cleanBlankLines(t);
   }
+
 
   const fileCache = cache.symbolsByFile?.[patch.path] ?? {};
   const isGenerated = (name: string) => fileCache[name] !== undefined || plannedByName.has(name);
@@ -305,6 +308,67 @@ function findAllBlobMarkers(text: string): Map<string, BlobMarker> {
     }
   }
   return markers;
+}
+
+function removeStaleMarkerDeclarations(
+  fileText: string,
+  plannedByName: Map<string, GeneratedRegion>,
+  diagnostics: Diagnostic[],
+  file?: string,
+): string {
+  const markers = findAllBlobMarkers(fileText);
+  const toRemove: Array<{ start: number; end: number }> = [];
+  for (const [id, marker] of markers) {
+    const parts = fileText.slice(marker.startIdx, marker.endIdx).split("\n");
+    const innerContent = parts.slice(1, -1).join("\n").trim();
+    if (!innerContent) continue;
+    const wrapped = `package p\n\n${innerContent}`;
+    const innerDecls = parseGoFile(wrapped);
+    if (innerDecls.length > 0 && innerDecls.some((d) => plannedByName.has(d.symbolName))) {
+      toRemove.push({ start: marker.startIdx, end: marker.endIdx });
+      diagnostics.push({
+        level: "warning",
+        code: "stale-marker-removed",
+        message: `Removed stale marker "${id}" wrapping declaration "${innerDecls.find((d) => plannedByName.has(d.symbolName))!.symbolName}".`,
+        file,
+        regionId: id,
+      });
+      continue;
+    }
+    const nameMatch = innerContent.match(/^type\s+(\w+)\s+(interface|struct)\b/m);
+    if (nameMatch && plannedByName.has(nameMatch[1])) {
+      toRemove.push({ start: marker.startIdx, end: marker.endIdx });
+      diagnostics.push({
+        level: "warning",
+        code: "stale-marker-removed",
+        message: `Removed stale marker "${id}" wrapping declaration "${nameMatch[1]}".`,
+        file,
+        regionId: id,
+      });
+      continue;
+    }
+    const rawFirstLine = parts.slice(1, -1).join("\n").split("\n")[0];
+    if (
+      plannedByName.size > 0 &&
+      (rawFirstLine.startsWith("\treturn") || rawFirstLine.startsWith("\t// TODO"))
+    ) {
+      toRemove.push({ start: marker.startIdx, end: marker.endIdx });
+      diagnostics.push({
+        level: "warning",
+        code: "stale-marker-removed",
+        message: `Removed stale function-body marker "${id}".`,
+        file,
+        regionId: id,
+      });
+    }
+  }
+  toRemove.sort((a, b) => b.start - a.start);
+  for (const { start, end } of toRemove) {
+    const before = fileText.slice(0, start);
+    const after = fileText.slice(end);
+    fileText = before.replace(/\n+$/, "") + "\n\n" + after.replace(/^\n+/, "");
+  }
+  return fileText;
 }
 
 function findBlobLineRanges(
