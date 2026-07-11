@@ -19,7 +19,8 @@ export function lowerIdent(value: string): string {
 
 export function snakeCase(value: string): string {
   return value
-    .replace(/([A-Z])/g, "_$1")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1_$2")
+    .replace(/([a-z])([A-Z])/g, "$1_$2")
     .toLowerCase()
     .replace(/^_/, "")
     .replace(/[^a-zA-Z0-9_]+/g, "_")

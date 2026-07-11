@@ -130,8 +130,8 @@ describe("snakeCase", () => {
     expect(snakeCase("helloWorld")).toBe("hello_world");
   });
 
-  it("splits consecutive uppercase letters individually", () => {
-    expect(snakeCase("HTTPServer")).toBe("h_t_t_p_server");
+  it("splits consecutive uppercase letters as acronym", () => {
+    expect(snakeCase("HTTPServer")).toBe("http_server");
   });
 
   it("returns empty string for empty input", () => {
