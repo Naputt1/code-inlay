@@ -161,6 +161,7 @@ export function buildAst(app: AppDefinition, diagnostics: Diagnostic[]): AppAst 
       structFields: s.structFields,
       extraImports: s.extraImports,
       interfaceMethods: s.interfaceMethods,
+      ctor: s.ctor ? { returnsError: s.ctor.returnsError } : undefined,
     };
   };
 

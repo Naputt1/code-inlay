@@ -166,6 +166,9 @@ export type ServiceDefinition = {
   structFields?: Field[];
   extraImports?: string[];
   interfaceMethods?: { name: string; params: Field[]; results?: Field[] }[];
+  ctor?: {
+    returnsError?: boolean;
+  };
 };
 
 export type ServiceFileCtx<TOptions> = {
@@ -429,6 +432,7 @@ export type AppServiceDef = {
   ctor?: {
     params?: Field[];
     body?: Statement[];
+    returnsError?: boolean;
   };
   mainConstructorArgs?: Expression[];
   startup?: Statement[];

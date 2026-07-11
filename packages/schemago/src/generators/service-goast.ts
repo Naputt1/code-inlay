@@ -226,12 +226,11 @@ export function generateServiceFile(
 
   const allBody = svc.ctor?.body ?? [go.return_(go.call(go.addr(go.id(implName)), go.id("nil")))];
 
-  const ctorFn = go.function_(
-    ctorName,
-    allParams,
-    [go.field([], go.star(go.id(implName))), go.field([], go.id("error"))],
-    go.block(...allBody),
-  );
+  const ctorResults =
+    svc.ctor?.returnsError === false
+      ? [go.field([], go.star(go.id(implName)))]
+      : [go.field([], go.star(go.id(implName))), go.field([], go.id("error"))];
+  const ctorFn = go.function_(ctorName, allParams, ctorResults, go.block(...allBody));
   const { signature: ctorSig, body: ctorBody } = funcDeclParts(ctorFn);
 
   parts.push({

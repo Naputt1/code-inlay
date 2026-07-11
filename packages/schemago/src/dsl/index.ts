@@ -200,6 +200,9 @@ export function defineService(input: {
   structFields?: Field[];
   extraImports?: string[];
   interfaceMethods?: { name: string; signature: string }[];
+  ctor?: {
+    returnsError?: boolean;
+  };
 }): ServiceDefinition {
   return {
     kind: "ServiceDefinition",
@@ -212,6 +215,7 @@ export function defineService(input: {
       const parsed = parseGoSignature(m.signature);
       return { name: m.name, params: parsed.params, results: parsed.results };
     }),
+    ctor: input.ctor ? { returnsError: input.ctor.returnsError } : undefined,
   };
 }
 

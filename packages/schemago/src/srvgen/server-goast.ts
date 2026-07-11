@@ -173,18 +173,28 @@ export function generateServer(
         ctorArgsParts.push("cfg");
       }
       const ctorArgs = ctorArgsParts.join(", ");
-      addRaw(`\t${varName}, err := service.${ctorName}(${ctorArgs})`);
+      if (svc.ctor?.returnsError === false) {
+        addRaw(`\t${varName} := service.${ctorName}(${ctorArgs})`);
+      } else {
+        addRaw(`\t${varName}, err := service.${ctorName}(${ctorArgs})`);
+      }
     } else {
+      if (svc.ctor?.returnsError === false) {
+        addStmt(go.def([go.id(varName)], [go.call(go.sel(go.id("service"), ctorName))]));
+      } else {
+        addStmt(
+          go.def([go.id(varName), go.id("err")], [go.call(go.sel(go.id("service"), ctorName))]),
+        );
+      }
+    }
+    if (svc.ctor?.returnsError !== false) {
       addStmt(
-        go.def([go.id(varName), go.id("err")], [go.call(go.sel(go.id("service"), ctorName))]),
+        go.ifStmt(
+          go.binary(go.id("err"), "!=", go.id("nil")),
+          go.block(go.expr(go.call(go.id("panic"), go.id("err")))),
+        ),
       );
     }
-    addStmt(
-      go.ifStmt(
-        go.binary(go.id("err"), "!=", go.id("nil")),
-        go.block(go.expr(go.call(go.id("panic"), go.id("err")))),
-      ),
-    );
     if (svc.close) {
       addStmt(go.defer(go.call(go.sel(go.id(varName), "Close"))));
     }
