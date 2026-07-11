@@ -156,6 +156,14 @@ export type { Visitor, VisitAction, Transformer } from "./walk.js";
 
 export { parseTag, serializeTag, getTag, setTag, removeTag } from "./tag.js";
 
+// Formatter — gofmt integration, import sorting, snippet formatting
+export {
+  formatFile,
+  formatGoSnippet,
+  sortGoImportsText,
+} from "./format.js";
+export type { FormatWarning, FormatFileOptions } from "./format.js";
+
 // Parser — full Go source → AST parsing
 export {
   createParser,
