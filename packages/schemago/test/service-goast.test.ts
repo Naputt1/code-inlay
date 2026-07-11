@@ -71,4 +71,67 @@ describe("goast service generation", () => {
     expect(result[0].kind).toBe("interface");
     expect(result[0].content).toBe("// extension generated code");
   });
+
+  it("7. extension splits multi-declaration content into separate parts", () => {
+    const svc: AppServiceDef = svcBase({
+      extension: "jwt",
+    });
+    const ext: BackendExtension = {
+      name: "jwt",
+      service: {
+        optionsSchema: {} as any,
+        generateFile: () => `type MyService interface {
+\tGenerateToken() (string, error)
+}
+
+type myServiceImpl struct {
+\tsecret string
+}
+
+func NewMyService() (*myServiceImpl, error) {
+\treturn &myServiceImpl{secret: "default"}, nil
+}`,
+      },
+    };
+    const result = generateServiceFile(svc, [ext]);
+    expect(result.length).toBe(3);
+
+    const iface = result.find((p) => p.symbolName === "MyService");
+    expect(iface).toBeDefined();
+    expect(iface!.kind).toBe("interface");
+    expect(iface!.expectsUserCode).toBe(false);
+    expect(iface!.isStub).toBe(false);
+
+    const struct_ = result.find((p) => p.symbolName === "myServiceImpl");
+    expect(struct_).toBeDefined();
+    expect(struct_!.kind).toBe("struct");
+    expect(struct_!.expectsUserCode).toBe(true);
+    expect(struct_!.isStub).toBe(false);
+
+    const ctor = result.find((p) => p.symbolName === "NewMyService");
+    expect(ctor).toBeDefined();
+    expect(ctor!.kind).toBe("function");
+    expect(ctor!.expectsUserCode).toBe(true);
+    expect(ctor!.isStub).toBe(true);
+    expect(ctor!.content).toContain('return &myServiceImpl{secret: "default"}, nil');
+  });
+
+  it("8. extension content with single declaration returns one part", () => {
+    const svc: AppServiceDef = svcBase({
+      extension: "simple",
+    });
+    const ext: BackendExtension = {
+      name: "simple",
+      service: {
+        optionsSchema: {} as any,
+        generateFile: () => `type SimpleService interface {
+\tDoSomething() error
+}`,
+      },
+    };
+    const result = generateServiceFile(svc, [ext]);
+    expect(result.length).toBe(1);
+    expect(result[0].kind).toBe("interface");
+    expect(result[0].symbolName).toBe("MyService");
+  });
 });

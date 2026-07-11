@@ -1,4 +1,5 @@
 import * as go from "@schemago/goast";
+import { createParser } from "@schemago/goast";
 import type { AppServiceDef, BackendExtension } from "../types/index.js";
 import { serviceConstructorName, serviceImplName, serviceTypeName } from "../utils/naming.js";
 import { toGoType } from "../utils/goast.js";
@@ -112,18 +113,63 @@ export function generateServiceFile(
   if (svc.extension && extensions) {
     const ext = extensions.find((e) => e.name === svc.extension);
     if (ext?.service?.generateFile) {
+      const content = ext.service.generateFile({
+        name: svc.name,
+        options: svc.extensionOptions ?? {},
+        typeName,
+        implName,
+        ctorName,
+        close: svc.close,
+      });
+
+      const parser = createParser();
+      const wrapped = `package p\n\n${content}`;
+      const result = parser.parseSummary(wrapped);
+      if (Array.isArray(result) && result.length > 1) {
+        const lines = wrapped.split("\n");
+        const parts: ScaffoldPart[] = [];
+
+        for (const d of result) {
+          if (d.kind === "imports" || !d.symbolName) continue;
+
+          const declText = lines.slice(d.startLine - 1, d.endLine).join("\n");
+          const part: ScaffoldPart = {
+            symbolName: d.symbolName,
+            content: declText,
+            expectsUserCode: d.symbolName !== typeName,
+            isStub: d.symbolName === ctorName,
+            kind: "interface",
+          };
+
+          if (d.kind === "function" || d.kind === "method") {
+            part.kind = d.kind === "method" ? "method" : "function";
+            const braceIdx = declText.indexOf("{");
+            if (braceIdx >= 0) {
+              part.signature = declText.substring(0, braceIdx).trimEnd();
+              let body = declText.substring(braceIdx + 1);
+              body = body
+                .replace(/^\r?\n?/, "")
+                .replace(/\r?\n?\}\s*$/, "")
+                .trimEnd();
+              part.content = body;
+            }
+          } else if (d.kind === "struct") {
+            part.kind = "struct";
+          } else {
+            part.kind = "interface";
+          }
+
+          parts.push(part);
+        }
+
+        if (parts.length > 0) return parts;
+      }
+
       return [
         {
           kind: "interface" as const,
           symbolName: typeName,
-          content: ext.service.generateFile({
-            name: svc.name,
-            options: svc.extensionOptions ?? {},
-            typeName,
-            implName,
-            ctorName,
-            close: svc.close,
-          }),
+          content,
           expectsUserCode: false,
           isStub: false,
         },
