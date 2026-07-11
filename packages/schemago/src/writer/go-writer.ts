@@ -12,6 +12,12 @@ export function shortHash(id: string): string {
   return createHash("sha256").update(id).digest("hex").slice(0, 8);
 }
 
+const bareStartRe = /\/\/ @gen:start\s*$/m;
+const bareEndRe = /\/\/ @gen:end\s*$/m;
+function hasBareMarkers(text: string): boolean {
+  return bareStartRe.test(text) && bareEndRe.test(text);
+}
+
 let _parser: ReturnType<typeof createParser> | null = null;
 function getParser() {
   if (!_parser) _parser = createParser();
@@ -371,6 +377,8 @@ function removeStaleMarkerDeclarations(
       plannedByName.size > 0 &&
       (rawFirstLine.startsWith("\treturn") || rawFirstLine.startsWith("\t// TODO"))
     ) {
+      const markerRegion = [...plannedByName.values()].find((r) => shortHash(r.id) === id);
+      if (markerRegion?.expectsUserCode) continue;
       toRemove.push({ start: marker.startIdx, end: marker.endIdx });
       diagnostics.push({
         level: "warning",
@@ -461,6 +469,8 @@ function buildBody(region: GeneratedRegion, fileText: string): string {
     if (existingBody !== null) {
       if (hasStart || hasEnd || existingHasMarkers) {
         body = applyInnerMarkers(region, existingBody, body);
+      } else if (existingBody.trim() && hasBareMarkers(existingBody)) {
+        body = existingBody;
       } else if (existingBody.trim()) {
         const nl = fileText.includes("\r\n") ? "\r\n" : "\n";
         body = `\t// @gen:start ${sh}${nl}${existingBody}${nl}\t// @gen:end ${sh}`;

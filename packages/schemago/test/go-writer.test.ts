@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { injectGoFile, mergeImports } from "../src/writer/go-writer.js";
+import { injectGoFile, mergeImports, shortHash } from "../src/writer/go-writer.js";
 import type { CompilerCache, Diagnostic, GeneratedFilePatch } from "../src/index.js";
 
 function patch(imports: string[]): GeneratedFilePatch {
@@ -273,6 +273,213 @@ func JwtAuth(c *gin.Context) {
       expect(result).toContain("import (");
       expect(result).toContain('"github.com/gin-gonic/gin"');
       expect(result).toContain("func JwtAuth");
+    });
+  });
+
+  describe("stale marker removal respects expectsUserCode", () => {
+    it("does not remove markers when user code starts with return and expectsUserCode is true", () => {
+      const regionId = "service.postgres.3Close";
+      const sh = shortHash(regionId);
+      const fileText = `package postgres
+
+func (s *postgresServiceImpl) Close() error {
+\t// @gen:start ${sh}
+\treturn s.db.Close()
+\t// @gen:end ${sh}
+}`;
+      const patch: GeneratedFilePatch = {
+        path: "internal/service/postgres.go",
+        regions: [
+          {
+            id: regionId,
+            symbolName: "postgresServiceImpl.Close",
+            kind: "method",
+            receiver: "*postgresServiceImpl",
+            signature: "func (s *postgresServiceImpl) Close() error",
+            language: "go",
+            content: "\treturn nil",
+            expectsUserCode: true,
+          },
+        ],
+      };
+      const diagnostics: Diagnostic[] = [];
+      const result = injectGoFile(fileText, patch, emptyCache(), diagnostics);
+
+      expect(result).toContain("return s.db.Close()");
+      expect(result).not.toContain("return nil");
+      expect(diagnostics.filter((d) => d.code === "stale-marker-removed")).toHaveLength(0);
+    });
+
+    it("removes markers when user code starts with return but expectsUserCode is false", () => {
+      const regionId = "service.postgres.3Close";
+      const sh = shortHash(regionId);
+      const fileText = `package postgres
+
+func (s *postgresServiceImpl) Close() error {
+\t// @gen:start ${sh}
+\treturn s.db.Close()
+\t// @gen:end ${sh}
+}`;
+      const patch: GeneratedFilePatch = {
+        path: "internal/service/postgres.go",
+        regions: [
+          {
+            id: regionId,
+            symbolName: "postgresServiceImpl.Close",
+            kind: "method",
+            receiver: "*postgresServiceImpl",
+            signature: "func (s *postgresServiceImpl) Close() error",
+            language: "go",
+            content: "\treturn nil",
+            expectsUserCode: false,
+          },
+        ],
+      };
+      const diagnostics: Diagnostic[] = [];
+      const result = injectGoFile(fileText, patch, emptyCache(), diagnostics);
+
+      expect(result).toContain("return nil");
+      expect(result).not.toContain("return s.db.Close()");
+      expect(diagnostics.some((d) => d.code === "stale-marker-removed")).toBe(true);
+    });
+
+    it("does not remove markers when user code starts with // TODO and expectsUserCode is true", () => {
+      const regionId = "handler.user.1handler";
+      const sh = shortHash(regionId);
+      const fileText = `package handler
+
+func (h *UserHandler) Handle() {
+\t// @gen:start ${sh}
+\t// TODO: implement
+\treturn
+\t// @gen:end ${sh}
+}`;
+      const patch: GeneratedFilePatch = {
+        path: "internal/handler/user.go",
+        regions: [
+          {
+            id: regionId,
+            symbolName: "UserHandler.Handle",
+            kind: "method",
+            receiver: "*UserHandler",
+            signature: "func (h *UserHandler) Handle()",
+            language: "go",
+            content: "\t// TODO: implement",
+            expectsUserCode: true,
+          },
+        ],
+      };
+      const diagnostics: Diagnostic[] = [];
+      const result = injectGoFile(fileText, patch, emptyCache(), diagnostics);
+
+      expect(result).toContain("// TODO: implement");
+      expect(diagnostics.filter((d) => d.code === "stale-marker-removed")).toHaveLength(0);
+    });
+  });
+
+  describe("bare marker preservation", () => {
+    it("preserves user code with bare markers without adding outer markers", () => {
+      const fileText = `package postgres
+
+func (s *postgresServiceImpl) Close() error {
+\t// @gen:start
+\tsqlDB, err := s.db.DB()
+\tif err != nil {
+\t\treturn err
+\t}
+\treturn sqlDB.Close()
+\t// @gen:end
+}`;
+      const regionId = "service.postgres.3Close";
+      const patch: GeneratedFilePatch = {
+        path: "internal/service/postgres.go",
+        regions: [
+          {
+            id: regionId,
+            symbolName: "postgresServiceImpl.Close",
+            kind: "method",
+            receiver: "*postgresServiceImpl",
+            signature: "func (s *postgresServiceImpl) Close() error",
+            language: "go",
+            content: "\treturn nil",
+            expectsUserCode: true,
+          },
+        ],
+      };
+      const diagnostics: Diagnostic[] = [];
+      const result = injectGoFile(fileText, patch, emptyCache(), diagnostics);
+
+      expect(result).toContain("return sqlDB.Close()");
+      expect(result).not.toContain("return nil");
+      expect(result).not.toContain(`// @gen:start ${shortHash(regionId)}`);
+      expect(result).not.toContain(`// @gen:end ${shortHash(regionId)}`);
+    });
+
+    it("preserves bare markers even when user code starts with return", () => {
+      const fileText = `package postgres
+
+func (s *postgresServiceImpl) Close() error {
+\t// @gen:start
+\treturn s.db.Close()
+\t// @gen:end
+}`;
+      const regionId = "service.postgres.3Close";
+      const patch: GeneratedFilePatch = {
+        path: "internal/service/postgres.go",
+        regions: [
+          {
+            id: regionId,
+            symbolName: "postgresServiceImpl.Close",
+            kind: "method",
+            receiver: "*postgresServiceImpl",
+            signature: "func (s *postgresServiceImpl) Close() error",
+            language: "go",
+            content: "\treturn nil",
+            expectsUserCode: true,
+          },
+        ],
+      };
+      const diagnostics: Diagnostic[] = [];
+      const result = injectGoFile(fileText, patch, emptyCache(), diagnostics);
+
+      expect(result).toContain("return s.db.Close()");
+      expect(result).not.toContain("return nil");
+      expect(result).not.toContain(`// @gen:start ${shortHash(regionId)}`);
+    });
+
+    it("still adds outer markers when no bare markers present", () => {
+      const fileText = `package postgres
+
+func (s *postgresServiceImpl) Close() error {
+\tsqlDB, err := s.db.DB()
+\tif err != nil {
+\t\treturn err
+\t}
+\treturn sqlDB.Close()
+}`;
+      const regionId = "service.postgres.3Close";
+      const sh = shortHash(regionId);
+      const patch: GeneratedFilePatch = {
+        path: "internal/service/postgres.go",
+        regions: [
+          {
+            id: regionId,
+            symbolName: "postgresServiceImpl.Close",
+            kind: "method",
+            receiver: "*postgresServiceImpl",
+            signature: "func (s *postgresServiceImpl) Close() error",
+            language: "go",
+            content: "\treturn nil",
+            expectsUserCode: true,
+          },
+        ],
+      };
+      const diagnostics: Diagnostic[] = [];
+      const result = injectGoFile(fileText, patch, emptyCache(), diagnostics);
+
+      expect(result).toContain("return sqlDB.Close()");
+      expect(result).toContain(`// @gen:start ${sh}`);
+      expect(result).toContain(`// @gen:end ${sh}`);
     });
   });
 });
