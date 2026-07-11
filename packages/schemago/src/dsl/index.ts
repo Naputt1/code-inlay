@@ -34,6 +34,7 @@ import type {
   ServiceExtensionResult,
   ServiceFileCtx,
   ServiceInput,
+  ServiceMainCtx,
   SSEDefinition,
   SSEFieldMapping,
   TestingConfig,
@@ -220,6 +221,25 @@ export function defineServiceExtension<TOptions extends Record<string, unknown>>
     goModules?: string[] | ((options: TOptions) => string[]);
     generateFile?: (ctx: ServiceFileCtx<TOptions>) => string;
     generateDialectMethod?: (ctx: DialectMethodCtx<TOptions>) => string;
+    structFields?: (
+      ctx: ServiceFileCtx<TOptions>,
+    ) => { name: string; goType: string }[];
+    extraImports?: (ctx: ServiceFileCtx<TOptions>) => string[];
+    interfaceMethods?: (
+      ctx: ServiceFileCtx<TOptions>,
+    ) => { name: string; signature: string }[];
+    implementationMethods?: (
+      ctx: ServiceFileCtx<TOptions>,
+    ) => { name: string; signature: string; body: string }[];
+    ctor?: {
+      params?: (ctx: ServiceFileCtx<TOptions>) => string;
+      fieldInit?: (ctx: ServiceFileCtx<TOptions>) => string;
+      body?: (ctx: ServiceFileCtx<TOptions>) => string;
+    };
+    mainConstructorArgs?: (ctx: ServiceMainCtx<TOptions>) => string;
+    startup?: (ctx: ServiceMainCtx<TOptions>) => string;
+    healthCheck?: (ctx: ServiceMainCtx<TOptions>) => string;
+    extraFiles?: (ctx: ServiceFileCtx<TOptions>) => Record<string, string>;
   };
 }): BackendExtension &
   ((opts: { name?: string; close?: boolean } & TOptions) => ServiceExtensionResult) {

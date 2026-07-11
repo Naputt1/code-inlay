@@ -338,7 +338,24 @@ const app = defineApp({
   extensions: [gorm],
   services: {
     mygorm: gorm({ driver: "sqlite", close: true }),
-    redis: defineService({ close: true }),
+    redis: defineService({
+      close: true,
+      interfaceMethods: [
+        {
+          name: "Set",
+          signature:
+            "(ctx context.Context, key string, value interface{}, ttl time.Duration) error",
+        },
+        {
+          name: "Get",
+          signature: "(ctx context.Context, key string) (string, error)",
+        },
+        {
+          name: "Del",
+          signature: "(ctx context.Context, keys ...string) error",
+        },
+      ],
+    }),
   },
   runtime: defineRuntime({
     enabled: true,

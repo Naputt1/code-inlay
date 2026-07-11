@@ -88,6 +88,22 @@ importers:
         specifier: ^3.2.4
         version: 3.2.6(@types/node@24.13.2)(@vitest/ui@3.2.6)(tsx@4.22.4)
 
+  sample-project/snapshot:
+    dependencies:
+      '@schemago/schemago':
+        specifier: file:../../packages/schemago
+        version: file:packages/schemago
+      zod:
+        specifier: ^3.25.67
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^24.0.3
+        version: 24.13.2
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+
 packages:
 
   '@algolia/abtesting@1.21.0':
@@ -980,6 +996,10 @@ packages:
     resolution: {integrity: sha512-5L+T1fMX4RIEBoZzT0+sQ0PhTS36NULFmMXtl1TZo44TMAROIMHbZufSOjVWt/Y622BtxgxtaNOokbTDvfsrZA==}
     cpu: [x64]
     os: [win32]
+
+  '@schemago/schemago@file:packages/schemago':
+    resolution: {directory: packages/schemago, type: directory}
+    hasBin: true
 
   '@shikijs/core@2.5.0':
     resolution: {integrity: sha512-uu/8RExTKtavlpH7XqnVYBrfBkUc20ngXiX9NSrBhOVZYv/7XQRKUyhtkeflY5QsxC0GbJThCerruZfsUaSldg==}
@@ -3205,6 +3225,13 @@ snapshots:
 
   '@rollup/rollup-win32-x64-msvc@4.62.0':
     optional: true
+
+  '@schemago/schemago@file:packages/schemago':
+    dependencies:
+      '@schemago/goast': link:packages/goast
+      semver: 7.8.5
+      tsx: 4.22.4
+      zod: 3.25.76
 
   '@shikijs/core@2.5.0':
     dependencies:
