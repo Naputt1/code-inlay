@@ -180,3 +180,6 @@ export type {
   SummaryDeclaration,
   SummaryResult,
 } from "./parser.js";
+
+// Comparison — AST-level equality ignoring comments and formatting
+export { goSnippetEqual, goBodyEqual } from "./compare.js";

@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { createParser } from "@schemago/goast";
+import { createParser, goBodyEqual } from "@schemago/goast";
 import type {
   CompilerCache,
   Diagnostic,
@@ -346,6 +346,26 @@ function removeStaleMarkerDeclarations(
         regionId: id,
       });
       continue;
+    }
+    const execParts = id.match(/^[\w.]+\.(\w+)\.usecase\.impl\.execute$/);
+    if (execParts) {
+      const plannedName = `${execParts[1]}UsecaseImpl.Execute`;
+      const region = plannedByName.get(plannedName);
+      if (region) {
+        const bodyContent = parts.slice(1, -1).join("\n");
+        if (!goBodyEqual(bodyContent, region.content)) {
+          region.content = bodyContent;
+        }
+        toRemove.push({ start: marker.startIdx, end: marker.endIdx });
+        diagnostics.push({
+          level: "warning",
+          code: "stale-marker-removed",
+          message: `Removed stale execute-body marker "${id}".`,
+          file,
+          regionId: id,
+        });
+        continue;
+      }
     }
     const rawFirstLine = parts.slice(1, -1).join("\n").split("\n")[0];
     if (
