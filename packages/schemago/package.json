@@ -27,7 +27,7 @@
     "snapshot:update": "UPDATE_SNAPSHOT=true vitest run test/snapshot.test.ts"
   },
   "dependencies": {
-    "@schemago/goast": "workspace:*",
+    "@schemago/goast": "file:../goast",
     "semver": "^7.8.5",
     "tsx": "^4.23.0",
     "zod": "^3.25.67"

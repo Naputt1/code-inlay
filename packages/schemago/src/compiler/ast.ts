@@ -144,7 +144,6 @@ export function buildAst(app: AppDefinition, diagnostics: Diagnostic[]): AppAst 
         ctor: ext?.service?.ctor
           ? {
               params: ext.service.ctor.params?.(fileCtx),
-              fieldInit: ext.service.ctor.fieldInit?.(fileCtx),
               body: ext.service.ctor.body?.(fileCtx),
             }
           : undefined,

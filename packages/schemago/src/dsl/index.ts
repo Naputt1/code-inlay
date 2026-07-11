@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { validationZ } from "../schema/extras.js";
 import { EnvRef } from "../types/index.js";
+import { parseGoSignature } from "../utils/go-signature.js";
+import type { Field, Statement, Expression } from "@schemago/goast";
 import type {
   AdapterRef,
   AppDefinition,
@@ -195,7 +197,7 @@ export function defineService(input: {
   name?: string;
   close?: boolean;
   env?: string[];
-  structFields?: { name: string; goType: string }[];
+  structFields?: Field[];
   extraImports?: string[];
   interfaceMethods?: { name: string; signature: string }[];
 }): ServiceDefinition {
@@ -206,7 +208,10 @@ export function defineService(input: {
     env: input.env,
     structFields: input.structFields,
     extraImports: input.extraImports,
-    interfaceMethods: input.interfaceMethods,
+    interfaceMethods: input.interfaceMethods?.map((m) => {
+      const parsed = parseGoSignature(m.signature);
+      return { name: m.name, params: parsed.params, results: parsed.results };
+    }),
   };
 }
 
@@ -221,24 +226,21 @@ export function defineServiceExtension<TOptions extends Record<string, unknown>>
     goModules?: string[] | ((options: TOptions) => string[]);
     generateFile?: (ctx: ServiceFileCtx<TOptions>) => string;
     generateDialectMethod?: (ctx: DialectMethodCtx<TOptions>) => string;
-    structFields?: (
-      ctx: ServiceFileCtx<TOptions>,
-    ) => { name: string; goType: string }[];
+    structFields?: (ctx: ServiceFileCtx<TOptions>) => Field[];
     extraImports?: (ctx: ServiceFileCtx<TOptions>) => string[];
     interfaceMethods?: (
       ctx: ServiceFileCtx<TOptions>,
-    ) => { name: string; signature: string }[];
+    ) => { name: string; params: Field[]; results?: Field[] }[];
     implementationMethods?: (
       ctx: ServiceFileCtx<TOptions>,
-    ) => { name: string; signature: string; body: string }[];
+    ) => { name: string; params: Field[]; results?: Field[]; body: Statement[] }[];
     ctor?: {
-      params?: (ctx: ServiceFileCtx<TOptions>) => string;
-      fieldInit?: (ctx: ServiceFileCtx<TOptions>) => string;
-      body?: (ctx: ServiceFileCtx<TOptions>) => string;
+      params?: (ctx: ServiceFileCtx<TOptions>) => Field[];
+      body?: (ctx: ServiceFileCtx<TOptions>) => Statement[];
     };
-    mainConstructorArgs?: (ctx: ServiceMainCtx<TOptions>) => string;
-    startup?: (ctx: ServiceMainCtx<TOptions>) => string;
-    healthCheck?: (ctx: ServiceMainCtx<TOptions>) => string;
+    mainConstructorArgs?: (ctx: ServiceMainCtx<TOptions>) => Expression[];
+    startup?: (ctx: ServiceMainCtx<TOptions>) => Statement[];
+    healthCheck?: (ctx: ServiceMainCtx<TOptions>) => Statement[];
     extraFiles?: (ctx: ServiceFileCtx<TOptions>) => Record<string, string>;
   };
 }): BackendExtension &

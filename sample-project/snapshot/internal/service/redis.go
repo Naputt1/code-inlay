@@ -8,7 +8,7 @@ type redisServiceImpl struct {
 }
 
 func NewRedisService() (*redisServiceImpl, error) {
-	return &redisServiceImpl{}, nil
+	return &redisServiceImpl(nil)
 }
 
 func (s *redisServiceImpl) Close() error {

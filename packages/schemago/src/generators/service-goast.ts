@@ -1,7 +1,7 @@
 import * as go from "@schemago/goast";
-import { toGoType } from "../utils/goast.js";
 import type { AppServiceDef, BackendExtension } from "../types/index.js";
 import { serviceConstructorName, serviceImplName, serviceTypeName } from "../utils/naming.js";
+import { toGoType } from "../utils/goast.js";
 import type { ScaffoldPart } from "./types.js";
 
 function renderImports(imports: string[]): string {
@@ -18,6 +18,7 @@ function renderInterfaceContent(
   dbAccessor: string | undefined,
   dbType: string | undefined,
   close: boolean | undefined,
+  interfaceMethods?: { name: string; params: go.Field[]; results?: go.Field[] }[],
 ): string[] {
   const parts: string[] = [];
 
@@ -31,6 +32,11 @@ function renderInterfaceContent(
   }
   if (close) {
     methods.push(go.field(["Close"], go.funcType([], [go.field([], go.id("error"))])));
+  }
+  if (interfaceMethods) {
+    for (const m of interfaceMethods) {
+      methods.push(go.field([m.name], go.funcType(m.params, m.results)));
+    }
   }
 
   if (methods.length === 0) {
@@ -52,18 +58,9 @@ function renderInterfaceContent(
 function renderStructContent(
   implName: string,
   needsConfig: boolean,
-  svcFields?: { name: string; goType: string }[],
+  svcFields?: go.Field[],
 ): string {
-  const structFields: go.Field[] = [];
-  if (svcFields) {
-    for (const f of svcFields) {
-      if ("goType" in f) {
-        structFields.push(go.field([f.name], toGoType(f.goType)));
-      } else {
-        structFields.push(f as unknown as go.Field);
-      }
-    }
-  }
+  const structFields: go.Field[] = [...(svcFields ?? [])];
   if (needsConfig) {
     structFields.push(go.field(["cfg"], go.qual("config", "Config")));
   }
@@ -78,11 +75,6 @@ function renderStructContent(
   return sb.toString().trimEnd();
 }
 
-function constructorSignature(ctorName: string, params: string, implName: string): string {
-  const sig = `func ${ctorName}(${params}) (*${implName}, error)`;
-  return sig;
-}
-
 function methodSignature(
   receiverType: string,
   name: string,
@@ -93,6 +85,18 @@ function methodSignature(
   const sb = new go.StringBuilder();
   go.printDeclaration(sb, m, 0);
   return sb.toString().trimEnd();
+}
+
+function funcDeclParts(fn: go.FuncDecl): { signature: string; body: string } {
+  const sb = new go.StringBuilder();
+  go.printDeclaration(sb, fn, 0);
+  const rendered = sb.toString().trimEnd();
+  const braceIdx = rendered.indexOf("{\n");
+  if (braceIdx === -1) return { signature: rendered, body: "" };
+  const sig = rendered.substring(0, braceIdx).trimEnd();
+  const bodyContent = rendered.substring(braceIdx + 1);
+  const trimmed = bodyContent.replace(/^\{\n/, "").replace(/\n\}$/, "");
+  return { signature: sig, body: trimmed };
 }
 
 export function generateServiceFile(
@@ -148,18 +152,8 @@ export function generateServiceFile(
     svc.dbAccessor,
     svc.dbType,
     svc.close,
+    svc.interfaceMethods,
   );
-  if (svc.interfaceMethods) {
-    for (const m of svc.interfaceMethods) {
-      const lastIdx = interfaceParts.length - 1;
-      const last = interfaceParts[lastIdx];
-      if (last.startsWith("type ")) {
-        const lines = last.split("\n");
-        lines.splice(lines.length - 1, 0, `\t${m.name}${m.signature}`);
-        interfaceParts[lastIdx] = lines.join("\n");
-      }
-    }
-  }
   parts.push({
     kind: "interface" as const,
     symbolName: typeName,
@@ -176,33 +170,33 @@ export function generateServiceFile(
     isStub: false,
   });
 
-  const ctorParams: string[] = [];
+  const allParams: go.Field[] = [];
   if (svc.ctor?.params) {
-    ctorParams.push(svc.ctor.params);
+    allParams.push(...svc.ctor.params);
   }
   if (needsConfig) {
-    ctorParams.push("cfg config.Config");
+    allParams.push(go.field(["cfg"], go.qual("config", "Config")));
   }
-  const ctorSig = constructorSignature(ctorName, ctorParams.join(", "), implName);
 
-  const ctorFieldParts: string[] = [];
-  if (svc.ctor?.fieldInit) {
-    ctorFieldParts.push(svc.ctor.fieldInit);
-  }
-  if (needsConfig) {
-    ctorFieldParts.push("cfg: cfg");
-  }
-  const ctorArg = ctorFieldParts.join(", ");
+  const allBody = svc.ctor?.body ?? [
+    go.return_(go.call(go.addr(go.id(implName)), go.id("nil"))),
+  ];
 
-  const ctorBody = svc.ctor?.body ? svc.ctor.body : `\treturn &${implName}{${ctorArg}}, nil`;
+  const ctorFn = go.function_(
+    ctorName,
+    allParams,
+    [go.field([], go.star(go.id(implName))), go.field([], go.id("error"))],
+    go.block(...allBody),
+  );
+  const { signature: ctorSig, body: ctorBody } = funcDeclParts(ctorFn);
 
   parts.push({
     kind: "function" as const,
     symbolName: ctorName,
     signature: ctorSig,
     content: ctorBody,
-    expectsUserCode: true,
-    isStub: false,
+    expectsUserCode: !svc.ctor?.body,
+    isStub: true,
   });
 
   if (svc.dbAccessor && svc.dbType) {
@@ -227,19 +221,27 @@ export function generateServiceFile(
       receiver: `*${implName}`,
       signature: sig,
       content: `\treturn nil`,
-      expectsUserCode: false,
+      expectsUserCode: true,
       isStub: false,
     });
   }
 
   if (svc.implementationMethods) {
     for (const m of svc.implementationMethods) {
+      const fn = go.method(
+        go.field(["s"], go.star(go.id(implName))),
+        m.name,
+        m.params,
+        m.results,
+        go.block(...m.body),
+      );
+      const { signature, body } = funcDeclParts(fn);
       parts.push({
         kind: "method" as const,
         symbolName: `${implName}.${m.name}`,
         receiver: `*${implName}`,
-        signature: m.signature,
-        content: m.body,
+        signature,
+        content: body,
         expectsUserCode: false,
         isStub: false,
       });

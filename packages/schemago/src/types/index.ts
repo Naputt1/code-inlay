@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import type { Field, Statement, Expression } from "@schemago/goast";
 
 export const AST_VERSION = "2.0";
 export const COMPILER_VERSION = "0.2.0";
@@ -162,9 +163,9 @@ export type ServiceDefinition = {
   name: string;
   close?: boolean;
   env?: string[];
-  structFields?: { name: string; goType: string }[];
+  structFields?: Field[];
   extraImports?: string[];
-  interfaceMethods?: { name: string; signature: string }[];
+  interfaceMethods?: { name: string; params: Field[]; results?: Field[] }[];
 };
 
 export type ServiceFileCtx<TOptions> = {
@@ -204,24 +205,21 @@ export type BackendExtension = {
     goModules?: string[] | ((options: Record<string, unknown>) => string[]);
     generateFile?: (ctx: ServiceFileCtx<Record<string, unknown>>) => string;
     generateDialectMethod?: (ctx: DialectMethodCtx<Record<string, unknown>>) => string;
-    structFields?: (
-      ctx: ServiceFileCtx<Record<string, unknown>>,
-    ) => { name: string; goType: string }[];
+    structFields?: (ctx: ServiceFileCtx<Record<string, unknown>>) => Field[];
     extraImports?: (ctx: ServiceFileCtx<Record<string, unknown>>) => string[];
     interfaceMethods?: (
       ctx: ServiceFileCtx<Record<string, unknown>>,
-    ) => { name: string; signature: string }[];
+    ) => { name: string; params: Field[]; results?: Field[] }[];
     implementationMethods?: (
       ctx: ServiceFileCtx<Record<string, unknown>>,
-    ) => { name: string; signature: string; body: string }[];
+    ) => { name: string; params: Field[]; results?: Field[]; body: Statement[] }[];
     ctor?: {
-      params?: (ctx: ServiceFileCtx<Record<string, unknown>>) => string;
-      fieldInit?: (ctx: ServiceFileCtx<Record<string, unknown>>) => string;
-      body?: (ctx: ServiceFileCtx<Record<string, unknown>>) => string;
+      params?: (ctx: ServiceFileCtx<Record<string, unknown>>) => Field[];
+      body?: (ctx: ServiceFileCtx<Record<string, unknown>>) => Statement[];
     };
-    mainConstructorArgs?: (ctx: ServiceMainCtx<Record<string, unknown>>) => string;
-    startup?: (ctx: ServiceMainCtx<Record<string, unknown>>) => string;
-    healthCheck?: (ctx: ServiceMainCtx<Record<string, unknown>>) => string;
+    mainConstructorArgs?: (ctx: ServiceMainCtx<Record<string, unknown>>) => Expression[];
+    startup?: (ctx: ServiceMainCtx<Record<string, unknown>>) => Statement[];
+    healthCheck?: (ctx: ServiceMainCtx<Record<string, unknown>>) => Statement[];
     extraFiles?: (ctx: ServiceFileCtx<Record<string, unknown>>) => Record<string, string>;
   };
 };
@@ -424,18 +422,17 @@ export type AppServiceDef = {
   dbAccessor?: string;
   dbType?: string;
   dbTypePkg?: string;
-  structFields?: { name: string; goType: string }[];
+  structFields?: Field[];
   extraImports?: string[];
-  interfaceMethods?: { name: string; signature: string }[];
-  implementationMethods?: { name: string; signature: string; body: string }[];
+  interfaceMethods?: { name: string; params: Field[]; results?: Field[] }[];
+  implementationMethods?: { name: string; params: Field[]; results?: Field[]; body: Statement[] }[];
   ctor?: {
-    params?: string;
-    fieldInit?: string;
-    body?: string;
+    params?: Field[];
+    body?: Statement[];
   };
-  mainConstructorArgs?: string;
-  startup?: string;
-  healthCheck?: string;
+  mainConstructorArgs?: Expression[];
+  startup?: Statement[];
+  healthCheck?: Statement[];
   extraFiles?: Record<string, string>;
 };
 

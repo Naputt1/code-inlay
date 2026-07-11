@@ -464,10 +464,10 @@ function buildBody(region: GeneratedRegion, fileText: string): string {
         body = applyInnerMarkers(region, existingBody, body);
       } else if (existingBody.trim()) {
         const nl = fileText.includes("\r\n") ? "\r\n" : "\n";
-        body = `${existingBody}${nl}\t// @gen:start ${sh}${nl}\t// @gen:end ${sh}`;
+        body = `\t// @gen:start ${sh}${nl}${existingBody}${nl}\t// @gen:end ${sh}`;
       } else {
         const nl = fileText.includes("\r\n") ? "\r\n" : "\n";
-        body = `${body}${nl}\t// @gen:start ${sh}${nl}\t// @gen:end ${sh}`;
+        body = `\t// @gen:start ${sh}${nl}${body}${nl}\t// @gen:end ${sh}`;
       }
     } else if (hasStart && !hasEnd) {
       const nl = fileText.includes("\r\n") ? "\r\n" : "\n";

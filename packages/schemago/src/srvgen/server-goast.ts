@@ -163,7 +163,11 @@ export function generateServer(
     if (svc.mainConstructorArgs || needsCfg) {
       const ctorArgsParts: string[] = [];
       if (svc.mainConstructorArgs) {
-        ctorArgsParts.push(svc.mainConstructorArgs);
+        for (const arg of svc.mainConstructorArgs) {
+          const sb = new go.StringBuilder();
+          go.printExpr(sb, arg, 0);
+          ctorArgsParts.push(sb.toString());
+        }
       }
       if (needsCfg) {
         ctorArgsParts.push("cfg");
@@ -192,7 +196,11 @@ export function generateServer(
   for (const svc of ast.services) {
     if (svc.startup) {
       addRaw("");
-      addRaw(svc.startup);
+      for (const stmt of svc.startup) {
+        const sb = new go.StringBuilder();
+        go.printStatement(sb, stmt, 1);
+        addRaw(sb.toString().trimEnd());
+      }
     }
   }
 
@@ -269,7 +277,11 @@ export function generateServer(
       addRaw(`\t})`);
       addRaw(`\tr.GET("${readinessPath}", func(c *gin.Context) {`);
       for (const svc of servicesWithHealthCheck) {
-        addRaw(svc.healthCheck!);
+        for (const stmt of svc.healthCheck!) {
+          const sb = new go.StringBuilder();
+          go.printStatement(sb, stmt, 2);
+          addRaw(sb.toString().trimEnd());
+        }
       }
       addRaw(`\t\tc.JSON(http.StatusOK, gin.H{"status": "ready"})`);
       addRaw(`\t})`);
