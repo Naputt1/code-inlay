@@ -183,3 +183,8 @@ export type {
 
 // Comparison — AST-level equality ignoring comments and formatting
 export { goSnippetEqual, goBodyEqual } from "./compare.js";
+
+// Namespace export for convenience (import { go } from "@schemago/goast")
+import * as _go from "./builder.js";
+const go = { ..._go };
+export { go };

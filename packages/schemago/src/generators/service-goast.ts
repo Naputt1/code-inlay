@@ -57,7 +57,11 @@ function renderStructContent(
   const structFields: go.Field[] = [];
   if (svcFields) {
     for (const f of svcFields) {
-      structFields.push(go.field([f.name], toGoType(f.goType)));
+      if ("goType" in f) {
+        structFields.push(go.field([f.name], toGoType(f.goType)));
+      } else {
+        structFields.push(f as unknown as go.Field);
+      }
     }
   }
   if (needsConfig) {

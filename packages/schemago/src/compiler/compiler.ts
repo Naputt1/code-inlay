@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, readdirSync, statSync, unlinkSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { resolve } from "node:path";
 import { watch } from "node:fs";
@@ -463,14 +463,23 @@ async function loadConfig(
   try {
     const absolutePath = resolve(cwd, configFile);
     if (absolutePath.endsWith(".ts") || absolutePath.endsWith(".tsx")) {
-      const { register } = await import("tsx/esm/api");
-      const unregister = register();
-      try {
-        const module = await import(`${pathToFileURL(absolutePath).href}?t=${Date.now()}`);
-        return readDefaultApp(module, configFile, diagnostics);
-      } finally {
-        unregister();
-      }
+      const tsSource = readFileSync(absolutePath, "utf8");
+      const { createRequire } = await import("node:module");
+      const req = createRequire(import.meta.url);
+      const ts = req("typescript");
+      const result = ts.transpileModule(tsSource, {
+        compilerOptions: {
+          module: ts.ModuleKind.ESNext,
+          target: ts.ScriptTarget.ESNext,
+          strict: false,
+          esModuleInterop: true,
+        },
+      });
+      const jsPath = absolutePath.replace(/\.(ts|tsx)$/, ".mjs");
+      writeFileSync(jsPath, result.outputText);
+      const module = await import(`${pathToFileURL(jsPath).href}?t=${Date.now()}`);
+      try { unlinkSync(jsPath); } catch { /* ignore */ }
+      return readDefaultApp(module, configFile, diagnostics);
     }
 
     const module = await import(`${pathToFileURL(absolutePath).href}?t=${Date.now()}`);
