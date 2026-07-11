@@ -482,6 +482,124 @@ func (s *postgresServiceImpl) Close() error {
       expect(result).toContain(`// @gen:end ${sh}`);
     });
   });
+
+  describe("injectAllViaMarkers symbol region rendering", () => {
+    it("converts old single blob marker into separate bare declarations without duplicates", () => {
+      // Old format: one blob marker wrapping all 3 declarations
+      const oldFile = `package svc
+
+// @gen:start service.jwt
+type JwtService interface {
+\tGenerateToken() (string, error)
+}
+
+type jwtServiceImpl struct {
+}
+
+func NewJwtService() (*jwtServiceImpl, error) {
+\treturn &jwtServiceImpl{cfg: cfg}, nil
+}
+// @gen:end service.jwt
+`;
+      const patch: GeneratedFilePatch = {
+        path: "internal/service/jwt.go",
+        regions: [
+          {
+            id: "service.jwt.0interface",
+            symbolName: "JwtService",
+            kind: "interface",
+            language: "go",
+            content: "type JwtService interface {\n\tGenerateToken() (string, error)\n}",
+            expectsUserCode: false,
+            isStub: false,
+          },
+          {
+            id: "service.jwt.1struct",
+            symbolName: "jwtServiceImpl",
+            kind: "struct",
+            language: "go",
+            content: "type jwtServiceImpl struct {\n}",
+            expectsUserCode: true,
+            isStub: false,
+          },
+          {
+            id: "service.jwt.2ctor",
+            symbolName: "NewJwtService",
+            kind: "function",
+            signature: "func NewJwtService() (*jwtServiceImpl, error)",
+            language: "go",
+            content: "\treturn &jwtServiceImpl{cfg: cfg}, nil",
+            expectsUserCode: true,
+            isStub: true,
+          },
+        ],
+      };
+      const diagnostics: Diagnostic[] = [];
+      const cache = emptyCache();
+      cache.symbolsByFile = {
+        "internal/service/jwt.go": {
+          JwtService: "old-key",
+        },
+      };
+      const result = injectGoFile(oldFile, patch, cache, diagnostics);
+
+      // Should contain all 3 declarations
+      expect(result).toContain("type JwtService interface");
+      expect(result).toContain("type jwtServiceImpl struct");
+      expect(result).toContain("func NewJwtService() (*jwtServiceImpl, error)");
+
+      // Should NOT contain blob markers wrapping symbol declarations
+      expect(result).not.toContain("// @gen:start service.jwt.0interface");
+      expect(result).not.toContain("// @gen:end service.jwt.0interface");
+      expect(result).not.toContain("// @gen:start service.jwt.1struct");
+      expect(result).not.toContain("// @gen:end service.jwt.1struct");
+      expect(result).not.toContain("// @gen:start service.jwt.2ctor");
+      expect(result).not.toContain("// @gen:end service.jwt.2ctor");
+
+      // Should NOT have the old single blob marker
+      expect(result).not.toContain("// @gen:start service.jwt");
+      expect(result).not.toContain("// @gen:end service.jwt");
+
+      // Count occurrences - each should appear exactly once
+      const jwtServiceCount = (result.match(/JwtService/g) || []).length;
+      expect(jwtServiceCount).toBe(2); // type decl + interface method param
+      const ctorCount = (result.match(/NewJwtService/g) || []).length;
+      expect(ctorCount).toBe(1);
+      const structCount = (result.match(/jwtServiceImpl/g) || []).length;
+      // type decl + function return type + body reference = 3, no duplicates
+      expect(structCount).toBe(3);
+    });
+
+    it("does not remove function markers when expectsUserCode is true via region id match", () => {
+      const regionId = "service.jwt.2ctor";
+      const fileText = `package svc
+
+// @gen:start ${regionId}
+\treturn &jwtServiceImpl{cfg: cfg}, nil
+// @gen:end ${regionId}
+`;
+      const patch: GeneratedFilePatch = {
+        path: "internal/service/jwt.go",
+        regions: [
+          {
+            id: regionId,
+            symbolName: "NewJwtService",
+            kind: "function",
+            signature: "func NewJwtService() (*jwtServiceImpl, error)",
+            language: "go",
+            content: "\treturn &jwtServiceImpl{cfg: cfg}, nil",
+            expectsUserCode: true,
+            isStub: true,
+          },
+        ],
+      };
+      const diagnostics: Diagnostic[] = [];
+      const result = injectGoFile(fileText, patch, emptyCache(), diagnostics);
+
+      expect(result).toContain("return &jwtServiceImpl{cfg: cfg}, nil");
+      expect(diagnostics.filter((d) => d.code === "stale-marker-removed")).toHaveLength(0);
+    });
+  });
 });
 
 describe("mergeImports", () => {

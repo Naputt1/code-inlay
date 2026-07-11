@@ -273,14 +273,27 @@ function injectAllViaMarkers(
   const markers = findBlobMarkers(result, markerIds);
   for (const region of patch.regions) {
     if (region.kind === "imports") continue;
-    const marker = markers.get(region.id);
-    if (marker) {
-      const content = region.content;
-      const replacement = `${marker.indent}// @gen:start ${region.id}\n${content}\n${marker.indent}// @gen:end ${region.id}`;
-      result = result.slice(0, marker.startIdx) + replacement + result.slice(marker.endIdx);
+    if (region.symbolName) {
+      const body = buildBody(region, fileText);
+      const text = buildDeclarationText(region, body);
+      const marker = markers.get(region.id);
+      if (marker) {
+        const before = result.slice(0, marker.startIdx);
+        const after = result.slice(marker.endIdx);
+        result = before.replace(/\n+$/, "") + "\n\n" + text + "\n\n" + after.replace(/^\n+/, "");
+      } else {
+        result += `\n${text}\n`;
+      }
     } else {
-      const nl = fileText.includes("\r\n") ? "\r\n" : "\n";
-      result += `${nl}// @gen:start ${region.id}${nl}${region.content}${nl}// @gen:end ${region.id}${nl}`;
+      const marker = markers.get(region.id);
+      if (marker) {
+        const content = region.content;
+        const replacement = `${marker.indent}// @gen:start ${region.id}\n${content}\n${marker.indent}// @gen:end ${region.id}`;
+        result = result.slice(0, marker.startIdx) + replacement + result.slice(marker.endIdx);
+      } else {
+        const nl = fileText.includes("\r\n") ? "\r\n" : "\n";
+        result += `${nl}// @gen:start ${region.id}${nl}${region.content}${nl}// @gen:end ${region.id}${nl}`;
+      }
     }
   }
   return result;
@@ -377,7 +390,9 @@ function removeStaleMarkerDeclarations(
       plannedByName.size > 0 &&
       (rawFirstLine.startsWith("\treturn") || rawFirstLine.startsWith("\t// TODO"))
     ) {
-      const markerRegion = [...plannedByName.values()].find((r) => shortHash(r.id) === id);
+      const markerRegion = [...plannedByName.values()].find(
+        (r) => r.id === id || shortHash(r.id) === id,
+      );
       if (markerRegion?.expectsUserCode) continue;
       toRemove.push({ start: marker.startIdx, end: marker.endIdx });
       diagnostics.push({
