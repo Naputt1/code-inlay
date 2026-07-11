@@ -113,7 +113,8 @@ export function sortGoImportsText(content: string, modulePath?: string): string 
     }
 
     const sorted = `import (\n${parts.join("\n")}\n)`;
-    result = result.substring(0, match.index) + sorted + result.substring(match.index + match[0].length);
+    result =
+      result.substring(0, match.index) + sorted + result.substring(match.index + match[0].length);
   }
 
   return result;

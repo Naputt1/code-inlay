@@ -509,7 +509,9 @@ function emitGenericStmts(
 }
 
 function emitErrAndRespStmts(method: string): go.Statement[] {
-  const varHttpErr = go.declStmt(go.genDecl("var", go.valueSpec(["httpErr"], go.qual("httperr", "HTTPError"))));
+  const varHttpErr = go.declStmt(
+    go.genDecl("var", go.valueSpec(["httpErr"], go.qual("httperr", "HTTPError"))),
+  );
   const innerIf: go.IfStmt = {
     kind: "IfStmt",
     cond: go.call(go.qual("errors", "As"), go.id("err"), go.addr(go.id("httpErr"))),

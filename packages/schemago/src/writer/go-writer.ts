@@ -90,7 +90,6 @@ export function injectGoFile(
     return cleanBlankLines(t);
   }
 
-
   const fileCache = cache.symbolsByFile?.[patch.path] ?? {};
   const isGenerated = (name: string) => fileCache[name] !== undefined || plannedByName.has(name);
 

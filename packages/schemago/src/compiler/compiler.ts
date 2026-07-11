@@ -1,5 +1,12 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync, readdirSync, statSync, unlinkSync } from "node:fs";
+import {
+  existsSync,
+  readFileSync,
+  writeFileSync,
+  readdirSync,
+  statSync,
+  unlinkSync,
+} from "node:fs";
 import { pathToFileURL } from "node:url";
 import { resolve } from "node:path";
 import { watch } from "node:fs";
@@ -478,7 +485,11 @@ async function loadConfig(
       const jsPath = absolutePath.replace(/\.(ts|tsx)$/, ".mjs");
       writeFileSync(jsPath, result.outputText);
       const module = await import(`${pathToFileURL(jsPath).href}?t=${Date.now()}`);
-      try { unlinkSync(jsPath); } catch { /* ignore */ }
+      try {
+        unlinkSync(jsPath);
+      } catch {
+        /* ignore */
+      }
       return readDefaultApp(module, configFile, diagnostics);
     }
 

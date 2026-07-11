@@ -178,9 +178,7 @@ export function generateServiceFile(
     allParams.push(go.field(["cfg"], go.qual("config", "Config")));
   }
 
-  const allBody = svc.ctor?.body ?? [
-    go.return_(go.call(go.addr(go.id(implName)), go.id("nil"))),
-  ];
+  const allBody = svc.ctor?.body ?? [go.return_(go.call(go.addr(go.id(implName)), go.id("nil")))];
 
   const ctorFn = go.function_(
     ctorName,

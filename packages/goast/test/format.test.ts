@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeAll, afterAll } from "vitest";
-import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdtempSync, rmSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -350,7 +350,7 @@ describe("formatFile", () => {
 
   it("runs gofmt when sortImports is false", () => {
     if (!hasGofmt) return;
-    const input = 'package main\n\nfunc main() {\n\tx:=1\n}\n';
+    const input = "package main\n\nfunc main() {\n\tx:=1\n}\n";
     const f = join(tmpDir, "gofmt.go");
     writeFileSync(f, input, "utf8");
     const warnings: FormatWarning[] = [];
