@@ -112,6 +112,7 @@ describe("enrichRegionWithRegex", () => {
     const r = region({
       id: "user.create.handler",
       content: `func CreateUser(c *gin.Context) {
+\t// @gen:start
 \tc.JSON(200, nil)
 }`,
     });

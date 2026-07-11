@@ -2,6 +2,11 @@ package httperr
 
 import "net/http"
 
+type HTTPError interface {
+	error
+	HTTPStatus() int
+}
+
 type BadRequest struct {
 	Message string `json:"message"`
 }

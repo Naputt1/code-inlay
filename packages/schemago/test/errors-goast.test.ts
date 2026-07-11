@@ -14,6 +14,11 @@ describe("goast errors generation — standard errors", () => {
     const result = renderStandardErrors(structs);
     const expected = `import "net/http"
 
+type HTTPError interface {
+\terror
+\tHTTPStatus() int
+}
+
 type BadRequest struct {
 \tMessage string \`json:"message"\`
 }

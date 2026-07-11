@@ -553,8 +553,11 @@ describe("full pipeline snapshot", () => {
         if (
           key === "backend.config.ts" ||
           key === ".gitignore" ||
+          key === "package.json" ||
+          key === "tsconfig.json" ||
           key.startsWith("go.") ||
-          key.startsWith(".schemago/")
+          key.startsWith(".schemago/") ||
+          key.startsWith("node_modules/")
         ) {
           delete expectedFiles[key];
         }

@@ -28,9 +28,7 @@ func (h *OrdersHandler) AdminListAllOrders(c *gin.Context) {
 	}
 	output, err := h.AdminListAllOrdersUsecase.Execute(c.Request.Context(), input)
 	if err != nil {
-		var httpErr interface {
-			HTTPStatus() int
-		}
+		var httpErr httperr.HTTPError
 		if errors.As(err, &httpErr) {
 			c.JSON(httpErr.HTTPStatus(), err)
 		} else {
@@ -53,9 +51,7 @@ func (h *OrdersHandler) Cancel(c *gin.Context) {
 	input.Id = c.Param("id")
 	output, err := h.CancelUsecase.Execute(c.Request.Context(), input)
 	if err != nil {
-		var httpErr interface {
-			HTTPStatus() int
-		}
+		var httpErr httperr.HTTPError
 		if errors.As(err, &httpErr) {
 			c.JSON(httpErr.HTTPStatus(), err)
 		} else {
@@ -81,9 +77,7 @@ func (h *OrdersHandler) Create(c *gin.Context) {
 	// @gen:end 9221510d
 	output, err := h.CreateUsecase.Execute(c.Request.Context(), entity)
 	if err != nil {
-		var httpErr interface {
-			HTTPStatus() int
-		}
+		var httpErr httperr.HTTPError
 		if errors.As(err, &httpErr) {
 			c.JSON(httpErr.HTTPStatus(), err)
 		} else {
@@ -100,9 +94,7 @@ func (h *OrdersHandler) Get(c *gin.Context) {
 	id := OrdersID(c.Param("id"))
 	output, err := h.GetUsecase.Execute(c.Request.Context(), id)
 	if err != nil {
-		var httpErr interface {
-			HTTPStatus() int
-		}
+		var httpErr httperr.HTTPError
 		if errors.As(err, &httpErr) {
 			c.JSON(httpErr.HTTPStatus(), err)
 		} else {
@@ -124,9 +116,7 @@ func (h *OrdersHandler) List(c *gin.Context) {
 	}
 	output, err := h.ListUsecase.Execute(c.Request.Context(), input)
 	if err != nil {
-		var httpErr interface {
-			HTTPStatus() int
-		}
+		var httpErr httperr.HTTPError
 		if errors.As(err, &httpErr) {
 			c.JSON(httpErr.HTTPStatus(), err)
 		} else {

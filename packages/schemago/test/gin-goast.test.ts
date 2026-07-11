@@ -199,8 +199,7 @@ describe("generateGinHandler", () => {
 
   it("has error handling block with errors.As", () => {
     const region = generateGinHandler(makeRoute(), [], "gin");
-    expect(region.content).toContain("var httpErr interface {");
-    expect(region.content).toContain("HTTPStatus() int");
+    expect(region.content).toContain("var httpErr httperr.HTTPError");
     expect(region.content).toContain("if errors.As(err, &httpErr) {");
     expect(region.content).toContain("c.JSON(httpErr.HTTPStatus(), err)");
     expect(region.content).toContain('"error": err.Error()');

@@ -27,9 +27,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 	output, err := h.LoginUsecase.Execute(c.Request.Context(), input)
 	if err != nil {
-		var httpErr interface {
-			HTTPStatus() int
-		}
+		var httpErr httperr.HTTPError
 		if errors.As(err, &httpErr) {
 			c.JSON(httpErr.HTTPStatus(), err)
 		} else {
@@ -46,9 +44,7 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	input := struct{}{}
 	output, err := h.LogoutUsecase.Execute(c.Request.Context(), input)
 	if err != nil {
-		var httpErr interface {
-			HTTPStatus() int
-		}
+		var httpErr httperr.HTTPError
 		if errors.As(err, &httpErr) {
 			c.JSON(httpErr.HTTPStatus(), err)
 		} else {
@@ -70,9 +66,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	}
 	output, err := h.RegisterUsecase.Execute(c.Request.Context(), input)
 	if err != nil {
-		var httpErr interface {
-			HTTPStatus() int
-		}
+		var httpErr httperr.HTTPError
 		if errors.As(err, &httpErr) {
 			c.JSON(httpErr.HTTPStatus(), err)
 		} else {
