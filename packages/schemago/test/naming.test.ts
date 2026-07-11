@@ -103,6 +103,14 @@ describe("lowerIdent", () => {
   it("returns empty string for empty input", () => {
     expect(lowerIdent("")).toBe("");
   });
+
+  it("lowercases leading acronym properly", () => {
+    expect(lowerIdent("JWTService")).toBe("jwtService");
+  });
+
+  it("lowercases single-word acronym", () => {
+    expect(lowerIdent("JWT")).toBe("jwt");
+  });
 });
 
 // ---------------------------------------------------------------------------

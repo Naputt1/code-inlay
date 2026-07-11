@@ -10,6 +10,10 @@ export function pascalCase(value: string): string {
 
 export function lowerIdent(value: string): string {
   const pascal = pascalCase(value);
+  const match = pascal.match(/^([A-Z]+)([A-Z][a-z]|$)/);
+  if (match) {
+    return match[1].toLowerCase() + pascal.slice(match[1].length);
+  }
   return pascal.charAt(0).toLowerCase() + pascal.slice(1);
 }
 
