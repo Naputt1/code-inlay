@@ -1,0 +1,207 @@
+import { spawnSync } from "node:child_process";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+
+export type FormatWarning = {
+  level: "warning";
+  code: string;
+  message: string;
+  regionId?: string;
+};
+
+export type FormatFileOptions = {
+  sortImports?: boolean;
+  gofmt?: boolean;
+};
+
+function isCompleteSnippet(content: string): boolean {
+  if (/^}$/.test(content)) return false;
+  if (content.startsWith("type ") && !content.trimEnd().endsWith("}")) return false;
+  let depth = 0;
+  for (const ch of content) {
+    if (ch === "{") depth++;
+    else if (ch === "}") depth--;
+  }
+  if (depth !== 0) return false;
+  return true;
+}
+
+function findGoMod(startDir: string): string | null {
+  let dir = startDir;
+  for (let i = 0; i < 20; i++) {
+    const candidate = resolve(dir, "go.mod");
+    if (existsSync(candidate)) return candidate;
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return null;
+}
+
+function readModulePath(goModPath: string): string | null {
+  const modContent = readFileSync(goModPath, "utf8");
+  const match = modContent.match(/^module\s+(\S+)/m);
+  return match ? match[1] : null;
+}
+
+function sortGoImportsFile(absolutePath: string): void {
+  const content = readFileSync(absolutePath, "utf8");
+  const modulePath = findGoMod(dirname(absolutePath));
+  const module = modulePath ? readModulePath(modulePath) : null;
+  const sorted = sortGoImportsText(content, module ?? undefined);
+  if (sorted !== content) {
+    writeFileSync(absolutePath, sorted, "utf8");
+  }
+}
+
+export function sortGoImportsText(content: string, modulePath?: string): string {
+  const matches: RegExpExecArray[] = [];
+  const importRegex = /import\s*\(([\s\S]*?)\)/g;
+  let m;
+  while ((m = importRegex.exec(content)) !== null) {
+    matches.push(m);
+  }
+
+  let result = content;
+  for (let i = matches.length - 1; i >= 0; i--) {
+    const match = matches[i];
+    const blockContent = match[1];
+    const lines = blockContent.split("\n");
+    const specs: { alias: string; path: string }[] = [];
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("//")) continue;
+      const specMatch = trimmed.match(/^([.\w]+\s+)?("(?:[^"\\]|\\.)*")$/);
+      if (specMatch) {
+        const alias = specMatch[1]?.trim() ?? "";
+        const path = JSON.parse(specMatch[2]);
+        specs.push({ alias, path });
+      }
+    }
+
+    if (specs.length === 0) continue;
+
+    const group1: { alias: string; path: string }[] = [];
+    const group2: { alias: string; path: string }[] = [];
+
+    for (const spec of specs) {
+      const hasDot = spec.path.includes(".");
+      const isModuleLocal = modulePath !== null && spec.path.startsWith(modulePath + "/");
+      if (hasDot && !isModuleLocal) {
+        group2.push(spec);
+      } else {
+        group1.push(spec);
+      }
+    }
+
+    group1.sort((a, b) => a.path.localeCompare(b.path));
+    group2.sort((a, b) => a.path.localeCompare(b.path));
+
+    const formatEntry = (s: { alias: string; path: string }) =>
+      s.alias ? `\t${s.alias} "${s.path}"` : `\t"${s.path}"`;
+
+    const parts: string[] = [];
+    if (group1.length > 0 && group2.length > 0) {
+      parts.push(...group1.map(formatEntry));
+      parts.push("");
+      parts.push(...group2.map(formatEntry));
+    } else if (group1.length > 0) {
+      parts.push(...group1.map(formatEntry));
+    } else {
+      parts.push(...group2.map(formatEntry));
+    }
+
+    const sorted = `import (\n${parts.join("\n")}\n)`;
+    result = result.substring(0, match.index) + sorted + result.substring(match.index + match[0].length);
+  }
+
+  return result;
+}
+
+export function formatFile(
+  absolutePath: string,
+  options?: FormatFileOptions,
+  warnings?: FormatWarning[],
+): void {
+  if (!absolutePath.endsWith(".go")) return;
+  if (!existsSync(absolutePath)) return;
+
+  const opts = { sortImports: true, gofmt: true, ...options };
+
+  if (opts.sortImports) {
+    sortGoImportsFile(absolutePath);
+  }
+
+  if (opts.gofmt) {
+    const result = spawnSync("gofmt", ["-w", absolutePath], { encoding: "utf8" });
+    if (result.error || result.status !== 0) {
+      const w: FormatWarning = {
+        level: "warning",
+        code: "gofmt-failed",
+        message: `Could not format "${absolutePath}": ${result.error?.message ?? result.stderr?.trim() ?? "unknown error"}`,
+      };
+      warnings?.push(w);
+    }
+  }
+}
+
+export function formatGoSnippet(
+  content: string,
+  regionId: string,
+  warnings?: FormatWarning[],
+): string {
+  const trimmed = content.trimEnd();
+  if (!trimmed) return "";
+
+  if (!isCompleteSnippet(trimmed)) {
+    return trimmed;
+  }
+
+  const mode = classifySnippet(trimmed);
+  const source = wrapSnippet(trimmed, mode);
+  const result = spawnSync("gofmt", { input: source, encoding: "utf8" });
+
+  if (result.error || result.status !== 0) {
+    warnings?.push({
+      level: "warning",
+      code: "gofmt-failed",
+      message: `Could not format generated Go for region "${regionId}".`,
+      regionId,
+    });
+    return trimmed;
+  }
+
+  return unwrapSnippet(result.stdout, mode).trimEnd();
+}
+
+type SnippetMode = "decl" | "stmt";
+
+function classifySnippet(content: string): SnippetMode {
+  return /^(type|func|var|const|import)\s/.test(content) ? "decl" : "stmt";
+}
+
+function wrapSnippet(content: string, mode: SnippetMode): string {
+  if (mode === "decl") {
+    return `package generated\n\n${content}\n`;
+  }
+
+  const indented = content
+    .split("\n")
+    .map((line) => (line ? `\t${line}` : ""))
+    .join("\n");
+  return `package generated\n\nfunc generated() {\n${indented}\n}\n`;
+}
+
+function unwrapSnippet(source: string, mode: SnippetMode): string {
+  const withoutPackage = source.replace(/^package generated\s+/, "");
+  if (mode === "decl") {
+    return withoutPackage;
+  }
+
+  const body = withoutPackage.replace(/^func generated\(\) \{\n/, "").replace(/\n\}\s*$/, "");
+  return body
+    .split("\n")
+    .map((line) => line.replace(/^\t/, ""))
+    .join("\n");
+}
