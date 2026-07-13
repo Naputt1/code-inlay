@@ -176,6 +176,7 @@ export function atomicWritePatches(
     const fileExists = existsSync(absolutePath);
     const isGo = patch.path.endsWith(".go");
     const hasSymbols = patch.regions.some((r) => r.symbolName);
+    const hasExpectsUserCode = patch.regions.some((r) => r.expectsUserCode || r.isStub);
 
     if (!fileExists) {
       if (!dryRun) newFiles.push(patch.path);
@@ -206,7 +207,7 @@ export function atomicWritePatches(
         after = injectContent(skeleton, patch.regions, diagnostics, patch.path);
       }
 
-      if (isGo && after) {
+      if (isGo && after && !hasExpectsUserCode) {
         after = addGeneratedFileHeader(after);
       }
 
@@ -235,7 +236,7 @@ export function atomicWritePatches(
       after = removeOrphanRegions(after, plannedIds, diagnostics, patch.path);
     }
 
-    if (isGo && after) {
+    if (isGo && after && !hasExpectsUserCode) {
       after = addGeneratedFileHeader(after);
     }
 
