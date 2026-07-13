@@ -6,9 +6,11 @@ import {
   readdirSync,
   statSync,
   unlinkSync,
+  mkdtempSync,
 } from "node:fs";
 import { pathToFileURL } from "node:url";
-import { resolve } from "node:path";
+import { resolve, join } from "node:path";
+import { tmpdir } from "node:os";
 import { watch } from "node:fs";
 import type {
   AppDefinition,
@@ -65,17 +67,26 @@ export async function compile(options: CompileOptions): Promise<CompileResult> {
   ast = await runTransformerStage("adapter", ast, registry, diagnostics);
 
   let moduleInfo: ReturnType<typeof checkGoEnvironment>;
+  const goModPath = resolve(cwd, "go.mod");
+  const hasGoMod = existsSync(goModPath);
+
   if (options.configFile !== undefined || options.app !== undefined) {
     const adapterName =
       options.configFile !== undefined && typeof ast.router.adapter === "string"
         ? ast.router.adapter
         : undefined;
-    moduleInfo = checkGoEnvironment(cwd, diagnostics, adapterName);
+
+    if (options.dryRun && !hasGoMod) {
+      const goDir = mkdtempSync(join(tmpdir(), "schemago-gomod-"));
+      moduleInfo = checkGoEnvironment(goDir, diagnostics, adapterName);
+    } else {
+      moduleInfo = checkGoEnvironment(cwd, diagnostics, adapterName);
+    }
   }
 
   let generation = generateCode(ast, architecture, diagnostics, moduleInfo);
 
-  if (moduleInfo) {
+  if (moduleInfo && hasGoMod) {
     for (const svc of ast.services) {
       if (!svc.extension) continue;
       const ext = ast.serviceExtensions.find((e) => e.name === svc.extension);
