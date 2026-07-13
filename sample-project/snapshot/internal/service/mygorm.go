@@ -16,7 +16,7 @@ type mygormServiceImpl struct {
 }
 
 func NewMygormService() (*mygormServiceImpl, error) {
-	return &mygormServiceImpl(nil)
+	return &mygormServiceImpl{}, nil
 }
 
 func (s *mygormServiceImpl) Close() error {
