@@ -7,9 +7,10 @@ import {
   statSync,
   unlinkSync,
   mkdtempSync,
+  mkdirSync,
 } from "node:fs";
 import { pathToFileURL } from "node:url";
-import { resolve, join } from "node:path";
+import { resolve, join, basename } from "node:path";
 import { tmpdir } from "node:os";
 import { watch } from "node:fs";
 import type {
@@ -77,8 +78,11 @@ export async function compile(options: CompileOptions): Promise<CompileResult> {
         : undefined;
 
     if (options.dryRun && !hasGoMod) {
-      const goDir = mkdtempSync(join(tmpdir(), "schemago-gomod-"));
-      moduleInfo = checkGoEnvironment(goDir, diagnostics, adapterName);
+      const goDir = join(tmpdir(), `schemago-gomod-${process.pid}`);
+      mkdirSync(goDir, { recursive: true });
+      const name = basename(cwd);
+      writeFileSync(join(goDir, "go.mod"), `module ${name}\n`);
+      moduleInfo = { modulePath: name, dependencies: [] };
     } else {
       moduleInfo = checkGoEnvironment(cwd, diagnostics, adapterName);
     }
