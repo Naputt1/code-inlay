@@ -65,8 +65,11 @@ export async function compile(options: CompileOptions): Promise<CompileResult> {
   ast = await runTransformerStage("adapter", ast, registry, diagnostics);
 
   let moduleInfo: ReturnType<typeof checkGoEnvironment>;
-  if (options.configFile !== undefined) {
-    const adapterName = typeof ast.router.adapter === "string" ? ast.router.adapter : undefined;
+  if (options.configFile !== undefined || options.app !== undefined) {
+    const adapterName =
+      options.configFile !== undefined && typeof ast.router.adapter === "string"
+        ? ast.router.adapter
+        : undefined;
     moduleInfo = checkGoEnvironment(cwd, diagnostics, adapterName);
   }
 
