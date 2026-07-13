@@ -9,7 +9,10 @@
     "forceConsistentCasingInFileNames": true,
     "declaration": true,
     "outDir": "dist",
-    "types": ["node", "vitest/globals"]
+    "types": ["node", "vitest/globals"],
+    "paths": {
+      "@schemago/goast": ["../goast/src/index.ts"]
+    }
   },
   "include": ["src/**/*.ts", "test/**/*.ts"]
 }
