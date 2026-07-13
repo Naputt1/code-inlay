@@ -41,6 +41,13 @@ const orderFormat = defineResponseFormat({
   }),
 });
 
+const Address = z.object({
+  street: z.string(),
+  city: z.string(),
+  zipCode: z.string(),
+  country: z.string().optional(),
+});
+
 const productRoutes = defineRouteGroup({
   prefix: "/products",
   middleware: [jwtAuth],
@@ -135,12 +142,7 @@ const orderRoutes = defineRouteGroup({
       body: z.object({
         productId: z.string(),
         quantity: z.int32(),
-        shippingAddress: z.object({
-          street: z.string(),
-          city: z.string(),
-          zipCode: z.string(),
-          country: z.string().optional(),
-        }),
+        shippingAddress: Address,
         notes: z.string().max(500).optional(),
         couponCode: z.string().optional(),
       }),
@@ -188,11 +190,7 @@ const orderRoutes = defineRouteGroup({
             unitPrice: z.number(),
           }),
         ),
-        shippingAddress: z.object({
-          street: z.string(),
-          city: z.string(),
-          zipCode: z.string(),
-        }),
+        shippingAddress: Address,
         createdAt: z.string(),
         updatedAt: z.string().optional(),
       }),
@@ -357,6 +355,7 @@ const app = defineApp({
       ],
     }),
   },
+  types: { Address },
   runtime: defineRuntime({
     enabled: true,
     logger: { provider: "slog", level: "info", format: "json" },

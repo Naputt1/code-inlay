@@ -690,6 +690,9 @@
                   },
                   "zipCode": {
                     "type": "string"
+                  },
+                  "country": {
+                    "type": "string"
                   }
                 },
                 "required": ["street", "city", "zipCode"]

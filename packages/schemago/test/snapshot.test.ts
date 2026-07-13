@@ -57,6 +57,38 @@ function regionSortKey(r: Region): string {
   return "9";
 }
 
+function collectImportSpecs(regions: Region[]): string[] {
+  const seenPaths = new Set<string>();
+  const specs: string[] = [];
+  for (const r of regions) {
+    if (r.kind === "imports") continue;
+    if (r.imports && r.imports.length > 0) {
+      for (const imp of r.imports) {
+        const path = imp.startsWith('"') ? imp.slice(1, -1) : imp;
+        if (!seenPaths.has(path)) {
+          seenPaths.add(path);
+          specs.push(imp);
+        }
+      }
+    }
+  }
+  return specs;
+}
+
+function formatImports(specs: string[]): string {
+  if (specs.length === 0) return "";
+  const lines: string[] = ["import ("];
+  for (const spec of specs) {
+    if (spec.includes('"')) {
+      lines.push(`\t${spec}`);
+    } else {
+      lines.push(`\t"${spec}"`);
+    }
+  }
+  lines.push(")");
+  return lines.join("\n");
+}
+
 function regionContent(region: Region): string {
   if (region.kind === "imports") {
     if (
@@ -92,8 +124,10 @@ function toCleanContent(path: string, regions: Region[]): string {
   const sorted = [...regions].sort(
     (a, b) => regionSortKey(a).localeCompare(regionSortKey(b)) || a.id.localeCompare(b.id),
   );
+
   const body = sorted
     .map((r) => regionContent(r))
+    .filter(Boolean)
     .join("\n\n")
     .trimStart();
   let content: string;
@@ -109,7 +143,10 @@ function toCleanContent(path: string, regions: Region[]): string {
     return content;
   }
   const pkg = goPackageName(path);
-  return pkg ? `package ${pkg}\n\n${body}\n` : `${body}\n`;
+  const importSpecs = collectImportSpecs(regions);
+  const importBlock = formatImports(importSpecs);
+  const withImports = importBlock ? `${importBlock}\n\n` : "";
+  return pkg ? `package ${pkg}\n\n${withImports}${body}\n` : `${body}\n`;
 }
 
 function writeGenerated(outputDir: string, files: { path: string; regions: Region[] }[]) {
@@ -175,6 +212,13 @@ describe("full pipeline snapshot", () => {
         success: z.boolean(),
         result: z.entity(),
       }),
+    });
+
+    const Address = z.object({
+      street: z.string(),
+      city: z.string(),
+      zipCode: z.string(),
+      country: z.string().optional(),
     });
 
     const productRoutes = defineRouteGroup({
@@ -271,12 +315,7 @@ describe("full pipeline snapshot", () => {
           body: z.object({
             productId: z.string(),
             quantity: z.int32(),
-            shippingAddress: z.object({
-              street: z.string(),
-              city: z.string(),
-              zipCode: z.string(),
-              country: z.string().optional(),
-            }),
+            shippingAddress: Address,
             notes: z.string().max(500).optional(),
             couponCode: z.string().optional(),
           }),
@@ -324,11 +363,7 @@ describe("full pipeline snapshot", () => {
                 unitPrice: z.number(),
               }),
             ),
-            shippingAddress: z.object({
-              street: z.string(),
-              city: z.string(),
-              zipCode: z.string(),
-            }),
+            shippingAddress: Address,
             createdAt: z.string(),
             updatedAt: z.string().optional(),
           }),
@@ -493,6 +528,7 @@ describe("full pipeline snapshot", () => {
           routes: authRoutes,
         }),
       ],
+      types: { Address },
       runtime: defineRuntime({
         enabled: true,
         logger: { provider: "slog", level: "info", format: "json" },

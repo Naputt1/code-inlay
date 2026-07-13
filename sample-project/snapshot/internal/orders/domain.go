@@ -1,5 +1,9 @@
 package orders
 
+import (
+	"snapshot/internal/types"
+)
+
 type OrdersID string
 
 type Orders struct {
@@ -18,13 +22,13 @@ type OrdersList struct {
 }
 
 type OrdersGet struct {
-	CreatedAt       string                `json:"createdAt"`
-	Id              string                `json:"id"`
-	Items           []OrdersItemsItem     `json:"items"`
-	ShippingAddress OrdersShippingAddress `json:"shippingAddress"`
-	Status          string                `json:"status"`
-	TotalPrice      float64               `json:"totalPrice"`
-	UpdatedAt       *string               `json:"updatedAt,omitempty"`
+	CreatedAt       string            `json:"createdAt"`
+	Id              string            `json:"id"`
+	Items           []OrdersItemsItem `json:"items"`
+	ShippingAddress types.Address     `json:"shippingAddress"`
+	Status          string            `json:"status"`
+	TotalPrice      float64           `json:"totalPrice"`
+	UpdatedAt       *string           `json:"updatedAt,omitempty"`
 }
 
 type OrdersAdminListAllOrders struct {
@@ -39,10 +43,4 @@ type OrdersItemsItem struct {
 	ProductName string  `json:"productName"`
 	Quantity    int32   `json:"quantity"`
 	UnitPrice   float64 `json:"unitPrice"`
-}
-
-type OrdersShippingAddress struct {
-	City    string `json:"city"`
-	Street  string `json:"street"`
-	ZipCode string `json:"zipCode"`
 }

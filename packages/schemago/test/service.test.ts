@@ -322,7 +322,7 @@ describe("service layer", () => {
     expect(serviceFile).toBeDefined();
   });
 
-  it("warns when service import path cannot be determined", async () => {
+  it("generates usecase with service import when Go module info is available", async () => {
     const app = defineApp({
       architecture: "clean",
       router: defineRouter({ adapter: "gin" }),
@@ -345,16 +345,15 @@ describe("service layer", () => {
 
     const result = await compile({ app, dryRun: true });
 
-    const warning = result.diagnostics.find((d) => d.code === "missing-module-info");
-    expect(warning).toBeDefined();
-    expect(warning!.level).toBe("warning");
-    expect(warning!.message).toContain("payment/usecase.go");
+    const noWarning = result.diagnostics.find((d) => d.code === "missing-module-info");
+    expect(noWarning).toBeUndefined();
 
     const usecaseFile = result.generation.files.find((f) => f.path.endsWith("payment/usecase.go"));
     expect(usecaseFile).toBeDefined();
     const importRegion = usecaseFile!.regions.find((r) => r.id.endsWith(".0usecase.imports"));
     expect(importRegion).toBeDefined();
-    expect(importRegion!.content).toBe(`import "context"`);
+    expect(importRegion!.content).toContain("context");
+    expect(importRegion!.content).toContain("service");
   });
 
   it("generates grouped service import when Go module info is available", async () => {

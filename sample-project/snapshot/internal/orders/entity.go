@@ -1,5 +1,9 @@
 package orders
 
+import (
+	"snapshot/internal/types"
+)
+
 type AdminListAllOrdersOrdersRequest struct {
 	Page     *int32 `json:"page,omitempty" form:"page"`
 	PageSize *int32 `json:"pageSize,omitempty" form:"pageSize"`
@@ -30,23 +34,16 @@ type CancelOrdersResponse struct {
 type CancelOrdersResponseData struct{}
 
 type CreateOrdersRequest struct {
-	CouponCode      *string                         `json:"couponCode,omitempty" form:"couponCode"`
-	Notes           *string                         `json:"notes,omitempty" form:"notes" validate:"max=500"`
-	ProductId       string                          `json:"productId" form:"productId" validate:"required"`
-	Quantity        int32                           `json:"quantity" form:"quantity" validate:"required"`
-	ShippingAddress CreateOrdersBodyShippingAddress `json:"shippingAddress" form:"shippingAddress" validate:"required"`
+	CouponCode      *string       `json:"couponCode,omitempty" form:"couponCode"`
+	Notes           *string       `json:"notes,omitempty" form:"notes" validate:"max=500"`
+	ProductId       string        `json:"productId" form:"productId" validate:"required"`
+	Quantity        int32         `json:"quantity" form:"quantity" validate:"required"`
+	ShippingAddress types.Address `json:"shippingAddress" form:"shippingAddress" validate:"required"`
 }
 
 type CreateOrdersResponse struct {
 	Result  CreateOrdersResponseResult `json:"result"`
 	Success bool                       `json:"success"`
-}
-
-type CreateOrdersBodyShippingAddress struct {
-	City    string  `json:"city" form:"city" validate:"required"`
-	Country *string `json:"country,omitempty" form:"country"`
-	Street  string  `json:"street" form:"street" validate:"required"`
-	ZipCode string  `json:"zipCode" form:"zipCode" validate:"required"`
 }
 
 type CreateOrdersResponseResult struct {
@@ -72,20 +69,14 @@ type GetOrdersResponseResultItemsItem struct {
 	UnitPrice   float64 `json:"unitPrice"`
 }
 
-type GetOrdersResponseResultShippingAddress struct {
-	City    string `json:"city"`
-	Street  string `json:"street"`
-	ZipCode string `json:"zipCode"`
-}
-
 type GetOrdersResponseResult struct {
-	CreatedAt       string                                 `json:"createdAt"`
-	Id              string                                 `json:"id"`
-	Items           []GetOrdersResponseResultItemsItem     `json:"items"`
-	ShippingAddress GetOrdersResponseResultShippingAddress `json:"shippingAddress"`
-	Status          string                                 `json:"status"`
-	TotalPrice      float64                                `json:"totalPrice"`
-	UpdatedAt       *string                                `json:"updatedAt,omitempty"`
+	CreatedAt       string                             `json:"createdAt"`
+	Id              string                             `json:"id"`
+	Items           []GetOrdersResponseResultItemsItem `json:"items"`
+	ShippingAddress types.Address                      `json:"shippingAddress"`
+	Status          string                             `json:"status"`
+	TotalPrice      float64                            `json:"totalPrice"`
+	UpdatedAt       *string                            `json:"updatedAt,omitempty"`
 }
 
 type ListOrdersRequest struct {
