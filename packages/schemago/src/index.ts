@@ -1,4 +1,4 @@
-export { z, validationZ, isEntityPlaceholder, hasEntityPlaceholder } from "./schema/extras.js";
+export { z, validationZ, isEntityPlaceholder, hasEntityPlaceholder, isZodLazy, resolveLazy } from "./schema/extras.js";
 export * from "./types/index.js";
 export * from "./dsl/index.js";
 export * from "./compiler/compiler.js";

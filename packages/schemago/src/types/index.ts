@@ -44,6 +44,12 @@ export type MaybePromise<T> = T | Promise<T>;
 
 export type SchemaLike = z.ZodTypeAny;
 
+export type TypeDefinition = {
+  kind: "TypeDefinition";
+  name: string;
+  schema: SchemaLike;
+};
+
 export type AstVersion = typeof AST_VERSION;
 export type PluginType =
   | "adapter"
@@ -400,6 +406,7 @@ export type AppDefinition = {
   plugins: BackendCompilerPlugin[];
   targets?: CodeTarget[];
   errors?: ErrorDefinition[];
+  types?: Record<string, SchemaLike>;
   options: CompileSettings;
 };
 
@@ -451,6 +458,7 @@ export type AppAst = AstNodeBase<"App"> & {
   plugins: BackendCompilerPlugin[];
   targets: CodeTarget[];
   errors: ErrorDefinition[];
+  types?: Record<string, SchemaLike>;
   options: CompileSettings;
 };
 

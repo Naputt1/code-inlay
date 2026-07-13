@@ -8,6 +8,7 @@ import type {
   GenerationAst,
   RouteAst,
   RouteLikeAst,
+  SchemaLike,
   SSEAst,
   WSAst,
 } from "../types/index.js";
@@ -31,6 +32,7 @@ import {
   generateEntityStructs,
   generateRouteTypes,
   generateNamedStructs,
+  generateTypeStructs,
 } from "../schema/index.js";
 import {
   generateGinHandler,
@@ -72,6 +74,10 @@ export function generateCode(
     regions.push(region);
     files.set(path, regions);
   };
+
+  const typeMap: Record<string, SchemaLike> | undefined =
+    ast.types && Object.keys(ast.types).length > 0 ? ast.types : undefined;
+  const usedTypes = new Set<string>();
 
   const standardErrorPatches = generateStandardErrors(featuresDir);
   for (const patch of standardErrorPatches) {
@@ -141,7 +147,15 @@ export function generateCode(
         });
       }
 
-      const content = generateLayerContent(route, layer.kind, diagnostics, hasDomainLayer);
+      const routeUsedTypes = new Set<string>();
+      const content = generateLayerContent(
+        route,
+        layer.kind,
+        diagnostics,
+        hasDomainLayer,
+        typeMap,
+        routeUsedTypes,
+      );
       if (content !== undefined) {
         const region: GeneratedRegion = {
           id: layer.regionId,
@@ -156,6 +170,11 @@ export function generateCode(
         if (layer.kind === "usecase" && route.kind === "Route") {
           region.symbolName = `${route.handlerName}Usecase`;
           region.kind = "interface";
+        }
+        if (routeUsedTypes.size > 0 && moduleInfo) {
+          const typesPkg = featuresPath("internal/types", featuresDir);
+          region.imports = [`"${moduleInfo.modulePath}/${typesPkg}"`];
+          for (const tn of routeUsedTypes) usedTypes.add(tn);
         }
         add(layer.file, region);
       }
@@ -248,13 +267,33 @@ export function generateCode(
   for (const [moduleName, routes] of domainRoutesByModule) {
     const domainFile = featuresPath(`internal/${moduleName}/domain.go`, featuresDir);
     const regionId = `${moduleName}.domain`;
-    const domainContent = generateDomain(moduleName, routes as RouteAst[], diagnostics);
+    const domainUsedTypes = new Set<string>();
+    const domainContent = generateDomain(moduleName, routes as RouteAst[], diagnostics, typeMap, domainUsedTypes);
+    if (domainUsedTypes.size > 0 && moduleInfo) {
+      const typesPkg = featuresPath("internal/types", featuresDir);
+      for (const tn of domainUsedTypes) usedTypes.add(tn);
+    }
     add(domainFile, {
       id: regionId,
       stableHash: `${regionId}:${moduleName}:${routes.length}routes`,
       owner: "schemago",
       language: "go",
       content: domainContent,
+      imports: domainUsedTypes.size > 0 && moduleInfo
+        ? [`"${moduleInfo.modulePath}/${featuresPath("internal/types", featuresDir)}"`]
+        : undefined,
+    });
+  }
+
+  if (typeMap && Object.keys(typeMap).length > 0) {
+    const typesFile = featuresPath("internal/types/types.go", featuresDir);
+    const typesContent = generateTypeStructs(typeMap, diagnostics);
+    add(typesFile, {
+      id: "types.structs",
+      stableHash: `types:structs:${Object.keys(typeMap).length}`,
+      owner: "schemago",
+      language: "go",
+      content: typesContent,
     });
   }
 
@@ -641,17 +680,21 @@ function generateLayerContent(
   layer: string,
   diagnostics: Diagnostic[],
   hasDomain?: boolean,
+  typeMap?: Record<string, SchemaLike>,
+  usedTypes?: Set<string>,
 ): string | undefined {
   switch (layer) {
     case "entity":
       if (route.kind === "Route") {
-        return generateRouteTypes(route, diagnostics, route.responseFormat);
+        return generateRouteTypes(route, diagnostics, route.responseFormat, typeMap, usedTypes);
       }
       if (route.kind === "SSE") {
         return generateNamedStructs(
           `${route.handlerName}${pascalCase(route.moduleName)}Event`,
           route.events,
           diagnostics,
+          typeMap,
+          usedTypes,
         );
       }
       if (route.kind === "WS") {
@@ -661,6 +704,8 @@ function generateLayerContent(
             `${route.handlerName}${pascalCase(route.moduleName)}Message`,
             route.message,
             diagnostics,
+            typeMap,
+            usedTypes,
           ),
         );
         if (route.events) {
@@ -669,6 +714,8 @@ function generateLayerContent(
               `${route.handlerName}${pascalCase(route.moduleName)}Event`,
               route.events,
               diagnostics,
+              typeMap,
+              usedTypes,
             ),
           );
         }
@@ -720,12 +767,18 @@ function generateLayerContent(
   }
 }
 
-function generateDomain(moduleName: string, routes: RouteAst[], diagnostics: Diagnostic[]): string {
+function generateDomain(
+  moduleName: string,
+  routes: RouteAst[],
+  diagnostics: Diagnostic[],
+  typeMap?: Record<string, SchemaLike>,
+  usedTypes?: Set<string>,
+): string {
   const parts: string[] = [`type ${pascalCase(moduleName)}ID string`];
 
   const routesWithEntity = routes.filter((r) => r.response && r.responseFormat);
   if (routesWithEntity.length > 0) {
-    const entityContent = generateEntityStructs(moduleName, routesWithEntity, diagnostics);
+    const entityContent = generateEntityStructs(moduleName, routesWithEntity, diagnostics, typeMap, usedTypes);
     if (entityContent) parts.push(entityContent);
   }
 

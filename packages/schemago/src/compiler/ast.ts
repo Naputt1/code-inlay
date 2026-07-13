@@ -179,6 +179,7 @@ export function buildAst(app: AppDefinition, diagnostics: Diagnostic[]): AppAst 
     services: (app.services ?? []).map(toAppService),
     serviceExtensions: app.extensions ?? [],
     errors: appErrors,
+    types: app.types ?? {},
     router: {
       kind: "Router",
       id: "router",

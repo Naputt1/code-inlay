@@ -301,6 +301,20 @@ export function isZodBoolean(schema: SchemaLike): boolean {
   return typeName(schema) === "ZodBoolean";
 }
 
+export function isZodLazy(
+  schema: SchemaLike,
+): schema is SchemaLike & { _def: { getter: () => SchemaLike; schema?: SchemaLike } } {
+  return typeName(schema) === "ZodLazy";
+}
+
+export function resolveLazy(schema: SchemaLike): SchemaLike {
+  const def = schema._def as { getter?: () => SchemaLike; schema?: SchemaLike };
+  if (!def.schema) {
+    def.schema = def.getter!();
+  }
+  return def.schema!;
+}
+
 export function isZodArray(schema: SchemaLike): schema is SchemaLike & { element: SchemaLike } {
   return typeName(schema) === "ZodArray";
 }
@@ -332,6 +346,8 @@ const extras = {
   isZodNumber,
   isZodBoolean,
   isZodArray,
+  isZodLazy,
+  resolveLazy,
   unwrap,
   isZodEntity,
 };

@@ -386,6 +386,7 @@ export function defineApp<
   plugins?: BackendCompilerPlugin[];
   targets?: CodeTarget[];
   errors?: ErrorDefinition[];
+  types?: Record<string, SchemaLike>;
   runtime?: RuntimeConfig;
   testing?: TestingConfig;
   metadata?: MetadataConfig;
@@ -423,6 +424,7 @@ export function defineApp<
     plugins: input.plugins ?? [],
     targets: input.targets ?? [],
     errors: input.errors ?? [],
+    types: input.types,
     options: {
       fileCreation: input.options?.fileCreation ?? "skeleton",
       usecaseOrganization: input.options?.usecaseOrganization,

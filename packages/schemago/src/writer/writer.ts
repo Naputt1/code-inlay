@@ -382,6 +382,99 @@ type RegionMatch = {
   endLineEnd: number;
 };
 
+function importPath(spec: string): string {
+  const m = spec.match(/"([^"]+)"/);
+  return m ? m[1] : spec;
+}
+
+function collectInjectedImports(regions: GeneratedFilePatch["regions"]): string[] {
+  const seenPaths = new Set<string>();
+  const specs: string[] = [];
+  for (const r of regions) {
+    if (r.imports) {
+      for (const imp of r.imports) {
+        const path = imp.startsWith('"') ? imp.slice(1, -1) : imp;
+        if (!seenPaths.has(path)) {
+          seenPaths.add(path);
+          specs.push(imp);
+        }
+      }
+    }
+  }
+  return specs;
+}
+
+function injectContentImports(text: string, plannedSpecs: string[], file?: string): string {
+  // Skip non-Go files or files without package declaration
+  const pkgRe = /^package\s+\w+\s*$/m;
+  const pkgMatch = text.match(pkgRe);
+  if (!pkgMatch) return text;
+
+  const importBlockRe = /^([ \t]*)import\s*\(([\s\S]*?)\)[ \t]*$/m;
+  const singleImportRe = /^[ \t]*import\s+"([^"]+)"[ \t]*$/m;
+  const importLineRe = /^(\w+\s+)?"([^"]+)"/;
+
+  const textBlockMatch = text.match(importBlockRe);
+  const textSingleMatch = text.match(singleImportRe);
+
+  const pkgLineEnd = pkgMatch.index! + pkgMatch[0].length;
+  const insertAt = text.indexOf("\n", pkgLineEnd);
+  const afterPkg = insertAt >= 0 ? insertAt + 1 : text.length;
+
+  if (plannedSpecs.length === 0) {
+    // No planned imports: preserve any existing import block
+    if (textBlockMatch || textSingleMatch) return text;
+    return text;
+  }
+
+  if (textBlockMatch) {
+    // Merge into existing block
+    const existingSpecs = new Map<string, { spec: string; index: number }>();
+    const inner = textBlockMatch[2];
+    const innerLines = inner.split("\n");
+    for (let i = 0; i < innerLines.length; i++) {
+      const trimmed = innerLines[i].trim();
+      const m = trimmed.match(importLineRe);
+      if (m) existingSpecs.set(m[2], { spec: trimmed, index: i });
+    }
+
+    const toAdd: string[] = [];
+    for (const spec of plannedSpecs) {
+      const path = spec.startsWith('"') ? spec.slice(1, -1) : importPath(spec);
+      if (!existingSpecs.has(path)) {
+        toAdd.push(spec);
+      }
+    }
+
+    if (toAdd.length === 0) return text; // already have everything
+
+    const indent = textBlockMatch[1] ?? "";
+    const newSpecLines = toAdd.map((s) => `${indent}\t${s}`).join("\n");
+    const updatedInner =
+      inner.replace(/[ \t]*\n?\s*$/, "") + "\n" + newSpecLines + "\n";
+    const updatedBlock = `${indent}import (${updatedInner}${indent})`;
+    return text.replace(importBlockRe, updatedBlock);
+  }
+
+  if (textSingleMatch) {
+    // Convert single import to block
+    const existingPath = textSingleMatch[1];
+    const allLines = [`\t"${existingPath}"`, ...plannedSpecs.map((s) => `\t${s}`)].sort();
+    const updatedBlock = `import (\n${allLines.join("\n")}\n)`;
+    return text.replace(singleImportRe, updatedBlock);
+  }
+
+  // No existing import: insert new block after package
+  const allSpecs = [...plannedSpecs].sort();
+  const lines: string[] = [""];
+  lines.push("import (");
+  for (const spec of allSpecs) {
+    lines.push(`\t${spec}`);
+  }
+  lines.push(")");
+  return text.slice(0, afterPkg) + lines.join("\n") + "\n" + text.slice(afterPkg);
+}
+
 export function injectContent(
   fileText: string,
   regions: GeneratedFilePatch["regions"],
@@ -447,6 +540,11 @@ export function injectContent(
     const wsEnd = existingEndLine.match(/^([ \t]*)/)?.[1] ?? "";
 
     next = `${beforeStart}${wsStart}${startMarker}${newline}${content}${newline}${wsEnd}${endMarker}${newline}${afterEnd}`;
+  }
+
+  const importSpecs = collectInjectedImports(regions);
+  if (importSpecs.length > 0) {
+    next = injectContentImports(next, importSpecs, file);
   }
 
   return next;
