@@ -412,7 +412,7 @@ function collectInjectedImports(regions: GeneratedFilePatch["regions"]): string[
   return specs;
 }
 
-function injectContentImports(text: string, plannedSpecs: string[], file?: string): string {
+function injectContentImports(text: string, plannedSpecs: string[], _file?: string): string {
   // Skip non-Go files or files without package declaration
   const pkgRe = /^package\s+\w+\s*$/m;
   const pkgMatch = text.match(pkgRe);
@@ -458,8 +458,7 @@ function injectContentImports(text: string, plannedSpecs: string[], file?: strin
 
     const indent = textBlockMatch[1] ?? "";
     const newSpecLines = toAdd.map((s) => `${indent}\t${s}`).join("\n");
-    const updatedInner =
-      inner.replace(/[ \t]*\n?\s*$/, "") + "\n" + newSpecLines + "\n";
+    const updatedInner = inner.replace(/[ \t]*\n?\s*$/, "") + "\n" + newSpecLines + "\n";
     const updatedBlock = `${indent}import (${updatedInner}${indent})`;
     return text.replace(importBlockRe, updatedBlock);
   }

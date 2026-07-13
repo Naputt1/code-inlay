@@ -6,7 +6,6 @@ import {
   readdirSync,
   statSync,
   unlinkSync,
-  mkdtempSync,
   mkdirSync,
 } from "node:fs";
 import { pathToFileURL } from "node:url";

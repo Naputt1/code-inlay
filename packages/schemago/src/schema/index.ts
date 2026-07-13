@@ -388,12 +388,25 @@ export function generateEntityStructs(
 
         const typeRef = resolveTypeRef(inner, schemaToName, usedTypes);
         if (typeRef) {
-          return { name: pascalCase(fieldName), type: `types.${typeRef}`, jsonName: fieldName, optional };
+          return {
+            name: pascalCase(fieldName),
+            type: `types.${typeRef}`,
+            jsonName: fieldName,
+            optional,
+          };
         }
 
         if (isZodObject(inner) || isZodEntity(inner)) {
           const childName = `${pascalCase(moduleName)}${pascalCase(fieldName)}`;
-          registerEntitySub(childName, inner, subStructs, diagnostics, moduleName, schemaToName, usedTypes);
+          registerEntitySub(
+            childName,
+            inner,
+            subStructs,
+            diagnostics,
+            moduleName,
+            schemaToName,
+            usedTypes,
+          );
           return { name: pascalCase(fieldName), type: childName, jsonName: fieldName, optional };
         }
         if (isZodArray(inner)) {
@@ -401,12 +414,25 @@ export function generateEntityStructs(
 
           const elemRef = resolveTypeRef(elem, schemaToName, usedTypes);
           if (elemRef) {
-            return { name: pascalCase(fieldName), type: `[]types.${elemRef}`, jsonName: fieldName, optional };
+            return {
+              name: pascalCase(fieldName),
+              type: `[]types.${elemRef}`,
+              jsonName: fieldName,
+              optional,
+            };
           }
 
           if (isZodObject(elem) || isZodEntity(elem)) {
             const childName = `${pascalCase(moduleName)}${pascalCase(fieldName)}Item`;
-            registerEntitySub(childName, elem, subStructs, diagnostics, moduleName, schemaToName, usedTypes);
+            registerEntitySub(
+              childName,
+              elem,
+              subStructs,
+              diagnostics,
+              moduleName,
+              schemaToName,
+              usedTypes,
+            );
             return {
               name: pascalCase(fieldName),
               type: `[]${childName}`,
@@ -485,12 +511,25 @@ function registerEntitySub(
 
       const typeRef = resolveTypeRef(inner, schemaToName, usedTypes);
       if (typeRef) {
-        return { name: pascalCase(fieldName), type: `types.${typeRef}`, jsonName: fieldName, optional };
+        return {
+          name: pascalCase(fieldName),
+          type: `types.${typeRef}`,
+          jsonName: fieldName,
+          optional,
+        };
       }
 
       if (isZodObject(inner) || isZodEntity(inner)) {
         const childName = `${name}${pascalCase(fieldName)}`;
-        registerEntitySub(childName, inner, subStructs, diagnostics, moduleName, schemaToName, usedTypes);
+        registerEntitySub(
+          childName,
+          inner,
+          subStructs,
+          diagnostics,
+          moduleName,
+          schemaToName,
+          usedTypes,
+        );
         return { name: pascalCase(fieldName), type: childName, jsonName: fieldName, optional };
       }
       if (isZodArray(inner)) {
@@ -498,12 +537,25 @@ function registerEntitySub(
 
         const elemRef = resolveTypeRef(elem, schemaToName, usedTypes);
         if (elemRef) {
-          return { name: pascalCase(fieldName), type: `[]types.${elemRef}`, jsonName: fieldName, optional };
+          return {
+            name: pascalCase(fieldName),
+            type: `[]types.${elemRef}`,
+            jsonName: fieldName,
+            optional,
+          };
         }
 
         if (isZodObject(elem) || isZodEntity(elem)) {
           const childName = `${name}${pascalCase(fieldName)}Item`;
-          registerEntitySub(childName, elem, subStructs, diagnostics, moduleName, schemaToName, usedTypes);
+          registerEntitySub(
+            childName,
+            elem,
+            subStructs,
+            diagnostics,
+            moduleName,
+            schemaToName,
+            usedTypes,
+          );
           return {
             name: pascalCase(fieldName),
             type: `[]${childName}`,
@@ -1168,7 +1220,15 @@ export function generateNamedStructs(
     subStructs.set(subName, { name: subName, fields });
   };
 
-  const main = processSchema(name, schema, subStructs, registerSub, diagnostics, schemaToName, usedTypes);
+  const main = processSchema(
+    name,
+    schema,
+    subStructs,
+    registerSub,
+    diagnostics,
+    schemaToName,
+    usedTypes,
+  );
   const structs: GoStruct[] = [];
   if (main) structs.push(main);
   for (const sub of subStructs.values()) {

@@ -268,9 +268,14 @@ export function generateCode(
     const domainFile = featuresPath(`internal/${moduleName}/domain.go`, featuresDir);
     const regionId = `${moduleName}.domain`;
     const domainUsedTypes = new Set<string>();
-    const domainContent = generateDomain(moduleName, routes as RouteAst[], diagnostics, typeMap, domainUsedTypes);
+    const domainContent = generateDomain(
+      moduleName,
+      routes as RouteAst[],
+      diagnostics,
+      typeMap,
+      domainUsedTypes,
+    );
     if (domainUsedTypes.size > 0 && moduleInfo) {
-      const typesPkg = featuresPath("internal/types", featuresDir);
       for (const tn of domainUsedTypes) usedTypes.add(tn);
     }
     add(domainFile, {
@@ -279,9 +284,10 @@ export function generateCode(
       owner: "schemago",
       language: "go",
       content: domainContent,
-      imports: domainUsedTypes.size > 0 && moduleInfo
-        ? [`"${moduleInfo.modulePath}/${featuresPath("internal/types", featuresDir)}"`]
-        : undefined,
+      imports:
+        domainUsedTypes.size > 0 && moduleInfo
+          ? [`"${moduleInfo.modulePath}/${featuresPath("internal/types", featuresDir)}"`]
+          : undefined,
     });
   }
 
@@ -778,7 +784,13 @@ function generateDomain(
 
   const routesWithEntity = routes.filter((r) => r.response && r.responseFormat);
   if (routesWithEntity.length > 0) {
-    const entityContent = generateEntityStructs(moduleName, routesWithEntity, diagnostics, typeMap, usedTypes);
+    const entityContent = generateEntityStructs(
+      moduleName,
+      routesWithEntity,
+      diagnostics,
+      typeMap,
+      usedTypes,
+    );
     if (entityContent) parts.push(entityContent);
   }
 
