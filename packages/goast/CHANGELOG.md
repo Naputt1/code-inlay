@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.0
+
+### Minor Changes
+
+- 03470d3: Migrate all Go code generation to @schemago/goast. Remove legacy string-template generators. Add turbo build pipeline.
+
 ## [0.1.0] — 2024-07
 
 ### Added
